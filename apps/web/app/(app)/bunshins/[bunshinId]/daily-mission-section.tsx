@@ -459,6 +459,10 @@ export function DailyMissionSection({
   const [generating, setGenerating] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [variantInstructions, setVariantInstructions] = useState<Record<string, string>>({});
+  const [variantConfirmation, setVariantConfirmation] = useState<{
+    missionId: string;
+    instruction?: string;
+  } | null>(null);
   const [missionDate, setMissionDate] = useState(() => new Date().toLocaleDateString('sv-SE'));
   const activeProfiles = profiles.filter(({ status }) => status === 'ACTIVE');
   const [socialProfileId, setSocialProfileId] = useState(activeProfiles[0]?.id ?? '');
@@ -666,18 +670,22 @@ export function DailyMissionSection({
     if (ok) router.refresh();
   }
 
-  async function generateVariant(missionId: string, instruction?: string) {
+  function requestVariant(missionId: string, instruction?: string) {
     if (pendingAction !== null) return;
     if (variantPointCost === null) {
       setError('ポイント交換を利用できません。時間をおいて、もう一度お試しください。');
       return;
     }
-    if (
-      !window.confirm(
-        `${variantPointCost} WPを使って${instruction?.trim() ? '内容を直した案' : '別の案'}を作ります。よろしいですか？`,
-      )
-    )
-      return;
+    const preparedInstruction = instruction?.trim();
+    setVariantConfirmation({
+      missionId,
+      ...(preparedInstruction ? { instruction: preparedInstruction } : {}),
+    });
+  }
+
+  async function generateVariant(missionId: string, instruction?: string) {
+    if (pendingAction !== null || variantPointCost === null) return;
+    setVariantConfirmation(null);
     setError(null);
     const requestId = createClientRequestId();
     setPendingAction(`${missionId}:variant`);
@@ -994,7 +1002,7 @@ export function DailyMissionSection({
                             <button
                               type="button"
                               disabled={busy || variantPointCost === null}
-                              onClick={() => void generateVariant(mission.id)}
+                              onClick={() => requestVariant(mission.id)}
                             >
                               {variantPointCost === null
                                 ? 'ポイント交換を利用できません'
@@ -1021,13 +1029,48 @@ export function DailyMissionSection({
                                 !(variantInstructions[mission.id] ?? '').trim()
                               }
                               onClick={() =>
-                                void generateVariant(mission.id, variantInstructions[mission.id])
+                                requestVariant(mission.id, variantInstructions[mission.id])
                               }
                             >
                               {variantPointCost === null
                                 ? 'ポイント交換を利用できません'
                                 : `${variantPointCost} WPで内容を直す`}
                             </button>
+                            {variantConfirmation?.missionId === mission.id ? (
+                              <section
+                                className="mission-variant-confirmation"
+                                role="alertdialog"
+                                aria-labelledby={`variant-confirmation-${mission.id}`}
+                              >
+                                <h4 id={`variant-confirmation-${mission.id}`}>WPを使いますか？</h4>
+                                <p>
+                                  <strong>{variantPointCost} WP</strong>を使って
+                                  {variantConfirmation.instruction ? '内容を直した案' : '別の案'}
+                                  を1つ作ります。作成に失敗した場合、WPは戻ります。
+                                </p>
+                                <div className="mission-variant-confirmation__actions">
+                                  <button
+                                    className="button button--secondary"
+                                    type="button"
+                                    onClick={() => setVariantConfirmation(null)}
+                                  >
+                                    やめる
+                                  </button>
+                                  <button
+                                    className="button button--primary"
+                                    type="button"
+                                    onClick={() =>
+                                      void generateVariant(
+                                        mission.id,
+                                        variantConfirmation.instruction,
+                                      )
+                                    }
+                                  >
+                                    {variantPointCost} WPを使って作る
+                                  </button>
+                                </div>
+                              </section>
+                            ) : null}
                             <p>
                               作成に使ったWPは、失敗した場合に戻ります。{' '}
                               <a href={`/points?workspaceId=${encodeURIComponent(workspaceId)}`}>

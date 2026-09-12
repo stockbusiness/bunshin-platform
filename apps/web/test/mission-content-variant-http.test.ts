@@ -69,7 +69,9 @@ describe('mission content variant HTTP and UI boundary', () => {
       expect(source).toContain('missionWithSelectedVariant');
       expect(source).toContain('/variants');
       expect(source).toContain('acceptedPointCost: variantPointCost');
-      expect(source).toContain('window.confirm');
+      expect(source).toContain('role="alertdialog"');
+      expect(source).toContain('WPを使いますか？');
+      expect(source).not.toContain('window.confirm');
       expect(source).toContain('作成に使ったWPは、失敗した場合に戻ります。');
     },
   );

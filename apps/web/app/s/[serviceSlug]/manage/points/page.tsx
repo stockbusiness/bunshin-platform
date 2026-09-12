@@ -1254,9 +1254,13 @@ export default async function ServicePointSettingsPage({
   const pilotPeriodEnd = new Date(
     Math.max(pilotPeriod.from.getTime(), pilotPeriod.toExclusive.getTime() - 1),
   );
-  const pilotPeriodLabel = `${pilotPeriod.from.toLocaleDateString('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-  })}〜${pilotPeriodEnd.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}`;
+  const formatPilotDate = (value: Date) =>
+    value.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  const pilotPeriodLabel = `${formatPilotDate(pilotPeriod.from)}〜${formatPilotDate(pilotPeriodEnd)}`;
+  const configuredPilotPeriodLabel =
+    rewardsPolicy?.startsAt && rewardsPolicy.endsAt
+      ? `${formatPilotDate(rewardsPolicy.startsAt)}〜${formatPilotDate(rewardsPolicy.endsAt)}`
+      : null;
   const memberName = new Map(
     [...memberships, ...rewardsPilotParticipants].map((membership) => [
       membership.userId,
@@ -1391,7 +1395,7 @@ export default async function ServicePointSettingsPage({
                       {item.key === 'PERIOD' && item.ready ? (
                         <>
                           <br />
-                          <span>設定期間：{pilotPeriodLabel}</span>
+                          <span>設定期間：{configuredPilotPeriodLabel ?? pilotPeriodLabel}</span>
                         </>
                       ) : null}
                       {!item.ready && settingsHref ? (

@@ -5092,7 +5092,15 @@ export class PrismaMissionContentVariantRepository implements MissionContentVari
       });
       if (active)
         throw new ApplicationError('CONFLICT', 'mission content variant generation is in progress');
-      const generation = await tx.missionContentVariantGeneration.create({ data: input });
+      const generation = await tx.missionContentVariantGeneration.create({
+        data: {
+          workspaceId: input.workspaceId,
+          bunshinId: input.bunshinId,
+          dailyMissionId: input.dailyMissionId,
+          actorUserId: input.actorUserId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
       return { acquired: true, generation };
     });
   }

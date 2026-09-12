@@ -35,4 +35,9 @@ describe('mission content variant persistence boundary', () => {
     );
     expect(repository).toContain('mission content variant limit reached');
   });
+
+  it('does not pass service-only scope fields into generation persistence', () => {
+    expect(repository).not.toContain('missionContentVariantGeneration.create({ data: input })');
+    expect(repository).toContain('idempotencyKey: input.idempotencyKey');
+  });
 });

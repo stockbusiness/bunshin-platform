@@ -4104,6 +4104,7 @@ model VideoRender {
 }
 
 model VideoDelivery {
+  notificationSnapshot     String?                         @map("notification_snapshot") @db.Text
   id                       String                          @id @default(uuid()) @db.Uuid
   workspaceId              String                          @map("workspace_id") @db.Uuid
   groupId                  String                          @map("group_id") @db.Uuid

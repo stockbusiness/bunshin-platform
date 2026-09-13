@@ -94,6 +94,31 @@ export default async function GroupImagesPage({
       (!mission.campaignId || mission.campaign?.groupId === membership.group.id) &&
       (!mission.contentLinkUsage || mission.contentLinkUsage.groupId === membership.group.id),
   );
+  const savedPhotos = available.length
+    ? await db.prisma.bunshinMemory.findMany({
+        where: {
+          workspaceId: membership.group.workspaceId,
+          bunshinId: { in: [...new Set(available.map((mission) => mission.bunshinId))] },
+          sourceType: 'USER_INPUT',
+          sourceId: { startsWith: 'daily-action:PHOTO:' },
+          attachmentStatus: 'READY',
+          attachmentStorageKey: { not: null },
+          active: true,
+          deletedAt: null,
+          bunshin: { ownerUserId: actor.userId, groupId: membership.group.id },
+        },
+        select: {
+          id: true,
+          bunshinId: true,
+          content: true,
+          attachmentWidth: true,
+          attachmentHeight: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      })
+    : [];
   const requests = await db.prisma.socialImageGenerationRequest.findMany({
     where: {
       groupId: membership.group.id,
@@ -223,6 +248,14 @@ export default async function GroupImagesPage({
         pointCost={imagePointCost}
         initialAvailablePoints={availablePoints}
         initialMissionId={initialMissionId}
+        savedPhotos={savedPhotos.map((photo) => ({
+          id: photo.id,
+          bunshinId: photo.bunshinId,
+          label: photo.content,
+          width: photo.attachmentWidth,
+          height: photo.attachmentHeight,
+          createdAt: photo.createdAt.toISOString(),
+        }))}
         missions={available.map((mission) => {
           const rawSlides = (mission.content?.contentJson as Record<string, unknown> | null)?.[
             'slides'

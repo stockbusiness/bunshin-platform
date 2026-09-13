@@ -111,6 +111,16 @@ export class DailyActionStorage {
     return signed.data.signedUrl;
   }
 
+  async read(storageKey: string) {
+    const downloaded = await this.storage.storage.from(BUCKET).download(storageKey);
+    if (downloaded.error)
+      throw new ApplicationError('NOT_FOUND', '保存した写真を読み込めませんでした');
+    const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+    if (bytes.byteLength < 1 || bytes.byteLength > MAX_BYTES)
+      throw new ApplicationError('VALIDATION_ERROR', '保存した写真の大きさを確認できませんでした');
+    return bytes;
+  }
+
   async remove(storageKey: string) {
     const removed = await this.storage.storage.from(BUCKET).remove([storageKey]);
     if (removed.error) throw new ApplicationError('INTERNAL_ERROR', '写真を削除できませんでした');

@@ -40,7 +40,8 @@ import { assertPrivateVideoStorageConfiguration } from '../video/video-storage-c
 import { resolveMissionPostCopy } from '../video/video-post-copy';
 import { currentLineEnvironment } from '../line/secure-configuration';
 import { assertOrganizationGenerationQuota } from '../organization-generation-quota';
-import { normalizeImageReference } from '../social-image-reference';
+import { DailyActionStorage } from '../daily-actions/daily-action-storage';
+import { normalizeImageReference, normalizeImageReferenceBytes } from '../social-image-reference';
 import {
   finishServiceMediaGeneration,
   reserveServiceMediaGeneration,
@@ -73,6 +74,7 @@ const createSchema = z
       .object({ base64: z.string().min(1).max(4_000_000), rightsConfirmed: z.literal(true) })
       .strict()
       .optional(),
+    savedPhotoId: uuid.optional(),
     campaignId: uuid.nullable().optional(),
     productPackVersionId: uuid.nullable().optional(),
     idempotencyKey: z.string().trim().min(8).max(200),
@@ -80,7 +82,10 @@ const createSchema = z
       carouselPages: z.array(pageLayoutSchema).min(1).max(6).optional(),
     }),
   })
-  .strict();
+  .strict()
+  .refine((value) => !(value.referenceImage && value.savedPhotoId), {
+    message: '新しい写真と保存写真はどちらか一方を選んでください',
+  });
 const decisionSchema = z
   .object({
     mediaId: uuid,
@@ -161,11 +166,44 @@ export async function createSocialImageResponse(
     requireSameOrigin(request);
     const actor = await actorUserId();
     const parsed = createSchema.parse(await body(request));
-    const reference = parsed.referenceImage
-      ? await normalizeImageReference(parsed.referenceImage.base64)
-      : null;
     const runtime = getServerEnvironment();
     const db = await import('@bunshin/database');
+    const savedPhoto = parsed.savedPhotoId
+      ? await db.prisma.bunshinMemory.findFirst({
+          where: {
+            id: parsed.savedPhotoId,
+            workspaceId,
+            bunshinId,
+            sourceType: 'USER_INPUT',
+            sourceId: { startsWith: 'daily-action:PHOTO:' },
+            attachmentStatus: 'READY',
+            attachmentStorageKey: { not: null },
+            active: true,
+            deletedAt: null,
+            bunshin: {
+              ownerUserId: actor,
+              groupId,
+              status: { not: 'ARCHIVED' },
+              group: {
+                status: 'ACTIVE',
+                memberships: {
+                  some: { userId: actor, status: 'ACTIVE', consentedAt: { not: null } },
+                },
+              },
+            },
+          },
+          select: { attachmentStorageKey: true },
+        })
+      : null;
+    if (parsed.savedPhotoId && !savedPhoto?.attachmentStorageKey)
+      throw new ApplicationError('NOT_FOUND', '保存した写真が見つかりません');
+    const reference = parsed.referenceImage
+      ? await normalizeImageReference(parsed.referenceImage.base64)
+      : savedPhoto?.attachmentStorageKey
+        ? await normalizeImageReferenceBytes(
+            await new DailyActionStorage().read(savedPhoto.attachmentStorageKey),
+          )
+        : null;
     const requests = new db.PrismaSocialImageGenerationRequestRepository();
     const redemptions = new db.PrismaPointRedemptionRepository();
     const badgeEntitlements = new db.PrismaBadgeEntitlementConsumptionRepository(db.prisma);
@@ -355,6 +393,60 @@ export async function createSocialImageResponse(
       { data: dto(created), requestId },
       { status: 202, headers: { 'cache-control': 'private, no-store' } },
     );
+  } catch (error) {
+    const mapped = toApiError(error, requestId);
+    return Response.json(mapped.body, {
+      status: mapped.status,
+      headers: { 'cache-control': 'private, no-store' },
+    });
+  }
+}
+
+export async function savedSocialPhotoResponse(
+  request: Request,
+  workspaceId: string,
+  groupId: string,
+  bunshinId: string,
+  photoId: string,
+) {
+  const requestId = requestIdFromHeader(request.headers.get('x-request-id'));
+  try {
+    const actor = await actorUserId();
+    const db = await import('@bunshin/database');
+    const photo = await db.prisma.bunshinMemory.findFirst({
+      where: {
+        id: uuid.parse(photoId),
+        workspaceId: uuid.parse(workspaceId),
+        bunshinId: uuid.parse(bunshinId),
+        sourceType: 'USER_INPUT',
+        sourceId: { startsWith: 'daily-action:PHOTO:' },
+        attachmentStatus: 'READY',
+        attachmentStorageKey: { not: null },
+        active: true,
+        deletedAt: null,
+        bunshin: {
+          ownerUserId: actor,
+          groupId: uuid.parse(groupId),
+          status: { not: 'ARCHIVED' },
+          group: {
+            status: 'ACTIVE',
+            memberships: {
+              some: { userId: actor, status: 'ACTIVE', consentedAt: { not: null } },
+            },
+          },
+        },
+      },
+      select: { attachmentStorageKey: true },
+    });
+    if (!photo?.attachmentStorageKey)
+      throw new ApplicationError('NOT_FOUND', '保存した写真が見つかりません');
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: await new DailyActionStorage().createReadUrl(photo.attachmentStorageKey),
+        'cache-control': 'private, no-store',
+      },
+    });
   } catch (error) {
     const mapped = toApiError(error, requestId);
     return Response.json(mapped.body, {

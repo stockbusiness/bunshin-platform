@@ -19,6 +19,11 @@ const fakes = vi.hoisted(() => ({
   imageUsageCount: vi.fn(),
   reserveServiceMedia: vi.fn(),
   finishServiceMedia: vi.fn(),
+  savedPhotoFind: vi.fn(),
+  readSavedPhoto: vi.fn(),
+  normalizeSavedPhoto: vi.fn(),
+  storeReference: vi.fn(),
+  createSavedPhotoUrl: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -45,10 +50,26 @@ vi.mock('../src/service-media-generation-quota', () => ({
   reserveServiceMediaGeneration: fakes.reserveServiceMedia,
   finishServiceMediaGeneration: fakes.finishServiceMedia,
 }));
+vi.mock('../src/daily-actions/daily-action-storage', () => ({
+  DailyActionStorage: class {
+    read = fakes.readSavedPhoto;
+    createReadUrl = fakes.createSavedPhotoUrl;
+  },
+}));
+vi.mock('../src/social-image-reference', () => ({
+  normalizeImageReference: vi.fn(),
+  normalizeImageReferenceBytes: fakes.normalizeSavedPhoto,
+}));
+vi.mock('../src/social-image-storage', () => ({
+  SupabaseSocialImageStorage: class {
+    storeReference = fakes.storeReference;
+  },
+}));
 vi.mock('@bunshin/database', () => ({
   prisma: {
     organizationEntitlement: { findUnique: fakes.organizationEntitlement },
     socialImageGenerationRequest: { count: fakes.imageUsageCount },
+    bunshinMemory: { findFirst: fakes.savedPhotoFind },
   },
   PrismaSocialImageGenerationAuthorizationRepository: class {
     authorize = fakes.authorize;
@@ -82,6 +103,7 @@ import {
   createSocialImageResponse,
   decideSocialImageResponse,
   getSocialImageResponse,
+  savedSocialPhotoResponse,
 } from '../src/http/social-images';
 
 const ids = {
@@ -171,9 +193,56 @@ beforeEach(() => {
   fakes.imageUsageCount.mockResolvedValue(0);
   fakes.reserveServiceMedia.mockResolvedValue({ status: 'NOT_CONFIGURED', id: null });
   fakes.finishServiceMedia.mockResolvedValue(undefined);
+  fakes.savedPhotoFind.mockResolvedValue(null);
+  fakes.readSavedPhoto.mockResolvedValue(new Uint8Array([1, 2, 3]));
+  fakes.normalizeSavedPhoto.mockResolvedValue({
+    bytes: new Uint8Array([4, 5, 6]),
+    referenceImage: { sha256: 'a'.repeat(64), rightsConfirmed: true },
+  });
+  fakes.storeReference.mockResolvedValue(undefined);
+  fakes.createSavedPhotoUrl.mockResolvedValue('https://storage.example/saved-photo');
 });
 
 describe('social image HTTP', () => {
+  it('opens a saved photo only through the exact owner and service scope', async () => {
+    const savedPhotoId = '00000000-0000-4000-8000-000000000020';
+    fakes.savedPhotoFind.mockResolvedValue({ attachmentStorageKey: 'workspace/owner/photo.jpg' });
+    const response = await savedSocialPhotoResponse(
+      new Request('https://example.com/api/saved-photo'),
+      ids.workspaceId,
+      ids.groupId,
+      ids.bunshinId,
+      savedPhotoId,
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('https://storage.example/saved-photo');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(fakes.savedPhotoFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: savedPhotoId,
+          bunshin: expect.objectContaining({
+            ownerUserId: ids.actorUserId,
+            groupId: ids.groupId,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('does not expose a saved photo outside the owner and service scope', async () => {
+    const response = await savedSocialPhotoResponse(
+      new Request('https://example.com/api/saved-photo'),
+      ids.workspaceId,
+      ids.groupId,
+      ids.bunshinId,
+      '00000000-0000-4000-8000-000000000021',
+    );
+
+    expect(response.status).toBe(404);
+    expect(fakes.createSavedPhotoUrl).not.toHaveBeenCalled();
+  });
+
   it('returns every carousel page with an owned download path', async () => {
     fakes.findOwned.mockResolvedValue({ ...row('QUEUED', 2), status: 'READY_FOR_REVIEW' });
     fakes.listMediaOwned.mockResolvedValue(
@@ -450,6 +519,54 @@ describe('social image HTTP', () => {
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ data: { status: 'ADOPTED' } });
+  });
+
+  it('uses only an owned saved daily-action photo as the image reference', async () => {
+    const savedPhotoId = '00000000-0000-4000-8000-000000000020';
+    const referenceImage = { sha256: 'a'.repeat(64), rightsConfirmed: true as const };
+    fakes.savedPhotoFind.mockResolvedValue({ attachmentStorageKey: 'workspace/owner/photo.jpg' });
+    fakes.create.mockResolvedValueOnce({
+      ...row('DRAFT', 1),
+      referenceImage,
+      createdAt: new Date(),
+    });
+    fakes.transition.mockResolvedValueOnce({
+      ...row('QUEUED', 2),
+      referenceImage,
+      createdAt: new Date(),
+    });
+    const response = await createSocialImageResponse(
+      new Request('https://example.com/api/images', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          groupMembershipId: ids.groupMembershipId,
+          savedPhotoId,
+          idempotencyKey: 'saved-photo-operation',
+          layout,
+        }),
+      }),
+      ids.workspaceId,
+      ids.groupId,
+      ids.bunshinId,
+      ids.dailyMissionId,
+    );
+    expect(response.status).toBe(202);
+    expect(fakes.savedPhotoFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: savedPhotoId,
+          workspaceId: ids.workspaceId,
+          bunshinId: ids.bunshinId,
+          attachmentStatus: 'READY',
+          bunshin: expect.objectContaining({ ownerUserId: ids.actorUserId, groupId: ids.groupId }),
+        }),
+      }),
+    );
+    expect(fakes.readSavedPhoto).toHaveBeenCalledWith('workspace/owner/photo.jpg');
+    expect(fakes.storeReference).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: ids.requestId, bytes: new Uint8Array([4, 5, 6]) }),
+    );
   });
 
   it('records why a generated image was not used', async () => {

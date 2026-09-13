@@ -1,3 +1,5 @@
+import { enforceBusinessDailyDeliverySettings } from './business-daily-service-settings';
+
 export interface ServiceOnboardingSettings {
   welcomeTitle: string;
   welcomeMessage: string;
@@ -249,6 +251,68 @@ export function readServiceOnboardingSettings(
         : fallback,
     ]),
   ) as unknown as ServiceProfileQuestionSettings;
+  const businessProfileEnabled = onboarding.businessProfileEnabled === true;
+  const dailyIdeaDelivery: ServiceDailyIdeaDeliverySettings = {
+    enabled: configuredDailyIdeaDelivery.enabled === true,
+    cadence: configuredDailyIdeaDelivery.cadence === 'WEEKDAYS' ? 'WEEKDAYS' : 'DAILY',
+    defaultNotificationTime:
+      typeof configuredDailyIdeaDelivery.defaultNotificationTime === 'string' &&
+      /^(0[7-9]|1\d|20):[0-5]\d$/.test(configuredDailyIdeaDelivery.defaultNotificationTime)
+        ? configuredDailyIdeaDelivery.defaultNotificationTime
+        : DEFAULT_SERVICE_DAILY_IDEA_DELIVERY.defaultNotificationTime,
+    lockCadence: configuredDailyIdeaDelivery.lockCadence === true,
+    contentMode:
+      configuredDailyIdeaDelivery.contentMode === 'IDEA' ||
+      configuredDailyIdeaDelivery.contentMode === 'PROMPT'
+        ? configuredDailyIdeaDelivery.contentMode
+        : 'READY_TO_USE',
+    mediaMode:
+      configuredDailyIdeaDelivery.mediaMode === 'VIDEO' ||
+      configuredDailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ||
+      configuredDailyIdeaDelivery.mediaMode === 'IMAGE'
+        ? configuredDailyIdeaDelivery.mediaMode
+        : 'TEXT_ONLY',
+    videoStyle:
+      configuredDailyIdeaDelivery.videoStyle === 'CALM' ||
+      configuredDailyIdeaDelivery.videoStyle === 'MINIMAL'
+        ? configuredDailyIdeaDelivery.videoStyle
+        : 'STANDARD',
+    videoBgm: {
+      enabled: configuredVideoBgm.enabled === true,
+      assetId:
+        typeof configuredVideoBgm.assetId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          configuredVideoBgm.assetId,
+        )
+          ? configuredVideoBgm.assetId
+          : null,
+      volumePercent:
+        typeof configuredVideoBgm.volumePercent === 'number' &&
+        Number.isInteger(configuredVideoBgm.volumePercent) &&
+        configuredVideoBgm.volumePercent >= 5 &&
+        configuredVideoBgm.volumePercent <= 30
+          ? configuredVideoBgm.volumePercent
+          : 12,
+    },
+    videoNarration: {
+      enabled: configuredVideoNarration.enabled === true,
+      voice:
+        configuredVideoNarration.voice === 'cedar' || configuredVideoNarration.voice === 'coral'
+          ? configuredVideoNarration.voice
+          : 'marin',
+      speed: configuredVideoNarration.speed === 'STANDARD' ? 'STANDARD' : 'SLOW',
+    },
+    visualCharacter: {
+      enabled: configuredVisualCharacter.enabled === true,
+      profileVersionId:
+        typeof configuredVisualCharacter.profileVersionId === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          configuredVisualCharacter.profileVersionId,
+        )
+          ? configuredVisualCharacter.profileVersionId
+          : null,
+    },
+  };
   return {
     welcomeTitle: typeof onboarding.welcomeTitle === 'string' ? onboarding.welcomeTitle : '',
     welcomeMessage: typeof onboarding.welcomeMessage === 'string' ? onboarding.welcomeMessage : '',
@@ -256,68 +320,11 @@ export function readServiceOnboardingSettings(
       ? survey.questions.filter((item): item is string => typeof item === 'string').slice(0, 7)
       : [],
     profileQuestions,
-    businessProfileEnabled: onboarding.businessProfileEnabled === true,
-    dailyIdeaDelivery: {
-      enabled: configuredDailyIdeaDelivery.enabled === true,
-      cadence: configuredDailyIdeaDelivery.cadence === 'WEEKDAYS' ? 'WEEKDAYS' : 'DAILY',
-      defaultNotificationTime:
-        typeof configuredDailyIdeaDelivery.defaultNotificationTime === 'string' &&
-        /^(0[7-9]|1\d|20):[0-5]\d$/.test(configuredDailyIdeaDelivery.defaultNotificationTime)
-          ? configuredDailyIdeaDelivery.defaultNotificationTime
-          : DEFAULT_SERVICE_DAILY_IDEA_DELIVERY.defaultNotificationTime,
-      lockCadence: configuredDailyIdeaDelivery.lockCadence === true,
-      contentMode:
-        configuredDailyIdeaDelivery.contentMode === 'IDEA' ||
-        configuredDailyIdeaDelivery.contentMode === 'PROMPT'
-          ? configuredDailyIdeaDelivery.contentMode
-          : 'READY_TO_USE',
-      mediaMode:
-        configuredDailyIdeaDelivery.mediaMode === 'VIDEO' ||
-        configuredDailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ||
-        configuredDailyIdeaDelivery.mediaMode === 'IMAGE'
-          ? configuredDailyIdeaDelivery.mediaMode
-          : 'TEXT_ONLY',
-      videoStyle:
-        configuredDailyIdeaDelivery.videoStyle === 'CALM' ||
-        configuredDailyIdeaDelivery.videoStyle === 'MINIMAL'
-          ? configuredDailyIdeaDelivery.videoStyle
-          : 'STANDARD',
-      videoBgm: {
-        enabled: configuredVideoBgm.enabled === true,
-        assetId:
-          typeof configuredVideoBgm.assetId === 'string' &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            configuredVideoBgm.assetId,
-          )
-            ? configuredVideoBgm.assetId
-            : null,
-        volumePercent:
-          typeof configuredVideoBgm.volumePercent === 'number' &&
-          Number.isInteger(configuredVideoBgm.volumePercent) &&
-          configuredVideoBgm.volumePercent >= 5 &&
-          configuredVideoBgm.volumePercent <= 30
-            ? configuredVideoBgm.volumePercent
-            : 12,
-      },
-      videoNarration: {
-        enabled: configuredVideoNarration.enabled === true,
-        voice:
-          configuredVideoNarration.voice === 'cedar' || configuredVideoNarration.voice === 'coral'
-            ? configuredVideoNarration.voice
-            : 'marin',
-        speed: configuredVideoNarration.speed === 'STANDARD' ? 'STANDARD' : 'SLOW',
-      },
-      visualCharacter: {
-        enabled: configuredVisualCharacter.enabled === true,
-        profileVersionId:
-          typeof configuredVisualCharacter.profileVersionId === 'string' &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            configuredVisualCharacter.profileVersionId,
-          )
-            ? configuredVisualCharacter.profileVersionId
-            : null,
-      },
-    },
+    businessProfileEnabled,
+    dailyIdeaDelivery: enforceBusinessDailyDeliverySettings(
+      businessProfileEnabled,
+      dailyIdeaDelivery,
+    ),
   };
 }
 

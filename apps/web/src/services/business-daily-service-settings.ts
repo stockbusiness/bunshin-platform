@@ -9,6 +9,28 @@ export type BusinessDailyServiceSettings = {
   dailyIdeaDelivery: ServiceDailyIdeaDeliverySettings;
 };
 
+export function enforceBusinessDailyDeliverySettings(
+  businessProfileEnabled: boolean,
+  value: ServiceDailyIdeaDeliverySettings,
+): ServiceDailyIdeaDeliverySettings {
+  if (!businessProfileEnabled) return value;
+  return {
+    ...value,
+    enabled: true,
+    cadence: 'DAILY',
+    lockCadence: true,
+    contentMode: 'READY_TO_USE',
+    mediaMode: 'TEXT_ONLY',
+    videoBgm: { ...value.videoBgm, enabled: false, assetId: null },
+    videoNarration: { ...value.videoNarration, enabled: false },
+    visualCharacter: {
+      ...value.visualCharacter,
+      enabled: false,
+      profileVersionId: null,
+    },
+  };
+}
+
 export function enforceBusinessDailyServiceSettings<T extends BusinessDailyServiceSettings>(
   value: T,
 ): T {
@@ -19,20 +41,6 @@ export function enforceBusinessDailyServiceSettings<T extends BusinessDailyServi
     lineEnabled: true,
     inviteCodeEnabled: false,
     referralEnabled: false,
-    dailyIdeaDelivery: {
-      ...value.dailyIdeaDelivery,
-      enabled: true,
-      cadence: 'DAILY',
-      lockCadence: true,
-      contentMode: 'READY_TO_USE',
-      mediaMode: 'TEXT_ONLY',
-      videoBgm: { ...value.dailyIdeaDelivery.videoBgm, enabled: false, assetId: null },
-      videoNarration: { ...value.dailyIdeaDelivery.videoNarration, enabled: false },
-      visualCharacter: {
-        ...value.dailyIdeaDelivery.visualCharacter,
-        enabled: false,
-        profileVersionId: null,
-      },
-    },
+    dailyIdeaDelivery: enforceBusinessDailyDeliverySettings(true, value.dailyIdeaDelivery),
   };
 }

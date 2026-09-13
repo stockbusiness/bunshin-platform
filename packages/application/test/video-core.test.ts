@@ -4,10 +4,12 @@ import {
   ApproveVideoPlan,
   GetVideoProject,
   QueueVideoRender,
+  ReviewFinishedVideo,
   ReplaceVideoPlan,
   UpdateVideoSceneDraft,
   type VideoProjectRecord,
   type VideoProjectRepository,
+  type VideoProjectReviewRepository,
   type VideoRenderRepository,
 } from '../src';
 
@@ -282,6 +284,62 @@ describe('Video Core', () => {
         actorUserId: ids.actorUserId,
         videoProjectId: ids.videoProjectId,
         expectedRevision: 2,
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('records adoption of the exact completed render revision', async () => {
+    const review = vi.fn<VideoProjectReviewRepository['review']>().mockResolvedValue({
+      ...project(),
+      status: 'COMPLETED',
+      revision: 5,
+      reviewDecision: 'ADOPTED',
+      reviewedAt: now,
+    });
+    await expect(
+      new ReviewFinishedVideo({ review }).execute({
+        workspaceId: ids.workspaceId,
+        groupId: ids.groupId,
+        actorUserId: ids.actorUserId,
+        videoProjectId: ids.videoProjectId,
+        expectedRevision: 4,
+        action: 'ADOPT',
+      }),
+    ).resolves.toMatchObject({ status: 'COMPLETED', reviewDecision: 'ADOPTED' });
+    expect(review).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedRevision: 4, action: 'ADOPT' }),
+    );
+  });
+
+  it('returns a finished video to editable approval when revision is requested', async () => {
+    const review = vi.fn<VideoProjectReviewRepository['review']>().mockResolvedValue({
+      ...project(),
+      status: 'WAITING_APPROVAL',
+      revision: 5,
+      reviewDecision: null,
+      reviewedAt: null,
+    });
+    await expect(
+      new ReviewFinishedVideo({ review }).execute({
+        workspaceId: ids.workspaceId,
+        groupId: ids.groupId,
+        actorUserId: ids.actorUserId,
+        videoProjectId: ids.videoProjectId,
+        expectedRevision: 4,
+        action: 'REVISE',
+      }),
+    ).resolves.toMatchObject({ status: 'WAITING_APPROVAL', reviewDecision: null });
+  });
+
+  it('rejects a stale finished-video review', async () => {
+    await expect(
+      new ReviewFinishedVideo({ review: vi.fn().mockResolvedValue(null) }).execute({
+        workspaceId: ids.workspaceId,
+        groupId: ids.groupId,
+        actorUserId: ids.actorUserId,
+        videoProjectId: ids.videoProjectId,
+        expectedRevision: 3,
+        action: 'REVISE',
       }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
   });

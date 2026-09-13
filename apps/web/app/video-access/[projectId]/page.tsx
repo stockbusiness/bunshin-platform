@@ -76,9 +76,11 @@ export default async function VideoAccessPage({
               <p>動画は準備中、または保存期限を過ぎています。</p>
             )}
             {scope.appOwner ? (
-              <a href={`/groups/${scope.project.groupId}/videos/${projectId}?manage=1`}>
-                動画の管理画面へ
-              </a>
+              <p>
+                <a href={`/groups/${scope.project.groupId}/videos/${projectId}?manage=1`}>
+                  台本を直して作り直す
+                </a>
+              </p>
             ) : null}
           </>
         ) : (

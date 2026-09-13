@@ -10,6 +10,7 @@ import { VideoRenderRequester } from '../../../../../ui/video-render-requester';
 import { VideoAiSceneRequester } from '../../../../../ui/video-ai-scene-requester';
 import { VideoDeliveryActions } from '../../../../../ui/video-delivery-actions';
 import { VideoSceneEditor } from '../../../../../ui/video-scene-editor';
+import { VideoReviewActions } from '../../../../../ui/video-review-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,6 +166,71 @@ export default async function VideoProjectPage({
         </a>
       </header>
 
+      {project.status === 'READY_FOR_REVIEW' && row.renderAttempts[0]?.status === 'SUCCEEDED' ? (
+        <section className="settings-card">
+          <h2>動画ができました</h2>
+          <p>内容を確認してください。動画は一般公開されていません。</p>
+          {delivery && serviceSlug ? (
+            <>
+              <VideoDeliveryActions
+                deliveryId={delivery.id}
+                serviceSlug={serviceSlug}
+                status={deliveryStatus ?? delivery.status}
+                usageMessage={deliveryMessage}
+              />
+              <VideoReviewActions
+                workspaceId={project.workspaceId}
+                groupId={project.groupId}
+                projectId={project.id}
+                revision={project.revision}
+                allowAdopt={false}
+              />
+            </>
+          ) : (
+            <>
+              <p>
+                <a
+                  className="button button--primary"
+                  href={`/api/workspaces/${project.workspaceId}/groups/${project.groupId}/video-projects/${project.id}/render/download`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  動画を確認する
+                </a>
+              </p>
+              <VideoReviewActions
+                workspaceId={project.workspaceId}
+                groupId={project.groupId}
+                projectId={project.id}
+                revision={project.revision}
+              />
+            </>
+          )}
+        </section>
+      ) : null}
+      {project.status === 'COMPLETED' && row.renderAttempts[0]?.status === 'SUCCEEDED' ? (
+        <section className="settings-card">
+          <h2>この動画を使うことを記録しました</h2>
+          <p>動画を開き、iPhoneの共有メニューから「ビデオを保存」を選べます。</p>
+          <p>
+            <a
+              className="button button--primary"
+              href={`/api/workspaces/${project.workspaceId}/groups/${project.groupId}/video-projects/${project.id}/render/download`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              動画を開く・保存する
+            </a>
+          </p>
+          <VideoReviewActions
+            workspaceId={project.workspaceId}
+            groupId={project.groupId}
+            projectId={project.id}
+            revision={project.revision}
+            allowAdopt={false}
+          />
+        </section>
+      ) : null}
       <section className="settings-card">
         <h2>投稿するときの大切な確認</h2>
         {disclosure.text ? (
@@ -229,7 +295,9 @@ export default async function VideoProjectPage({
                 ? '下の順番、字幕、読み上げる台本を確認してください。AI音声で読み上げます。'
                 : '下の順番と字幕を確認してください。音声は付けません。'}
             </p>
-            <p>この画面では動画本体はまだ作りません。</p>
+            {['DRAFT', 'PLANNING', 'WAITING_APPROVAL'].includes(project.status) ? (
+              <p>この画面では動画本体はまだ作りません。</p>
+            ) : null}
           </section>
           {project.scenes.map((scene) => (
             <section className="settings-card" key={scene.id}>
@@ -376,28 +444,6 @@ export default async function VideoProjectPage({
             <section className="settings-card">
               <h2>動画を作っています</h2>
               <p>完成まで少しお待ちください。あとでこの画面を開き直すと確認できます。</p>
-            </section>
-          ) : null}
-          {project.status === 'READY_FOR_REVIEW' &&
-          row.renderAttempts[0]?.status === 'SUCCEEDED' ? (
-            <section className="settings-card">
-              <h2>動画ができました</h2>
-              <p>内容を確認してください。動画は一般公開されていません。</p>
-              {delivery && serviceSlug ? (
-                <VideoDeliveryActions
-                  deliveryId={delivery.id}
-                  serviceSlug={serviceSlug}
-                  status={deliveryStatus ?? delivery.status}
-                  usageMessage={deliveryMessage}
-                />
-              ) : (
-                <a
-                  className="button button--primary"
-                  href={`/api/workspaces/${project.workspaceId}/groups/${project.groupId}/video-projects/${project.id}/render/download`}
-                >
-                  動画を確認する
-                </a>
-              )}
             </section>
           ) : null}
           {project.status === 'FAILED' ? (

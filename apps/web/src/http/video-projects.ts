@@ -6,6 +6,7 @@ import {
   EnqueueJob,
   GenerateVideoPlan,
   QueueVideoRender,
+  ReviewFinishedVideo,
   QueueVideoSceneGenerations,
   ResolveVideoDisclosurePolicy,
   UpdateVideoSceneDraft,
@@ -55,6 +56,12 @@ const createSchema = z
 const generateSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
 const approveSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
 const renderSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
+const reviewSchema = z
+  .object({
+    expectedRevision: z.number().int().positive(),
+    action: z.enum(['ADOPT', 'REVISE']),
+  })
+  .strict();
 const updateSceneSchema = z
   .object({
     expectedRevision: z.number().int().positive(),
@@ -289,6 +296,41 @@ export async function approveVideoPlanResponse(
       actorUserId: actor.userId,
       videoProjectId: uuid.parse(videoProjectId),
       expectedRevision: input.expectedRevision,
+    });
+    return Response.json(
+      { data: publicProject(project), requestId },
+      { headers: { 'cache-control': 'private, no-store' } },
+    );
+  } catch (error) {
+    const mapped = toApiError(error, requestId);
+    return Response.json(mapped.body, {
+      status: mapped.status,
+      headers: { 'cache-control': 'private, no-store' },
+    });
+  }
+}
+
+export async function reviewFinishedVideoResponse(
+  request: Request,
+  workspaceId: string,
+  groupId: string,
+  videoProjectId: string,
+) {
+  const requestId = requestIdFromHeader(request.headers.get('x-request-id'));
+  try {
+    requireSameOrigin(request);
+    if (!request.headers.get('content-type')?.startsWith('application/json'))
+      throw new ApplicationError('VALIDATION_ERROR', 'application/json required');
+    const actor = await (await currentUserProvider()).getCurrentUser();
+    if (!actor) throw new ApplicationError('UNAUTHENTICATED', 'session required');
+    const input = reviewSchema.parse(await request.json());
+    const db = await import('@bunshin/database');
+    const project = await new ReviewFinishedVideo(new db.PrismaVideoProjectRepository()).execute({
+      workspaceId: uuid.parse(workspaceId),
+      groupId: uuid.parse(groupId),
+      actorUserId: actor.userId,
+      videoProjectId: uuid.parse(videoProjectId),
+      ...input,
     });
     return Response.json(
       { data: publicProject(project), requestId },

@@ -36,6 +36,9 @@ const serverSchema = z
     RESEND_ADMIN_ALERT_API_KEY: z.string().min(16).optional(),
     RESEND_ADMIN_ALERT_FROM: z.email().optional(),
     RESEND_ADMIN_ALERT_TO: z.string().min(3).optional(),
+    VERCEL_API_TOKEN: z.string().min(20).optional(),
+    VERCEL_PROJECT_ID_OR_NAME: z.string().min(1).max(200).optional(),
+    VERCEL_TEAM_ID: z.string().min(1).max(200).optional(),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   })
   .superRefine((value, context) => {
@@ -141,6 +144,18 @@ const serverSchema = z
           message: 'Resend administrator alert recipients must be at most 10 valid emails',
         });
       }
+    }
+    if (
+      [value.VERCEL_API_TOKEN, value.VERCEL_PROJECT_ID_OR_NAME].some(
+        (item) => item !== undefined,
+      ) &&
+      [value.VERCEL_API_TOKEN, value.VERCEL_PROJECT_ID_OR_NAME].some((item) => item === undefined)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['VERCEL_API_TOKEN'],
+        message: 'Vercel domain configuration must be provided together',
+      });
     }
   });
 

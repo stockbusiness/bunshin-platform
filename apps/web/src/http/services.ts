@@ -9,6 +9,10 @@ import {
   SERVICE_CREATION_TEMPLATE_KEYS,
   SERVICE_CREATION_TEMPLATES,
 } from '../services/service-creation-templates';
+import {
+  VercelCustomDomainProvider,
+  type CustomDomainProviderResult,
+} from '../services/vercel-custom-domain';
 
 const uuid = z.string().uuid();
 const optionalUrl = z
@@ -407,7 +411,7 @@ export async function updateServiceCustomDomainResponse(request: Request, config
     if (['ACTIVE', 'VERIFIED'].includes(value.status))
       throw new ApplicationError(
         'VALIDATION_ERROR',
-        '独自ドメインの公開機能は準備中です。準備中として保存してください。',
+        '公開状態は、公開接続の操作から変更してください。',
       );
     if (
       ['localhost', 'vercel.app'].some(
@@ -498,6 +502,125 @@ export async function updateServiceCustomDomainResponse(request: Request, config
     });
     return Response.json(
       { data: saved, requestId },
+      { headers: { 'cache-control': 'private, no-store' } },
+    );
+  } catch (error) {
+    const mapped = toApiError(error, requestId);
+    return Response.json(mapped.body, {
+      status: mapped.status,
+      headers: { 'cache-control': 'private, no-store' },
+    });
+  }
+}
+
+type CustomDomainProvider = {
+  connect(hostname: string): Promise<CustomDomainProviderResult>;
+  verify(hostname: string): Promise<CustomDomainProviderResult>;
+  disconnect(hostname: string): Promise<void>;
+};
+
+export async function transitionServiceCustomDomainResponse(
+  request: Request,
+  configurationId: string,
+  action: 'connect' | 'verify' | 'disconnect',
+  provider: CustomDomainProvider = new VercelCustomDomainProvider(),
+) {
+  const requestId = requestIdFromHeader(request.headers.get('x-request-id'));
+  try {
+    requireSameOrigin(request);
+    const user = await (await currentUserProvider()).getCurrentUser();
+    if (!user) throw new ApplicationError('UNAUTHENTICATED', 'session required');
+    if (!uuid.safeParse(configurationId).success)
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid service id');
+    const db = await import('@bunshin/database');
+    const [admin, configuration] = await Promise.all([
+      db.prisma.platformAdmin.findFirst({
+        where: { userId: user.userId, status: 'ACTIVE', role: 'SUPER_ADMIN' },
+        select: { id: true },
+      }),
+      db.prisma.serviceConfiguration.findUnique({
+        where: { id: configurationId },
+        include: { customDomain: true },
+      }),
+    ]);
+    if (!admin) throw new ApplicationError('FORBIDDEN', 'platform administrator required');
+    if (!configuration?.customDomain)
+      throw new ApplicationError('NOT_FOUND', 'custom domain not found');
+    const entitlement = await db.prisma.organizationEntitlement.findUnique({
+      where: { workspaceId: configuration.workspaceId },
+      select: { customDomainEnabled: true, suspended: true },
+    });
+    if (entitlement?.suspended || (entitlement && !entitlement.customDomainEnabled))
+      throw new ApplicationError('FORBIDDEN', 'custom domain is not available');
+
+    const current = configuration.customDomain;
+    const providerResult =
+      action === 'disconnect'
+        ? await provider.disconnect(current.hostname).then(() => null)
+        : action === 'connect'
+          ? await provider.connect(current.hostname)
+          : await provider.verify(current.hostname);
+    const now = new Date();
+    const status =
+      action === 'disconnect' ? 'DISABLED' : providerResult?.verified ? 'ACTIVE' : 'DRAFT';
+    const challenge = providerResult?.challenge ?? null;
+    const saved = await db.prisma.$transaction(async (tx) => {
+      const domain = await tx.serviceCustomDomain.update({
+        where: { id: current.id },
+        data: {
+          status,
+          provider: action === 'disconnect' ? null : 'VERCEL',
+          providerConfiguredAt:
+            action === 'disconnect' ? null : (current.providerConfiguredAt ?? now),
+          verificationRecordType: challenge?.type ?? null,
+          verificationRecordName: challenge?.name ?? null,
+          verificationRecordValue: challenge?.value ?? null,
+          providerLastCheckedAt: now,
+          providerErrorCode: null,
+          verifiedAt: providerResult?.verified ? (current.verifiedAt ?? now) : null,
+          activatedAt: providerResult?.verified ? (current.activatedAt ?? now) : null,
+        },
+      });
+      await tx.serviceConfigurationAudit.create({
+        data: {
+          workspaceId: configuration.workspaceId,
+          groupId: configuration.groupId,
+          configurationId: configuration.id,
+          action: 'CUSTOM_DOMAIN_UPDATED',
+          beforeData: {
+            hostname: current.hostname,
+            status: current.status,
+            provider: current.provider,
+          },
+          afterData: {
+            hostname: domain.hostname,
+            status: domain.status,
+            provider: domain.provider,
+          },
+          reason:
+            action === 'disconnect'
+              ? '独自ドメインの接続を解除'
+              : action === 'connect'
+                ? '独自ドメインを公開先へ接続'
+                : '独自ドメインのDNSを再確認',
+          performedByUserId: user.userId,
+        },
+      });
+      return domain;
+    });
+    return Response.json(
+      {
+        data: {
+          hostname: saved.hostname,
+          status: saved.status,
+          provider: saved.provider,
+          verificationRecordType: saved.verificationRecordType,
+          verificationRecordName: saved.verificationRecordName,
+          verificationRecordValue: saved.verificationRecordValue,
+          providerLastCheckedAt: saved.providerLastCheckedAt?.toISOString() ?? null,
+        },
+        requestId,
+      },
       { headers: { 'cache-control': 'private, no-store' } },
     );
   } catch (error) {

@@ -2253,7 +2253,7 @@ model ServiceCommercialSetting {
   @@map("service_commercial_settings")
 }
 
-/// サービス固有ドメインの申請・確認状態。DNS／Vercel の接続操作そのものは保存しない。
+/// サービス固有ドメインの申請、Vercel接続、DNS確認、公開状態。
 model ServiceCustomDomain {
   id               String                    @id @default(uuid()) @db.Uuid
   workspaceId      String                    @map("workspace_id") @db.Uuid
@@ -2264,6 +2264,13 @@ model ServiceCustomDomain {
   verificationNote String?                   @map("verification_note") @db.VarChar(1000)
   verifiedAt       DateTime?                 @map("verified_at") @db.Timestamptz(6)
   activatedAt      DateTime?                 @map("activated_at") @db.Timestamptz(6)
+  provider         String?                   @db.VarChar(40)
+  providerConfiguredAt DateTime?             @map("provider_configured_at") @db.Timestamptz(6)
+  verificationRecordType  String?            @map("verification_record_type") @db.VarChar(20)
+  verificationRecordName  String?            @map("verification_record_name") @db.VarChar(253)
+  verificationRecordValue String?            @map("verification_record_value") @db.VarChar(1000)
+  providerLastCheckedAt   DateTime?           @map("provider_last_checked_at") @db.Timestamptz(6)
+  providerErrorCode       String?             @map("provider_error_code") @db.VarChar(80)
   createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
   workspace        Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

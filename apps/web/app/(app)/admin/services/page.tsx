@@ -114,6 +114,12 @@ export default async function ServicesAdminPage() {
                           hostname: service.customDomain.hostname,
                           status: service.customDomain.status,
                           verificationNote: service.customDomain.verificationNote,
+                          provider: service.customDomain.provider,
+                          verificationRecordType: service.customDomain.verificationRecordType,
+                          verificationRecordName: service.customDomain.verificationRecordName,
+                          verificationRecordValue: service.customDomain.verificationRecordValue,
+                          providerLastCheckedAt:
+                            service.customDomain.providerLastCheckedAt?.toISOString() ?? null,
                         }
                       : null
                   }

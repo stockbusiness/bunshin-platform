@@ -123,6 +123,7 @@ export async function queueAutomaticDailyVideo(input: {
   bunshinId: string;
   correlationId: string;
   mediaMode: ServiceDailyIdeaDeliverySettings['mediaMode'];
+  videoStyle?: ServiceDailyIdeaDeliverySettings['videoStyle'];
   videoNarration?: ServiceDailyIdeaDeliverySettings['videoNarration'];
   mission: { id: string; assistanceLevel: string; topic: string };
   socialImageGenerationRequestId?: string;
@@ -245,6 +246,7 @@ export async function queueAutomaticDailyVideo(input: {
             schemaVersion: 1,
             source: 'SERVICE_DAILY_VIDEO',
             dailyMissionId: mission.id,
+            videoStyle: input.videoStyle ?? 'STANDARD',
             policyId: disclosure.policyId,
             policyVersion: disclosure.policyVersion,
             disclosureText: disclosure.disclosureText,
@@ -367,6 +369,7 @@ async function prepareDailyCarouselVideoAfterImage(input: {
     bunshinId: request.bunshinId,
     correlationId: input.correlationId,
     mediaMode: dailyIdeas.mediaMode,
+    videoStyle: dailyIdeas.videoStyle,
     videoNarration: dailyIdeas.videoNarration,
     mission,
     socialImageGenerationRequestId: request.id,

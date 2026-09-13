@@ -641,6 +641,34 @@ export function ServiceSettingsEditor({
               </small>
             </fieldset>
           ) : null}
+          {dailyIdeaDelivery.mediaMode === 'VIDEO' ||
+          dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
+            <fieldset>
+              <legend>動画の動き</legend>
+              <label>
+                見せ方
+                <select
+                  value={dailyIdeaDelivery.videoStyle}
+                  onChange={(event) =>
+                    setDailyIdeaDelivery((current) => ({
+                      ...current,
+                      videoStyle:
+                        event.target.value === 'CALM' || event.target.value === 'MINIMAL'
+                          ? event.target.value
+                          : 'STANDARD',
+                    }))
+                  }
+                >
+                  <option value="STANDARD">標準（横から切り替わる）</option>
+                  <option value="CALM">ゆったり（動きを小さくする）</option>
+                  <option value="MINIMAL">動きなし（画像をそのまま見せる）</option>
+                </select>
+              </label>
+              <small>
+                文字を読みやすくしたい場合は「ゆったり」か「動きなし」を選んでください。次に作る動画から反映されます。
+              </small>
+            </fieldset>
+          ) : null}
           {dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
             <fieldset>
               <legend>5枚画像動画の読み上げ</legend>

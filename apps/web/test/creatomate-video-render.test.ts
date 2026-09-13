@@ -4,6 +4,7 @@ import {
   buildCreatomateRenderScript,
   classifyCreatomateStatus,
   CreatomateVideoRenderAdapter,
+  dailyVideoStyleFromSnapshot,
   VideoRenderProviderError,
 } from '../src/providers/creatomate-video-render';
 
@@ -90,6 +91,37 @@ describe('Creatomate video render adapter', () => {
         animations: expect.arrayContaining([expect.objectContaining({ type: 'scale' })]),
       }),
     );
+  });
+
+  it('keeps the legacy motion as the default and reads only supported saved styles', () => {
+    expect(dailyVideoStyleFromSnapshot(null)).toBe('STANDARD');
+    expect(dailyVideoStyleFromSnapshot({ videoStyle: 'unexpected' })).toBe('STANDARD');
+    expect(dailyVideoStyleFromSnapshot({ videoStyle: 'CALM' })).toBe('CALM');
+  });
+
+  it.each([
+    ['CALM', expect.arrayContaining([expect.objectContaining({ start_scale: '102%' })])],
+    ['MINIMAL', []],
+  ] as const)('renders the saved %s carousel motion consistently', (videoStyle, animations) => {
+    const value = project();
+    value.durationSeconds = 25;
+    value.type = 'PHOTO_SLIDESHOW';
+    value.disclosureSnapshot = { videoStyle };
+    value.scenes = value.scenes.map((scene, index) => ({
+      ...scene,
+      durationMs: 5_000,
+      visualType: 'GENERATED_IMAGE',
+      keywords: [`30000000-0000-4000-8000-00000000000${index + 1}`],
+    }));
+    const sources = value.scenes.map((scene, index) => ({
+      videoSceneId: scene.id,
+      url: `https://storage.example/style-page-${index + 1}.png?token=short`,
+    }));
+    const script = buildCreatomateRenderScript(value, [], [], undefined, sources);
+    const foreground = script.elements.find(
+      (element) => element.type === 'image' && element.track === 2,
+    );
+    expect(foreground).toEqual(expect.objectContaining({ animations }));
   });
 
   it('fails closed when a generated carousel scene has no signed source', () => {

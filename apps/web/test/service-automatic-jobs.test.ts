@@ -155,6 +155,7 @@ describe('service automatic preparation and delivery', () => {
           lockCadence: true,
           contentMode: 'READY_TO_USE',
           mediaMode: 'IMAGE_AND_VIDEO',
+          videoStyle: 'MINIMAL',
           videoNarration,
         },
       },
@@ -165,6 +166,7 @@ describe('service automatic preparation and delivery', () => {
     expect(m.video).toHaveBeenCalledWith(
       expect.objectContaining({
         socialImageGenerationRequestId: 'image-request',
+        videoStyle: 'MINIMAL',
         videoNarration,
       }),
     );

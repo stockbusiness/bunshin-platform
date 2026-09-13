@@ -49,6 +49,7 @@ describe('service onboarding settings', () => {
             lockCadence: true,
             contentMode: 'IDEA',
             mediaMode: 'IMAGE',
+            videoStyle: 'CALM',
             videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
             visualCharacter: {
               enabled: true,
@@ -67,6 +68,7 @@ describe('service onboarding settings', () => {
         lockCadence: true,
         contentMode: 'IDEA',
         mediaMode: 'IMAGE',
+        videoStyle: 'CALM',
         videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
         visualCharacter: {
           enabled: true,
@@ -105,6 +107,11 @@ describe('service onboarding settings', () => {
         .dailyIdeaDelivery.mediaMode,
     ).toBe('IMAGE');
     expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.mediaMode).toBe('TEXT_ONLY');
+    expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.videoStyle).toBe('STANDARD');
+    expect(
+      readServiceOnboardingSettings({ dailyIdeaDelivery: { videoStyle: 'MINIMAL' } }, null)
+        .dailyIdeaDelivery.videoStyle,
+    ).toBe('MINIMAL');
     expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.videoNarration).toEqual({
       enabled: false,
       voice: 'marin',

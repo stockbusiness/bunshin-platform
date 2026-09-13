@@ -9,7 +9,22 @@ describe('video narration voice UI', () => {
     expect(source).toContain('明るく親しみやすい声');
     expect(source).toContain('video-narration-preview');
     expect(source).toContain('narrationVoice,');
+    expect(source).toContain('narrationSpeed,');
+    expect(source).toContain('ゆっくり（聞き取りやすい）');
     expect(source).toContain('<audio controls autoPlay');
+  });
+
+  it('previews the owned project script and saves the choice before approval', () => {
+    const ui = readFileSync('app/ui/video-narration-settings.tsx', 'utf8');
+    const http = readFileSync('src/http/video-narration-settings.ts', 'utf8');
+    expect(ui).toContain('実際の台本を試し聞きする');
+    expect(ui).toContain('/narration-preview');
+    expect(ui).toContain('/narration-settings');
+    expect(http).toContain('new db.PrismaVideoProjectRepository().findOwned');
+    expect(http).toContain('new UpdateVideoNarrationSettings');
+    expect(http).toContain("project.status !== 'WAITING_APPROVAL'");
+    expect(http).toContain('value.firstScene.narration.trim()');
+    expect(http).not.toContain('input.text');
   });
 
   it('keeps preview generation within the signed-in group and AI quota boundary', () => {

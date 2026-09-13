@@ -98,6 +98,7 @@ const projectRepository = (): VideoProjectRepository => ({
     revision: 2,
   }),
   approvePlan: vi.fn(),
+  updateNarrationSettings: vi.fn(),
 });
 
 describe('GenerateVideoPlan', () => {

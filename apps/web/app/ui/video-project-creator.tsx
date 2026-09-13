@@ -27,6 +27,7 @@ export function VideoProjectCreator({
   const [compositionMode, setCompositionMode] = useState<'STANDARD' | 'AI_SCENES'>('STANDARD');
   const [narrationEnabled, setNarrationEnabled] = useState(false);
   const [narrationVoice, setNarrationVoice] = useState<'marin' | 'cedar' | 'coral'>('marin');
+  const [narrationSpeed, setNarrationSpeed] = useState<'SLOW' | 'STANDARD'>('STANDARD');
   const [previewing, setPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
 
@@ -53,6 +54,7 @@ export function VideoProjectCreator({
             groupMembershipId,
             bunshinId: selectedBunshinId,
             voice: narrationVoice,
+            speed: narrationSpeed,
             previewRequestId: crypto.randomUUID(),
           }),
         },
@@ -100,6 +102,7 @@ export function VideoProjectCreator({
             photoAssetIds: compositionMode === 'STANDARD' ? selectedPhotos : [],
             narrationEnabled,
             narrationVoice,
+            narrationSpeed,
           }),
         },
       );
@@ -264,13 +267,25 @@ export function VideoProjectCreator({
               <option value="cedar">はっきり信頼感のある声</option>
               <option value="coral">明るく親しみやすい声</option>
             </select>
+            <label htmlFor="narrationSpeed" className="field__label">
+              読み上げる速さ
+            </label>
+            <select
+              id="narrationSpeed"
+              className="field__control"
+              value={narrationSpeed}
+              onChange={(event) => setNarrationSpeed(event.target.value as 'SLOW' | 'STANDARD')}
+            >
+              <option value="SLOW">ゆっくり（聞き取りやすい）</option>
+              <option value="STANDARD">標準</option>
+            </select>
             <button
               className="button button--secondary"
               type="button"
               disabled={previewing || bunshins.length === 0}
               onClick={() => void previewNarration()}
             >
-              {previewing ? '見本を作っています…' : 'この声を試し聞きする'}
+              {previewing ? '見本を作っています…' : 'この声と速さを試し聞きする'}
             </button>
             {previewUrl ? <audio controls autoPlay src={previewUrl} /> : null}
             <small>試し聞きもAI利用回数に含まれます。</small>

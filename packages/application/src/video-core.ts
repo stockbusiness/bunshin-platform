@@ -27,6 +27,9 @@ export type VideoDurationSeconds = 25 | 30 | 60;
 export const VIDEO_NARRATION_VOICES = ['marin', 'cedar', 'coral'] as const;
 export type VideoNarrationVoice = (typeof VIDEO_NARRATION_VOICES)[number];
 export const DEFAULT_VIDEO_NARRATION_VOICE: VideoNarrationVoice = 'marin';
+export const VIDEO_NARRATION_SPEEDS = ['SLOW', 'STANDARD'] as const;
+export type VideoNarrationSpeed = (typeof VIDEO_NARRATION_SPEEDS)[number];
+export const DEFAULT_VIDEO_NARRATION_SPEED: VideoNarrationSpeed = 'STANDARD';
 export type VideoReviewDecision = 'ADOPTED' | 'REJECTED';
 export type VideoReviewReason =
   | 'NARRATION_HARD_TO_HEAR'
@@ -57,6 +60,7 @@ export interface VideoProjectRecord {
   photoAssetIds?: string[];
   narrationEnabled?: boolean;
   narrationVoice?: VideoNarrationVoice;
+  narrationSpeed?: VideoNarrationSpeed;
   socialImageGenerationRequestId?: string | null;
   reviewDecision?: VideoReviewDecision | null;
   reviewReason?: string | null;
@@ -92,6 +96,7 @@ export interface VideoProjectRepository {
     photoAssetIds?: string[];
     narrationEnabled?: boolean;
     narrationVoice?: VideoNarrationVoice;
+    narrationSpeed?: VideoNarrationSpeed;
     socialImageGenerationRequestId?: string | null;
     id?: string;
     workspaceId: string;
@@ -134,6 +139,15 @@ export interface VideoProjectRepository {
     actorUserId: string;
     videoProjectId: string;
     expectedRevision: number;
+  }): Promise<VideoProjectRecord | null>;
+  updateNarrationSettings(input: {
+    workspaceId: string;
+    groupId: string;
+    actorUserId: string;
+    videoProjectId: string;
+    expectedRevision: number;
+    voice: VideoNarrationVoice;
+    speed: VideoNarrationSpeed;
   }): Promise<VideoProjectRecord | null>;
 }
 
@@ -377,6 +391,9 @@ export class CreateVideoProject {
     const narrationVoice = input.narrationVoice ?? DEFAULT_VIDEO_NARRATION_VOICE;
     if (!VIDEO_NARRATION_VOICES.includes(narrationVoice))
       throw new ApplicationError('VALIDATION_ERROR', 'invalid narrationVoice');
+    const narrationSpeed = input.narrationSpeed ?? DEFAULT_VIDEO_NARRATION_SPEED;
+    if (!VIDEO_NARRATION_SPEEDS.includes(narrationSpeed))
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid narrationSpeed');
     if (
       photoAssetIds.length > 5 ||
       new Set(photoAssetIds).size !== photoAssetIds.length ||
@@ -393,6 +410,7 @@ export class CreateVideoProject {
       ...input,
       photoAssetIds,
       narrationVoice,
+      narrationSpeed,
       socialImageGenerationRequestId: input.socialImageGenerationRequestId
         ? id(input.socialImageGenerationRequestId, 'socialImageGenerationRequestId')
         : null,
@@ -589,6 +607,30 @@ export class UpdateVideoSceneDraft {
       standardComposition: project.standardComposition,
       aiVideoSceneCount: project.aiVideoSceneCount,
     });
+  }
+}
+
+export class UpdateVideoNarrationSettings {
+  constructor(private readonly repository: VideoProjectRepository) {}
+
+  async execute(input: Parameters<VideoProjectRepository['updateNarrationSettings']>[0]) {
+    if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1)
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid expectedRevision');
+    if (!VIDEO_NARRATION_VOICES.includes(input.voice))
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid narration voice');
+    if (!VIDEO_NARRATION_SPEEDS.includes(input.speed))
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid narration speed');
+    const value = await this.repository.updateNarrationSettings({
+      workspaceId: id(input.workspaceId, 'workspaceId'),
+      groupId: id(input.groupId, 'groupId'),
+      actorUserId: id(input.actorUserId, 'actorUserId'),
+      videoProjectId: id(input.videoProjectId, 'videoProjectId'),
+      expectedRevision: input.expectedRevision,
+      voice: input.voice,
+      speed: input.speed,
+    });
+    if (!value) throw new ApplicationError('CONFLICT', 'video narration settings conflict');
+    return value;
   }
 }
 

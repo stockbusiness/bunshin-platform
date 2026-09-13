@@ -1,0 +1,5 @@
+ALTER TABLE "video_projects"
+ADD COLUMN "narration_speed" VARCHAR(16) NOT NULL DEFAULT 'STANDARD';
+
+ALTER TABLE "video_narrations"
+ADD COLUMN "speed" DOUBLE PRECISION NOT NULL DEFAULT 0.96;

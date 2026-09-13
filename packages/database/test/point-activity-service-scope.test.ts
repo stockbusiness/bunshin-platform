@@ -5,7 +5,7 @@ const repository = readFileSync('src/index.ts', 'utf8');
 
 describe('point activity service scope', () => {
   it('counts weekly posts only in the service that received the activity', () => {
-    expect(repository).toContain('input.workspaceId,\n                      groupId,');
+    expect(repository).toMatch(/input\.workspaceId,\r?\n\s+groupId,/);
     expect(repository).toContain('...(groupId ? { bunshin: { groupId } } : {})');
   });
 

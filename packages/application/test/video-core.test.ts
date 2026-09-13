@@ -304,6 +304,8 @@ describe('Video Core', () => {
         videoProjectId: ids.videoProjectId,
         expectedRevision: 4,
         action: 'ADOPT',
+        reviewReason: null,
+        reviewNote: null,
       }),
     ).resolves.toMatchObject({ status: 'COMPLETED', reviewDecision: 'ADOPTED' });
     expect(review).toHaveBeenCalledWith(
@@ -327,8 +329,16 @@ describe('Video Core', () => {
         videoProjectId: ids.videoProjectId,
         expectedRevision: 4,
         action: 'REVISE',
+        reviewReason: 'AI_VOICE_UNNATURAL',
+        reviewNote: '声が速すぎます',
       }),
     ).resolves.toMatchObject({ status: 'WAITING_APPROVAL', reviewDecision: null });
+    expect(review).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewReason: 'AI_VOICE_UNNATURAL',
+        reviewNote: '声が速すぎます',
+      }),
+    );
   });
 
   it('rejects a stale finished-video review', async () => {
@@ -340,6 +350,8 @@ describe('Video Core', () => {
         videoProjectId: ids.videoProjectId,
         expectedRevision: 3,
         action: 'REVISE',
+        reviewReason: 'OTHER',
+        reviewNote: null,
       }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
   });

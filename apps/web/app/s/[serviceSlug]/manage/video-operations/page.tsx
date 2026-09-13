@@ -22,6 +22,14 @@ const sceneStatusText: Record<string, string> = {
   FAILED: '失敗',
   CANCELLED: '中止',
 };
+const reviewReasonText: Record<string, string> = {
+  NARRATION_HARD_TO_HEAR: 'ナレーションが聞き取りにくい',
+  AI_VOICE_UNNATURAL: '声が不自然',
+  CONTENT_MISMATCH: '内容が希望と違う',
+  VISUAL_UNNATURAL: '映像や画像が不自然',
+  TOO_LONG: '動画が長すぎる',
+  OTHER: 'その他',
+};
 
 function countByStatus<T extends { status: string }>(items: T[]) {
   return items.reduce<Record<string, number>>((counts, item) => {
@@ -46,7 +54,7 @@ export default async function ServiceVideoOperationsPage({
   const scope = { workspaceId: service.workspaceId, groupId: service.serviceId };
   const now = new Date();
   const warningUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const [renders, scenes, expiring] = await Promise.all([
+  const [renders, scenes, expiring, feedback] = await Promise.all([
     db.prisma.videoRender.findMany({
       where: scope,
       orderBy: { createdAt: 'desc' },
@@ -90,6 +98,19 @@ export default async function ServiceVideoOperationsPage({
         },
       }),
     ]),
+    db.prisma.videoProject.findMany({
+      where: { ...scope, reviewReason: { not: null } },
+      orderBy: { reviewedAt: 'desc' },
+      take: 30,
+      select: {
+        id: true,
+        title: true,
+        reviewReason: true,
+        reviewNote: true,
+        reviewedAt: true,
+        ownerUser: { select: { displayName: true, email: true } },
+      },
+    }),
   ]);
   const renderCounts = countByStatus(renders);
   const sceneCounts = countByStatus(scenes);
@@ -115,6 +136,24 @@ export default async function ServiceVideoOperationsPage({
             {sceneCounts.FAILED ?? 0}件
           </p>
           <p>動画本文、生成指示、完成ファイルのURLはこの画面に表示しません。</p>
+        </section>
+        <section className="settings-card">
+          <h2>作り直したい理由</h2>
+          {feedback.length === 0 ? (
+            <p>理由はまだ届いていません。</p>
+          ) : (
+            <ul className="settings-status-list">
+              {feedback.map((item) => (
+                <li className="settings-status-item" key={item.id}>
+                  <h3>{item.title}</h3>
+                  <p>{item.ownerUser.displayName || item.ownerUser.email || '参加者'}</p>
+                  <p>{reviewReasonText[item.reviewReason!] ?? item.reviewReason}</p>
+                  {item.reviewNote ? <p>補足：{item.reviewNote}</p> : null}
+                  {item.reviewedAt ? <p>{item.reviewedAt.toLocaleString('ja-JP')}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
         <section className="settings-card">
           <h2>保存期限のお知らせ</h2>

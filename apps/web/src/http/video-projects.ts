@@ -60,8 +60,24 @@ const reviewSchema = z
   .object({
     expectedRevision: z.number().int().positive(),
     action: z.enum(['ADOPT', 'REVISE']),
+    reviewReason: z
+      .enum([
+        'NARRATION_HARD_TO_HEAR',
+        'AI_VOICE_UNNATURAL',
+        'CONTENT_MISMATCH',
+        'VISUAL_UNNATURAL',
+        'TOO_LONG',
+        'OTHER',
+      ])
+      .nullable()
+      .default(null),
+    reviewNote: z.string().trim().max(500).nullable().default(null),
   })
-  .strict();
+  .strict()
+  .refine((value) => value.action !== 'REVISE' || value.reviewReason !== null, {
+    message: '作り直す理由を選んでください。',
+    path: ['reviewReason'],
+  });
 const updateSceneSchema = z
   .object({
     expectedRevision: z.number().int().positive(),

@@ -79,6 +79,8 @@ export interface SocialImageGeneratedMediaRecord {
   requestId: string;
   pageIndex: number;
   status: SocialImageMediaStatus;
+  reviewReason: string | null;
+  reviewNote: string | null;
   sourceStorageKey: string | null;
   completedStorageKey: string;
   thumbnailStorageKey: string;
@@ -88,6 +90,9 @@ export interface SocialImageGeneratedMediaRecord {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type SocialImageReviewReason =
+  'TEXT_HARD_TO_READ' | 'CONTENT_MISMATCH' | 'PHOTO_UNNATURAL' | 'DESIGN_UNAPPEALING' | 'OTHER';
 
 export interface SocialImageGenerationAuthorizationPort {
   authorize(input: {
@@ -158,6 +163,8 @@ export interface SocialImageGenerationRequestRepository {
     requestId: string;
     mediaId: string;
     status: 'ADOPTED' | 'REJECTED';
+    reviewReason: SocialImageReviewReason | null;
+    reviewNote: string | null;
   }): Promise<SocialImageGeneratedMediaRecord | null>;
   replaceMediaPage(input: {
     workspaceId: string;
@@ -373,8 +380,22 @@ export class DecideSocialImageMedia {
     requestId: string;
     mediaId: string;
     decision: 'ADOPTED' | 'REJECTED';
+    reviewReason: SocialImageReviewReason | null;
+    reviewNote: string | null;
   }) {
     const scope = storageScope(input);
+    const allowedReasons = new Set<SocialImageReviewReason>([
+      'TEXT_HARD_TO_READ',
+      'CONTENT_MISMATCH',
+      'PHOTO_UNNATURAL',
+      'DESIGN_UNAPPEALING',
+      'OTHER',
+    ]);
+    if (
+      input.decision === 'REJECTED' &&
+      (!input.reviewReason || !allowedReasons.has(input.reviewReason))
+    )
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid reviewReason');
     const request = await this.requests.findOwned({
       workspaceId: scope.workspaceId,
       groupId: scope.groupId,
@@ -390,6 +411,11 @@ export class DecideSocialImageMedia {
       requestId: scope.requestId,
       mediaId: scope.mediaId,
       status: input.decision,
+      reviewReason: input.decision === 'REJECTED' ? input.reviewReason : null,
+      reviewNote:
+        input.decision === 'REJECTED' && input.reviewNote
+          ? text(input.reviewNote, 'reviewNote', 500)
+          : null,
     });
     if (!value) throw new ApplicationError('CONFLICT', 'social image decision failed');
     return value;

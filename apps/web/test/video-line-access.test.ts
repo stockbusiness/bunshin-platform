@@ -193,8 +193,38 @@ describe('LINE video viewing without changing app login', () => {
     expect(response.headers.get('location')).toContain('decision=adopted');
     expect(m.review).toHaveBeenCalledWith({
       where: expect.objectContaining({ id, ownerUserId: 'owner' }),
-      data: { reviewDecision: 'ADOPTED', reviewedAt: expect.any(Date) },
+      data: {
+        reviewDecision: 'ADOPTED',
+        reviewReason: null,
+        reviewNote: null,
+        reviewedAt: expect.any(Date),
+      },
     });
+  });
+  it('records a selected rejection reason and optional note', async () => {
+    m.actor.mockResolvedValue({ userId: 'owner' });
+    const response = await recordVideoReviewDecision(
+      new Request(`https://example.com/video-access/${id}/decision`, {
+        method: 'POST',
+        headers: { origin: 'https://example.com' },
+        body: new URLSearchParams({
+          decision: 'REJECTED',
+          reviewReason: 'AI_VOICE_UNNATURAL',
+          reviewNote: '声が速すぎます',
+        }),
+      }),
+      id,
+    );
+    expect(response.headers.get('location')).toContain('decision=rejected');
+    expect(m.review).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reviewDecision: 'REJECTED',
+          reviewReason: 'AI_VOICE_UNNATURAL',
+          reviewNote: '声が速すぎます',
+        }),
+      }),
+    );
   });
   it('authorizes copying the source mission text for the verified video owner', async () => {
     m.actor.mockResolvedValue({ userId: 'owner' });

@@ -82,8 +82,26 @@ const createSchema = z
   })
   .strict();
 const decisionSchema = z
-  .object({ mediaId: uuid, decision: z.enum(['ADOPTED', 'REJECTED']) })
-  .strict();
+  .object({
+    mediaId: uuid,
+    decision: z.enum(['ADOPTED', 'REJECTED']),
+    reviewReason: z
+      .enum([
+        'TEXT_HARD_TO_READ',
+        'CONTENT_MISMATCH',
+        'PHOTO_UNNATURAL',
+        'DESIGN_UNAPPEALING',
+        'OTHER',
+      ])
+      .nullable()
+      .default(null),
+    reviewNote: z.string().trim().max(500).nullable().default(null),
+  })
+  .strict()
+  .refine((value) => value.decision !== 'REJECTED' || value.reviewReason !== null, {
+    message: '使わない理由を選んでください。',
+    path: ['reviewReason'],
+  });
 const environment = {
   development: 'DEVELOPMENT',
   staging: 'STAGING',
@@ -377,6 +395,8 @@ export async function getSocialImageResponse(
             ? {
                 id: mediaPages[0].id,
                 status: mediaPages[0].status,
+                reviewReason: mediaPages[0].reviewReason,
+                reviewNote: mediaPages[0].reviewNote,
                 width: mediaPages[0].width,
                 height: mediaPages[0].height,
                 downloadPath: `${new URL(request.url).pathname}/download?mediaId=${mediaPages[0].id}&v=${value.revision}`,
@@ -387,6 +407,8 @@ export async function getSocialImageResponse(
             id: media.id,
             pageIndex: media.pageIndex,
             status: media.status,
+            reviewReason: media.reviewReason,
+            reviewNote: media.reviewNote,
             width: media.width,
             height: media.height,
             downloadPath: `${new URL(request.url).pathname}/download?mediaId=${media.id}&v=${value.revision}`,
@@ -427,6 +449,8 @@ export async function decideSocialImageResponse(
       requestId: uuid.parse(requestResourceId),
       mediaId: parsed.mediaId,
       decision: parsed.decision,
+      reviewReason: parsed.reviewReason,
+      reviewNote: parsed.reviewNote,
     });
     return Response.json(
       { data: { id: value.id, status: value.status }, requestId },

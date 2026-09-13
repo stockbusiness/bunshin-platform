@@ -213,13 +213,57 @@ describe('PrismaSocialImageGenerationRequestRepository', () => {
         requestId: ids.requestId,
         mediaId: media.id,
         status: 'ADOPTED',
+        reviewReason: null,
+        reviewNote: null,
       }),
     ).resolves.toMatchObject({ id: media.id, status: 'ADOPTED' });
 
     expect(tx.socialImageGeneratedMedia.update).toHaveBeenCalledWith({
       where: { id: media.id },
-      data: { status: 'ADOPTED' },
+      data: { status: 'ADOPTED', reviewReason: null, reviewNote: null },
     });
     expect(tx.socialImageGeneratedMedia.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores rejection feedback on every page of the carousel', async () => {
+    const media = {
+      id: '00000000-0000-4000-8000-000000000009',
+      requestId: ids.requestId,
+      workspaceId: ids.workspaceId,
+      groupId: ids.groupId,
+      ownerUserId: ids.actorUserId,
+      dailyMissionId: ids.dailyMissionId,
+      pageIndex: 0,
+      status: 'READY' as const,
+      reviewReason: null,
+      reviewNote: null,
+    };
+    const tx = transactionClient();
+    tx.socialImageGenerationRequest.findFirst.mockResolvedValue({
+      ...row,
+      status: 'READY_FOR_REVIEW',
+    });
+    tx.socialImageGeneratedMedia.findFirst.mockResolvedValue(media);
+
+    await repository(tx).setMediaStatus({
+      workspaceId: ids.workspaceId,
+      groupId: ids.groupId,
+      actorUserId: ids.actorUserId,
+      requestId: ids.requestId,
+      mediaId: media.id,
+      status: 'REJECTED',
+      reviewReason: 'TEXT_HARD_TO_READ',
+      reviewNote: '文字を大きくしてほしい',
+    });
+
+    expect(tx.socialImageGeneratedMedia.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          status: 'REJECTED',
+          reviewReason: 'TEXT_HARD_TO_READ',
+          reviewNote: '文字を大きくしてほしい',
+        },
+      }),
+    );
   });
 });

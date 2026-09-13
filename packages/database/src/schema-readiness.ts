@@ -1,1 +1,1 @@
-export const LATEST_DATABASE_MIGRATION = '20260912200000_add_service_point_reward_settings';
+export const LATEST_DATABASE_MIGRATION = '20260913120000_add_media_review_feedback';

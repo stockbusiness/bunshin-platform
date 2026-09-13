@@ -26,7 +26,9 @@ type RequestView = {
   errorCode: string | null;
   media: {
     id: string;
-    status: 'READY' | 'ADOPTED';
+    status: 'READY' | 'ADOPTED' | 'REJECTED';
+    reviewReason: string | null;
+    reviewNote: string | null;
     width: number;
     height: number;
     downloadPath: string;
@@ -35,7 +37,9 @@ type RequestView = {
   mediaPages: Array<{
     id: string;
     pageIndex: number;
-    status: 'READY' | 'ADOPTED';
+    status: 'READY' | 'ADOPTED' | 'REJECTED';
+    reviewReason: string | null;
+    reviewNote: string | null;
     width: number;
     height: number;
     downloadPath: string;
@@ -97,6 +101,8 @@ export function SocialImageWorkspace({
   const [revisionHeadline, setRevisionHeadline] = useState('');
   const [revisionBody, setRevisionBody] = useState('');
   const [photoInstruction, setPhotoInstruction] = useState('');
+  const [reviewReason, setReviewReason] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
   const [availablePoints, setAvailablePoints] = useState(initialAvailablePoints);
   const [servicePlanRemaining, setServicePlanRemaining] = useState(servicePlanImageRemaining);
   const [pilotRemaining, setPilotRemaining] = useState(pilotImageRemaining);
@@ -121,7 +127,14 @@ export function SocialImageWorkspace({
     setReferenceFile(null);
     setReferenceConsent(false);
     setEditingPage(null);
+    setReviewReason('');
+    setReviewNote('');
   }, [selected]);
+
+  useEffect(() => {
+    setReviewReason(requestView?.media?.reviewReason ?? '');
+    setReviewNote(requestView?.media?.reviewNote ?? '');
+  }, [requestView?.media?.reviewReason, requestView?.media?.reviewNote]);
 
   useEffect(() => {
     if (!endpoint || !requestId) return;
@@ -280,11 +293,20 @@ export function SocialImageWorkspace({
 
   async function decide(decision: 'ADOPTED' | 'REJECTED') {
     if (!endpoint || !requestId || !requestView?.media || busy) return;
+    if (decision === 'REJECTED' && !reviewReason) {
+      setMessage('今回は使わない理由を選んでください。');
+      return;
+    }
     setBusy(true);
     const response = await fetch(`${endpoint}/${requestId}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mediaId: requestView.media.id, decision }),
+      body: JSON.stringify({
+        mediaId: requestView.media.id,
+        decision,
+        reviewReason: decision === 'REJECTED' ? reviewReason : null,
+        reviewNote: decision === 'REJECTED' && reviewNote.trim() ? reviewNote.trim() : null,
+      }),
     });
     if (response.ok) {
       if (decision === 'ADOPTED') {
@@ -298,9 +320,17 @@ export function SocialImageWorkspace({
         });
         setMessage('この投稿画像を使うことにしました。各ページを下から保存できます。');
       } else {
-        setRequestId(null);
-        setRequestView(null);
-        setMessage('今回は使わないことを記録しました。別の画像を作れます。');
+        setRequestView({
+          ...requestView,
+          media: { ...requestView.media, status: 'REJECTED', reviewReason, reviewNote },
+          mediaPages: requestView.mediaPages.map((media) => ({
+            ...media,
+            status: 'REJECTED',
+            reviewReason,
+            reviewNote,
+          })),
+        });
+        setMessage('理由を運営者へ送りました。必要なら別の画像を作れます。');
       }
     } else {
       setMessage('操作を記録できませんでした。もう一度お試しください。');
@@ -591,23 +621,55 @@ export function SocialImageWorkspace({
                 </p>
               </>
             ) : (
-              <div className="social-image-actions">
-                <button
-                  className="button"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void decide('ADOPTED')}
-                >
-                  この画像を使う
-                </button>
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void decide('REJECTED')}
-                >
-                  今回は使わない
-                </button>
+              <div className="form-stack">
+                {requestView.media!.status === 'REJECTED' ? (
+                  <p className="notice">送信済みです。理由を変えて、もう一度送ることもできます。</p>
+                ) : null}
+                <label className="field">
+                  <span className="field__label">今回は使わない理由</span>
+                  <select
+                    className="field__control"
+                    value={reviewReason}
+                    onChange={(event) => setReviewReason(event.target.value)}
+                    disabled={busy}
+                  >
+                    <option value="">選んでください</option>
+                    <option value="TEXT_HARD_TO_READ">文字が読みにくい</option>
+                    <option value="CONTENT_MISMATCH">内容が希望と違う</option>
+                    <option value="PHOTO_UNNATURAL">写真が不自然</option>
+                    <option value="DESIGN_UNAPPEALING">デザインが好みではない</option>
+                    <option value="OTHER">その他</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span className="field__label">詳しく伝える（任意）</span>
+                  <textarea
+                    className="field__control"
+                    value={reviewNote}
+                    maxLength={500}
+                    onChange={(event) => setReviewNote(event.target.value)}
+                    disabled={busy}
+                    placeholder="例：文字をもっと大きくしてほしい"
+                  />
+                </label>
+                <div className="social-image-actions">
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void decide('ADOPTED')}
+                  >
+                    この画像を使う
+                  </button>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void decide('REJECTED')}
+                  >
+                    理由を送って今回は使わない
+                  </button>
+                </div>
               </div>
             )}
           </>

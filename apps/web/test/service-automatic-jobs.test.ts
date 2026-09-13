@@ -126,6 +126,42 @@ describe('service automatic preparation and delivery', () => {
       m.prepare.mock.invocationCallOrder[0]!,
     );
   });
+  it('waits for new carousel images before preparing the matching video', async () => {
+    m.policy.mockResolvedValue({
+      onboardingConfig: {
+        dailyIdeaDelivery: {
+          enabled: true,
+          cadence: 'DAILY',
+          defaultNotificationTime: '08:00',
+          lockCadence: true,
+          contentMode: 'READY_TO_USE',
+          mediaMode: 'IMAGE_AND_VIDEO',
+        },
+      },
+      surveyConfig: null,
+    });
+    m.image.mockResolvedValue({ status: 'QUEUED', requestId: 'image-request' });
+    await createDailyMissionJobHandler().execute({ job, localDate: '2026-09-07' });
+    expect(m.video).not.toHaveBeenCalled();
+  });
+  it('does not create a caption-only replacement when carousel preparation temporarily fails', async () => {
+    m.policy.mockResolvedValue({
+      onboardingConfig: {
+        dailyIdeaDelivery: {
+          enabled: true,
+          cadence: 'DAILY',
+          defaultNotificationTime: '08:00',
+          lockCadence: true,
+          contentMode: 'READY_TO_USE',
+          mediaMode: 'IMAGE_AND_VIDEO',
+        },
+      },
+      surveyConfig: null,
+    });
+    m.image.mockResolvedValue({ status: 'SKIPPED', reason: 'temporary provider error' });
+    await createDailyMissionJobHandler().execute({ job, localDate: '2026-09-07' });
+    expect(m.video).not.toHaveBeenCalled();
+  });
   it('prepares and confirms a missing week, then generates safely and queues LINE without user actions', async () => {
     await createDailyMissionJobHandler().execute({ job, localDate: '2026-09-07' });
     expect(m.week).toHaveBeenCalledWith(

@@ -23,6 +23,7 @@ import {
   OpenAiSocialImageQualityReviewError,
   type SocialImageQualityReview,
 } from '../providers/openai-social-image-quality-review';
+import { queueDailyCarouselVideoAfterImage } from '../services/automatic-daily-video';
 import { loadBundledSocialImageFonts, ManagedSocialImageRenderer } from '../social-image-renderer';
 import { SupabaseSocialImageStorage } from '../social-image-storage';
 import { reserveServiceMediaGeneration } from '../service-media-generation-quota';
@@ -471,6 +472,12 @@ export function createSocialImageGenerationJobHandler(): SocialImageGenerationJo
           );
           throw new SocialImageGenerationJobHandlerError('SOCIAL_IMAGE_STATE_CONFLICT', false);
         }
+        await queueDailyCarouselVideoAfterImage({
+          workspaceId: context.workspaceId,
+          groupId: context.groupId,
+          requestId: context.requestId,
+          correlationId: usageKey,
+        });
       } catch (error) {
         if (error instanceof OpenAiSocialImageProviderError) {
           throw new SocialImageGenerationJobHandlerError(

@@ -13,7 +13,11 @@ import {
 import { ApplicationError } from '@bunshin/shared';
 import { createLogger } from '@bunshin/observability';
 import { resolveCreatomateRuntimeConfiguration } from '../ai/runtime-provider-configuration';
-import type { ServiceDailyIdeaDeliverySettings } from './service-onboarding-settings';
+import { getServerEnvironment } from '@bunshin/config';
+import {
+  readServiceOnboardingSettings,
+  type ServiceDailyIdeaDeliverySettings,
+} from './service-onboarding-settings';
 
 export function dailyVideoProjectId(workspaceId: string, bunshinId: string, missionId: string) {
   const hex = createHash('sha256')
@@ -61,6 +65,39 @@ export function buildDailyVideoScenes(content: unknown) {
   }));
 }
 
+export function buildDailyCarouselVideoScenes(content: unknown, mediaIds: string[]) {
+  if (mediaIds.length < 2 || mediaIds.length > 7 || new Set(mediaIds).size !== mediaIds.length)
+    return null;
+  const value =
+    content && typeof content === 'object' && !Array.isArray(content)
+      ? (content as Record<string, unknown>)
+      : {};
+  const slides: unknown[] = Array.isArray(value.slides) ? value.slides : [];
+  const pageText = mediaIds.map((_, index) => {
+    const slide = slides[index];
+    if (!slide || typeof slide !== 'object' || Array.isArray(slide)) return `投稿画像 ${index + 1}`;
+    const row = slide as Record<string, unknown>;
+    return (
+      [row.headline, row.body]
+        .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+        .join('。')
+        .slice(0, 240) || `投稿画像 ${index + 1}`
+    );
+  });
+  const duration = Math.floor(30_000 / mediaIds.length);
+  return mediaIds.map((mediaId, index) => ({
+    sceneNo: index + 1,
+    durationMs: index === mediaIds.length - 1 ? 30_000 - duration * index : duration,
+    narration: pageText[index]!,
+    caption: pageText[index]!,
+    visualType: 'GENERATED_IMAGE' as const,
+    visualPrompt: null,
+    keywords: [mediaId],
+    aiProcessingTypes: [],
+    locked: false,
+  }));
+}
+
 export async function queueAutomaticDailyVideo(input: {
   environment: JobEnvironment;
   workspaceId: string;
@@ -70,6 +107,7 @@ export async function queueAutomaticDailyVideo(input: {
   correlationId: string;
   mediaMode: ServiceDailyIdeaDeliverySettings['mediaMode'];
   mission: { id: string; assistanceLevel: string; topic: string };
+  socialImageGenerationRequestId?: string;
 }) {
   if (
     input.environment !== 'PRODUCTION' ||
@@ -92,7 +130,36 @@ export async function queueAutomaticDailyVideo(input: {
     });
     if (!mission || mission.reason.includes('business-daily-idea-fallback'))
       return { status: 'SKIPPED' } as const;
-    const scenes = buildDailyVideoScenes(mission.content?.contentJson);
+    const socialImage = input.socialImageGenerationRequestId
+      ? await db.prisma.socialImageGenerationRequest.findFirst({
+          where: {
+            id: input.socialImageGenerationRequestId,
+            workspaceId: input.workspaceId,
+            groupId: input.groupId,
+            ownerUserId: input.actorUserId,
+            bunshinId: input.bunshinId,
+            dailyMissionId: mission.id,
+            status: 'READY_FOR_REVIEW',
+            idempotencyKey: `automatic-daily-image:${mission.id}`,
+          },
+          select: {
+            id: true,
+            media: {
+              where: { status: 'READY', deletedAt: null },
+              select: { id: true },
+              orderBy: { pageIndex: 'asc' },
+            },
+          },
+        })
+      : null;
+    if (input.socialImageGenerationRequestId && !socialImage)
+      return { status: 'WAITING_FOR_IMAGES' } as const;
+    const scenes = socialImage
+      ? buildDailyCarouselVideoScenes(
+          mission.content?.contentJson,
+          socialImage.media.map((media) => media.id),
+        )
+      : buildDailyVideoScenes(mission.content?.contentJson);
     if (!scenes) return { status: 'SKIPPED' } as const;
     const platform = mission.socialProfile?.platform;
     if (platform !== 'INSTAGRAM' && platform !== 'TIKTOK' && platform !== 'YOUTUBE_SHORTS')
@@ -142,7 +209,8 @@ export async function queueAutomaticDailyVideo(input: {
           characterProfileVersionId: null,
           title: input.mission.topic,
           platform,
-          type: 'EXPLAINER',
+          type: socialImage ? 'PHOTO_SLIDESHOW' : 'EXPLAINER',
+          socialImageGenerationRequestId: socialImage?.id ?? null,
           durationSeconds: 30,
           standardComposition: true,
           aiProcessingTypes: [],
@@ -156,8 +224,9 @@ export async function queueAutomaticDailyVideo(input: {
             hashtags: disclosure.hashtags,
             guidance: disclosure.guidance,
             outputMetadata: disclosure.outputMetadata,
-            explanation:
-              'サービスの自動準備設定に基づく字幕動画です。投稿前に内容を確認してください。',
+            explanation: socialImage
+              ? 'サービスの自動準備設定に基づき、完成した投稿画像を場面順につないだ動画です。投稿前に内容を確認してください。'
+              : 'サービスの自動準備設定に基づく字幕動画です。投稿前に内容を確認してください。',
           },
         });
       } catch (error) {
@@ -204,6 +273,90 @@ export async function queueAutomaticDailyVideo(input: {
     createLogger().warn('automatic daily video preparation failed', {
       correlationId: input.correlationId,
       dailyMissionId: input.mission.id,
+      errorCode: error instanceof ApplicationError ? error.code : 'AUTOMATIC_VIDEO_FAILED',
+    });
+    return { status: 'FAILED' } as const;
+  }
+}
+
+const jobEnvironment = {
+  development: 'DEVELOPMENT',
+  staging: 'STAGING',
+  production: 'PRODUCTION',
+} as const satisfies Record<string, JobEnvironment>;
+
+async function prepareDailyCarouselVideoAfterImage(input: {
+  workspaceId: string;
+  groupId: string;
+  requestId: string;
+  correlationId: string;
+}) {
+  const environment = jobEnvironment[getServerEnvironment().APP_ENV];
+  if (environment !== 'PRODUCTION') return { status: 'SKIPPED' } as const;
+  const db = await import('@bunshin/database');
+  const request = await db.prisma.socialImageGenerationRequest.findFirst({
+    where: {
+      id: input.requestId,
+      workspaceId: input.workspaceId,
+      groupId: input.groupId,
+      status: 'READY_FOR_REVIEW',
+    },
+    select: {
+      id: true,
+      ownerUserId: true,
+      bunshinId: true,
+      dailyMissionId: true,
+      idempotencyKey: true,
+    },
+  });
+  if (!request || request.idempotencyKey !== `automatic-daily-image:${request.dailyMissionId}`)
+    return { status: 'SKIPPED' } as const;
+  const [mission, policy] = await Promise.all([
+    db.prisma.dailyMission.findFirst({
+      where: {
+        id: request.dailyMissionId,
+        workspaceId: input.workspaceId,
+        bunshinId: request.bunshinId,
+        bunshin: { groupId: input.groupId, ownerUserId: request.ownerUserId },
+      },
+      select: { id: true, assistanceLevel: true, topic: true },
+    }),
+    db.prisma.serviceRegistrationPolicy.findFirst({
+      where: { workspaceId: input.workspaceId, groupId: input.groupId },
+      select: { onboardingConfig: true, surveyConfig: true },
+    }),
+  ]);
+  const dailyIdeas = readServiceOnboardingSettings(
+    policy?.onboardingConfig,
+    policy?.surveyConfig,
+  ).dailyIdeaDelivery;
+  if (!mission || !dailyIdeas.enabled || dailyIdeas.mediaMode !== 'IMAGE_AND_VIDEO')
+    return { status: 'SKIPPED' } as const;
+  return queueAutomaticDailyVideo({
+    environment,
+    workspaceId: input.workspaceId,
+    groupId: input.groupId,
+    actorUserId: request.ownerUserId,
+    bunshinId: request.bunshinId,
+    correlationId: input.correlationId,
+    mediaMode: dailyIdeas.mediaMode,
+    mission,
+    socialImageGenerationRequestId: request.id,
+  });
+}
+
+export async function queueDailyCarouselVideoAfterImage(input: {
+  workspaceId: string;
+  groupId: string;
+  requestId: string;
+  correlationId: string;
+}) {
+  try {
+    return await prepareDailyCarouselVideoAfterImage(input);
+  } catch (error) {
+    createLogger().warn('daily carousel video preparation after image failed', {
+      correlationId: input.correlationId,
+      imageRequestId: input.requestId,
       errorCode: error instanceof ApplicationError ? error.code : 'AUTOMATIC_VIDEO_FAILED',
     });
     return { status: 'FAILED' } as const;

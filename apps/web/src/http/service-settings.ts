@@ -5,6 +5,7 @@ import { ApplicationError, toApiError } from '@bunshin/shared';
 import { z } from 'zod';
 import { currentUserProvider } from '../auth/current-user';
 import { requireSameOrigin } from '../auth/request-security';
+import { enforceBusinessDailyServiceSettings } from '../services/business-daily-service-settings';
 import { resolveManagedServiceContext } from '../services/public-service';
 
 const optionalUrl = z
@@ -181,10 +182,11 @@ export async function updateServiceSettingsResponse(request: Request, serviceSlu
       throw new ApplicationError('VALIDATION_ERROR', 'application/json required');
     const actor = await (await currentUserProvider()).getCurrentUser();
     if (!actor) throw new ApplicationError('UNAUTHENTICATED', 'session required');
-    const [service, value] = await Promise.all([
+    const [service, parsedValue] = await Promise.all([
       resolveManagedServiceContext(serviceSlug, actor.userId),
       schema.parseAsync(request.json()),
     ]);
+    const value = enforceBusinessDailyServiceSettings(parsedValue);
     const current = service.configuration;
     const db = await import('@bunshin/database');
     if (value.dailyIdeaDelivery.videoBgm.enabled) {

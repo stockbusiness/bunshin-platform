@@ -7,6 +7,7 @@ import {
   readServiceOnboardingSettings,
   type ServiceProfileQuestionSettings,
 } from '../../../../../src/services/service-onboarding-settings';
+import { enforceBusinessDailyServiceSettings } from '../../../../../src/services/business-daily-service-settings';
 
 const profileQuestionLabels: Record<keyof ServiceProfileQuestionSettings, string> = {
   industry: '業種',
@@ -120,11 +121,21 @@ export function ServiceSettingsEditor({
     value.registration.onboardingConfig,
     value.registration.surveyConfig,
   );
+  const businessFreeSettingsLocked = onboarding.businessProfileEnabled;
   const [profileQuestions, setProfileQuestions] = useState(onboarding.profileQuestions);
   const [businessProfileEnabled, setBusinessProfileEnabled] = useState(
     onboarding.businessProfileEnabled,
   );
-  const [dailyIdeaDelivery, setDailyIdeaDelivery] = useState(onboarding.dailyIdeaDelivery);
+  const [dailyIdeaDelivery, setDailyIdeaDelivery] = useState(
+    enforceBusinessDailyServiceSettings({
+      businessProfileEnabled: businessFreeSettingsLocked,
+      emailEnabled: value.registration.emailEnabled,
+      lineEnabled: value.registration.lineEnabled,
+      inviteCodeEnabled: value.registration.inviteCodeEnabled,
+      referralEnabled: value.registration.referralEnabled,
+      dailyIdeaDelivery: onboarding.dailyIdeaDelivery,
+    }).dailyIdeaDelivery,
+  );
   const [organizationType, setOrganizationType] = useState('MEDIA');
   const [operationStyle, setOperationStyle] = useState('INFORMATION');
   const [welcomeTitle, setWelcomeTitle] = useState(onboarding.welcomeTitle);
@@ -159,10 +170,10 @@ export function ServiceSettingsEditor({
           secondaryColor: text('secondaryColor'),
           fontFamily: text('fontFamily'),
           registrationMode: text('registrationMode'),
-          emailEnabled: data.has('emailEnabled'),
-          lineEnabled: data.has('lineEnabled'),
-          inviteCodeEnabled: data.has('inviteCodeEnabled'),
-          referralEnabled: data.has('referralEnabled'),
+          emailEnabled: businessFreeSettingsLocked ? false : data.has('emailEnabled'),
+          lineEnabled: businessFreeSettingsLocked ? true : data.has('lineEnabled'),
+          inviteCodeEnabled: businessFreeSettingsLocked ? false : data.has('inviteCodeEnabled'),
+          referralEnabled: businessFreeSettingsLocked ? false : data.has('referralEnabled'),
           trendResearchEnabled: data.has('trendResearchEnabled'),
           welcomeTitle: text('welcomeTitle'),
           welcomeMessage: text('welcomeMessage'),
@@ -299,7 +310,8 @@ export function ServiceSettingsEditor({
           <input
             name="emailEnabled"
             type="checkbox"
-            defaultChecked={value.registration.emailEnabled}
+            defaultChecked={!businessFreeSettingsLocked && value.registration.emailEnabled}
+            disabled={businessFreeSettingsLocked}
           />{' '}
           メールを使う
         </label>
@@ -307,7 +319,8 @@ export function ServiceSettingsEditor({
           <input
             name="lineEnabled"
             type="checkbox"
-            defaultChecked={value.registration.lineEnabled}
+            defaultChecked={businessFreeSettingsLocked || value.registration.lineEnabled}
+            disabled={businessFreeSettingsLocked}
           />{' '}
           LINEを使う
         </label>
@@ -315,7 +328,8 @@ export function ServiceSettingsEditor({
           <input
             name="inviteCodeEnabled"
             type="checkbox"
-            defaultChecked={value.registration.inviteCodeEnabled}
+            defaultChecked={!businessFreeSettingsLocked && value.registration.inviteCodeEnabled}
+            disabled={businessFreeSettingsLocked}
           />{' '}
           招待コードを使う
         </label>
@@ -323,11 +337,16 @@ export function ServiceSettingsEditor({
           <input
             name="referralEnabled"
             type="checkbox"
-            defaultChecked={value.registration.referralEnabled}
+            defaultChecked={!businessFreeSettingsLocked && value.registration.referralEnabled}
+            disabled={businessFreeSettingsLocked}
           />{' '}
           紹介元を記録する
         </label>
-        <small>メールかLINEのどちらか一つは必ず選んでください。</small>
+        <small>
+          {businessFreeSettingsLocked
+            ? '企業向け無料サービスはLINEだけを使用します。'
+            : 'メールかLINEのどちらか一つは必ず選んでください。'}
+        </small>
       </fieldset>
       <fieldset>
         <legend>話題を使った投稿案</legend>
@@ -473,14 +492,21 @@ export function ServiceSettingsEditor({
             <input
               type="checkbox"
               checked={businessProfileEnabled}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) => setBusinessProfileEnabled(event.target.checked)}
             />{' '}
             サービス専用の企業プロフィールを登録する
           </label>
+          {businessFreeSettingsLocked && (
+            <p className="notice">
+              無料運用では「毎日・完成した投稿文・文章のみ・LINE配信」に固定されます。画像・動画は有料機能の準備が完了してから追加します。
+            </p>
+          )}
           <label>
             <input
               type="checkbox"
               checked={dailyIdeaDelivery.enabled}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) =>
                 setDailyIdeaDelivery((current) => ({ ...current, enabled: event.target.checked }))
               }
@@ -491,6 +517,7 @@ export function ServiceSettingsEditor({
             配信頻度
             <select
               value={dailyIdeaDelivery.cadence}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) =>
                 setDailyIdeaDelivery((current) => ({
                   ...current,
@@ -521,6 +548,7 @@ export function ServiceSettingsEditor({
             <input
               type="checkbox"
               checked={dailyIdeaDelivery.lockCadence}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) =>
                 setDailyIdeaDelivery((current) => ({
                   ...current,
@@ -534,6 +562,7 @@ export function ServiceSettingsEditor({
             届ける内容
             <select
               value={dailyIdeaDelivery.contentMode}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) =>
                 setDailyIdeaDelivery((current) => ({
                   ...current,
@@ -556,6 +585,7 @@ export function ServiceSettingsEditor({
             自動で準備する画像・動画
             <select
               value={dailyIdeaDelivery.mediaMode}
+              disabled={businessFreeSettingsLocked}
               onChange={(event) =>
                 setDailyIdeaDelivery((current) => ({
                   ...current,

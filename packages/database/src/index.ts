@@ -6822,7 +6822,12 @@ export class PrismaAccountDeletionPurgeRepository implements AccountDeletionPurg
         }),
         tx.videoDelivery.updateMany({
           where: mediaOwner,
-          data: { status: 'REVOKED', notificationStatus: 'CANCELLED', revokedAt: input.now },
+          data: {
+            status: 'REVOKED',
+            notificationStatus: 'CANCELLED',
+            notificationSnapshot: null,
+            revokedAt: input.now,
+          },
         }),
       ]);
       const memberships = await tx.workspaceMembership.updateMany({
@@ -16112,7 +16117,7 @@ export class PrismaVideoProjectRepository
             ownerUserId: input.actorUserId,
             status: { in: ['ASSIGNED', 'VIEWED', 'ACCEPTED'] },
           },
-          data: { status: 'REVOKED' },
+          data: { status: 'REVOKED', notificationSnapshot: null },
         });
       const row = await tx.videoProject.findUniqueOrThrow({
         where: { id: input.videoProjectId },
@@ -16132,10 +16137,14 @@ const videoRenderRecord = (row: Prisma.VideoRenderGetPayload<object>): VideoRend
   return record;
 };
 
-const videoDeliveryRecord = (row: Prisma.VideoDeliveryGetPayload<object>): VideoDeliveryRecord => ({
-  ...row,
-  rightsSnapshot: row.rightsSnapshot as Record<string, unknown>,
-});
+const videoDeliveryRecord = (row: Prisma.VideoDeliveryGetPayload<object>): VideoDeliveryRecord => {
+  const { notificationSnapshot, ...record } = row;
+  void notificationSnapshot;
+  return {
+    ...record,
+    rightsSnapshot: row.rightsSnapshot as Record<string, unknown>,
+  };
+};
 
 export class PrismaVideoDeliveryRepository implements VideoDeliveryRepository {
   constructor(private readonly client: PrismaClient = prisma) {}
@@ -16396,7 +16405,12 @@ export class PrismaVideoDeliveryRepository implements VideoDeliveryRepository {
       const now = new Date();
       const row = await tx.videoDelivery.update({
         where: { id: delivery.id },
-        data: { status: 'REVOKED', revokedAt: now },
+        data: {
+          status: 'REVOKED',
+          notificationStatus: 'CANCELLED',
+          notificationSnapshot: null,
+          revokedAt: now,
+        },
       });
       await tx.videoDeliveryEvent.create({
         data: {

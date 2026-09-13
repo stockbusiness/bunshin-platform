@@ -1,1 +1,1 @@
-export const LATEST_DATABASE_MIGRATION = '20260913150000_add_daily_image_reference_selection';
+export const LATEST_DATABASE_MIGRATION = '20260913170000_add_video_delivery_notification_snapshot';

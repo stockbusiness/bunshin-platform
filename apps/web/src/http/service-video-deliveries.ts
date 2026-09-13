@@ -20,6 +20,7 @@ import {
 import { SupabaseVideoRenderOutputStorage } from '../video/video-render-output-storage';
 import { ActiveLineDeliveryConfigurationAdapter } from '../line/delivery-configuration';
 import { LineMessagingApiAdapter } from '../line/messaging-provider';
+import { videoDeliveryMessaging } from '../line/video-delivery-messaging';
 import { currentLineEnvironment, lineEndpointUrls } from '../line/secure-configuration';
 import { csv } from './admin-report-export';
 
@@ -62,6 +63,8 @@ async function sendDeliveryNotice(input: {
   groupId: string;
   ownerUserId: string;
   videoProjectId: string;
+  videoRenderId: string;
+  notificationAttemptCount: number;
 }): Promise<DeliveryNoticeResult> {
   if (Date.now() - input.createdAt.getTime() >= 23 * 60 * 60 * 1000) return 'RETRY_WINDOW_EXPIRED';
   const db = await import('@bunshin/database');
@@ -115,7 +118,15 @@ async function sendDeliveryNotice(input: {
   const reviewUrl = new URL(lineEndpointUrls().missionDeepLinkBaseUrl);
   reviewUrl.pathname = `/groups/${input.groupId}/videos/${input.videoProjectId}`;
   reviewUrl.search = `service=${encodeURIComponent(input.serviceSlug)}`;
-  const result = await messaging.pushVideoCompletion({
+  const result = await videoDeliveryMessaging({
+    deliveryId: input.deliveryId,
+    workspaceId: input.workspaceId,
+    groupId: input.groupId,
+    ownerUserId: input.ownerUserId,
+    videoProjectId: input.videoProjectId,
+    videoRenderId: input.videoRenderId,
+    notificationAttemptCount: input.notificationAttemptCount,
+  }).pushVideoCompletion({
     accessToken: configuration.accessToken,
     recipientId,
     projectTitle: project.title,
@@ -303,6 +314,8 @@ export async function assignServiceVideoDeliveryResponse(request: Request, servi
       groupId: service.serviceId,
       ownerUserId: delivery.ownerUserId,
       videoProjectId: delivery.videoProjectId,
+      videoRenderId: delivery.videoRenderId,
+      notificationAttemptCount: delivery.notificationAttemptCount,
     }).catch(() => 'FAILED' as const);
     const outcome = notificationOutcome(notification);
     await new RecordVideoDeliveryNotification(new db.PrismaVideoDeliveryRepository()).execute({
@@ -340,7 +353,14 @@ export async function retryServiceVideoDeliveryNotificationResponse(
         status: { not: 'REVOKED' },
         notificationStatus: { not: 'SENT' },
       },
-      select: { id: true, ownerUserId: true, videoProjectId: true, createdAt: true },
+      select: {
+        id: true,
+        ownerUserId: true,
+        videoProjectId: true,
+        videoRenderId: true,
+        notificationAttemptCount: true,
+        createdAt: true,
+      },
     });
     if (!delivery)
       throw new ApplicationError('NOT_FOUND', 'video delivery notification unavailable');
@@ -352,6 +372,8 @@ export async function retryServiceVideoDeliveryNotificationResponse(
       groupId: service.serviceId,
       ownerUserId: delivery.ownerUserId,
       videoProjectId: delivery.videoProjectId,
+      videoRenderId: delivery.videoRenderId,
+      notificationAttemptCount: delivery.notificationAttemptCount,
     }).catch(() => 'FAILED' as const);
     const outcome = notificationOutcome(notification);
     await new RecordVideoDeliveryNotification(new db.PrismaVideoDeliveryRepository()).execute({

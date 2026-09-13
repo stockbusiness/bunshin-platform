@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { authorizedVideoView } from '../../../src/http/video-line-access';
 import { PublicShell } from '../../ui/public-shell';
+import { VideoPostCopy } from '../../ui/video-post-copy';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
@@ -37,6 +38,12 @@ export default async function VideoAccessPage({
                   src={source}
                   style={{ width: '100%', maxHeight: '65vh', background: '#111' }}
                 />
+                {scope.postCopy ? (
+                  <VideoPostCopy
+                    value={scope.postCopy}
+                    authorizationPath={`/video-access/${projectId}/copy-authorization`}
+                  />
+                ) : null}
                 {scope.project.reviewDecision === 'ADOPTED' ? (
                   <>
                     <p role="status">

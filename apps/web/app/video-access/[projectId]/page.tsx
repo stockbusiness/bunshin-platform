@@ -15,7 +15,7 @@ export default async function VideoAccessPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ result?: string; decision?: string }>;
+  searchParams: Promise<{ result?: string; decision?: string; posted?: string }>;
 }) {
   const { projectId } = await params;
   const query = await searchParams;
@@ -55,6 +55,22 @@ export default async function VideoAccessPage({
                       </a>
                     </p>
                     <p>動画を開き、共有メニューから「ビデオを保存」を押してください。</p>
+                    <section className="settings-card">
+                      <h2>SNSに投稿した後</h2>
+                      {scope.postRecorded || query.posted === '1' ? (
+                        <p role="status">
+                          <strong>投稿完了を記録しました。おつかれさまでした。</strong>
+                        </p>
+                      ) : (
+                        <>
+                          <p>Instagramなどへの投稿が終わったら、下のボタンを1回押してください。</p>
+                          <form action={`/video-access/${projectId}/posted`} method="post">
+                            <button type="submit">投稿しました</button>
+                          </form>
+                        </>
+                      )}
+                      <p>この記録をもとに、ポイントやバッジが反映されます。</p>
+                    </section>
                   </>
                 ) : scope.project.reviewDecision === 'REJECTED' ? (
                   <p role="status">
@@ -77,6 +93,11 @@ export default async function VideoAccessPage({
                 </div>
                 {query.result === 'decision-failed' ? (
                   <p role="alert">操作を記録できませんでした。もう一度お試しください。</p>
+                ) : null}
+                {query.result === 'post-failed' ? (
+                  <p role="alert">
+                    投稿完了を記録できませんでした。投稿案で「この内容で進める」を押してから、もう一度お試しください。
+                  </p>
                 ) : null}
               </>
             ) : (

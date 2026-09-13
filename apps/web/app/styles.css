@@ -2725,6 +2725,34 @@ a {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
 }
+.mission-business-outcomes {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #b9ddcf;
+}
+.mission-business-outcomes label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0;
+  font-weight: 700;
+}
+.mission-business-outcomes input {
+  width: 88px;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: white;
+  font: inherit;
+  font-size: 18px;
+  text-align: center;
+}
+.mission-business-outcomes > button {
+  width: 100%;
+  margin-top: 10px;
+}
 .mission-empty {
   padding: 24px;
   text-align: center;

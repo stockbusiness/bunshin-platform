@@ -107,6 +107,7 @@ describe('service daily mission boundary', () => {
     expect(source).toContain('recordServiceMissionActivityResponse');
     expect(source).toContain('recordServicePostResponse');
     expect(source).toContain('recordServiceMissionFeedbackResponse');
+    expect(source).toContain('recordServiceBusinessOutcomeResponse');
     expect(source).toContain('authorizeServiceDailyMissionCopyResponse');
     expect(experience).toContain('採用する');
     expect(experience).toContain('今回は使わない');
@@ -114,6 +115,8 @@ describe('service daily mission boundary', () => {
     expect(experience).toContain('投稿しました');
     expect(experience).toContain('投稿したかどうかは自動では確認されず、自己申告で記録されます。');
     expect(experience).toContain('この投稿は、あなたらしかったですか？');
+    expect(experience).toContain('お客様の反応を保存する');
+    expect(experience).toContain("record(id, 'business-outcome'");
     expect(detailPage).toContain('new AuthorizeDailyMissionCopy(missionRepository)');
   });
 });

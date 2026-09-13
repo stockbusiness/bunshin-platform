@@ -9,6 +9,8 @@ import { buildServiceLaunchReadiness } from '../../../../src/services/service-la
 import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { buildSideHustleContentFunnel } from '../../../../src/services/side-hustle-content-funnel';
 import { buildPerformanceFeedbackSummary } from '../../../../src/services/performance-feedback-summary';
+import { buildBusinessPilotMetrics } from '../../../../src/services/business-pilot-metrics';
+import { sumBusinessOutcomes } from '../../../../src/services/business-outcomes';
 import { PublicShell } from '../../../ui/public-shell';
 
 export const dynamic = 'force-dynamic';
@@ -125,7 +127,7 @@ export default async function ServiceManagementHome({
     select: {
       memberships: {
         where: { status: 'ACTIVE', serviceRole: 'PARTICIPANT' },
-        select: { id: true },
+        select: { id: true, userId: true, createdAt: true },
       },
       serviceLegalDocuments: {
         where: { status: 'PUBLISHED' },
@@ -433,6 +435,69 @@ export default async function ServiceManagementHome({
     configuration.registration.surveyConfig,
   );
   const isBusinessDailyService = onboarding.businessProfileEnabled;
+  const participantIds = group.memberships.map(({ userId }) => userId);
+  const [businessActivityRows, businessLineOpenRows, businessOutcomePosts] =
+    isBusinessDailyService && participantIds.length > 0
+      ? await Promise.all([
+          db.prisma.missionActivity.findMany({
+            where: {
+              ...missionScope,
+              actorUserId: { in: participantIds },
+            },
+            select: { actorUserId: true, dailyMissionId: true, occurredAt: true, type: true },
+          }),
+          db.prisma.missionDeepLinkState.findMany({
+            where: {
+              workspaceId: service.workspaceId,
+              userId: { in: participantIds },
+              consumedAt: { not: null },
+              dailyMission: { is: { bunshin: { is: { groupId: service.serviceId } } } },
+            },
+            select: { userId: true, dailyMissionId: true, consumedAt: true },
+          }),
+          db.prisma.postRecord.findMany({
+            where: {
+              ...missionScope,
+              postedAt: { gte: new Date(now.getTime() - 30 * 86_400_000) },
+            },
+            select: { manualMetrics: true },
+          }),
+        ])
+      : [[], [], []];
+  const businessEvents = [
+    ...businessActivityRows.map((row) => ({ userId: row.actorUserId, occurredAt: row.occurredAt })),
+    ...businessLineOpenRows.flatMap((row) =>
+      row.consumedAt ? [{ userId: row.userId, occurredAt: row.consumedAt }] : [],
+    ),
+  ];
+  const openedMissionCount = new Set(
+    businessLineOpenRows
+      .filter((row) => row.consumedAt && row.consumedAt >= sevenDaysAgo)
+      .map((row) => row.dailyMissionId),
+  ).size;
+  const viewedMissionCount = new Set(
+    businessActivityRows
+      .filter((row) => row.type === 'VIEWED' && row.occurredAt >= sevenDaysAgo)
+      .map((row) => row.dailyMissionId),
+  ).size;
+  const businessMetrics = buildBusinessPilotMetrics({
+    participants: group.memberships.map(({ userId, createdAt }) => ({
+      userId,
+      joinedAt: createdAt,
+    })),
+    events: businessEvents,
+    now,
+    missions: missionsCreated,
+    viewed: viewedMissionCount,
+    accepted: acceptedMissions,
+    copied: copiedMissions,
+    posted: postedMissions,
+    lineSent: sentLineDeliveries,
+    lineOpened: openedMissionCount,
+  });
+  const businessOutcomes = sumBusinessOutcomes(
+    businessOutcomePosts.map(({ manualMetrics }) => manualMetrics),
+  );
   const lineMode = linePolicy?.mode ?? 'SHARED';
   const dedicatedLineReady = Boolean(
     linePolicy?.pilotEnabled &&
@@ -729,6 +794,81 @@ export default async function ServiceManagementHome({
             この集計をCSVでダウンロード
           </a>
         </section>
+        {isBusinessDailyService ? (
+          <section className="settings-card">
+            <h2>無料運用の利用率・継続率</h2>
+            <p>個人名や投稿本文を表示せず、サービス全体の割合だけを確認できます。</p>
+            <dl className="settings-status-list">
+              <div className="settings-status-item">
+                <dt>LINEを開いた割合</dt>
+                <dd>
+                  {businessMetrics.openRate === null ? '集計前' : `${businessMetrics.openRate}%`}
+                </dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>投稿案を見た割合</dt>
+                <dd>
+                  {businessMetrics.viewRate === null ? '集計前' : `${businessMetrics.viewRate}%`}
+                </dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>採用 / コピー / 投稿完了</dt>
+                <dd>
+                  {businessMetrics.acceptanceRate ?? 0}% / {businessMetrics.copyRate ?? 0}% /{' '}
+                  {businessMetrics.postRate ?? 0}%
+                </dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>7日後も利用</dt>
+                <dd>
+                  {businessMetrics.sevenDayRetention.percent === null
+                    ? '対象者がまだいません'
+                    : `${businessMetrics.sevenDayRetention.percent}%（${businessMetrics.sevenDayRetention.retained}/${businessMetrics.sevenDayRetention.eligible}名）`}
+                </dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>30日後も利用</dt>
+                <dd>
+                  {businessMetrics.thirtyDayRetention.percent === null
+                    ? '対象者がまだいません'
+                    : `${businessMetrics.thirtyDayRetention.percent}%（${businessMetrics.thirtyDayRetention.retained}/${businessMetrics.thirtyDayRetention.eligible}名）`}
+                </dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>直近7日で3日以上利用</dt>
+                <dd>{businessMetrics.threeDayActiveUsers}名</dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
+        {isBusinessDailyService ? (
+          <section className="settings-card">
+            <h2>投稿から生まれたお客様の反応</h2>
+            <p>参加者が投稿後に自己申告した、直近30日間の合計です。</p>
+            <dl className="settings-status-list">
+              <div className="settings-status-item">
+                <dt>問い合わせ</dt>
+                <dd>{businessOutcomes.inquiries}件</dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>予約</dt>
+                <dd>{businessOutcomes.reservations}件</dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>来店</dt>
+                <dd>{businessOutcomes.visits}件</dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>購入・申込</dt>
+                <dd>{businessOutcomes.orders}件</dd>
+              </div>
+              <div className="settings-status-item">
+                <dt>その他</dt>
+                <dd>{businessOutcomes.other}件</dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
         {configuration.registration.referralEnabled ? (
           <section className="settings-card">
             <h2>直近7日間の商品投稿の流れ</h2>

@@ -19,6 +19,12 @@ import { z } from 'zod';
 import { currentUserProvider } from '../auth/current-user';
 import { requireSameOrigin } from '../auth/request-security';
 import { resolvePublicServiceContext } from '../services/public-service';
+import { readServiceOnboardingSettings } from '../services/service-onboarding-settings';
+import {
+  BUSINESS_OUTCOME_KEYS,
+  readBusinessOutcomes,
+  writeBusinessOutcomes,
+} from '../services/business-outcomes';
 import { dailyMissionDto, missionContentVariantDto } from './daily-missions';
 import { missionActivityDto, missionDecisionDto } from './mission-engagement';
 import { missionFeedbackDto, postRecordDto } from './mission-outcome';
@@ -67,6 +73,13 @@ const postSchema = z
   .strict();
 const feedbackSchema = z
   .object({ rating: z.enum(MISSION_FEEDBACK_RATINGS), idempotencyKey: keySchema })
+  .strict();
+const businessOutcomeSchema = z
+  .object(
+    Object.fromEntries(
+      BUSINESS_OUTCOME_KEYS.map((key) => [key, z.number().int().min(0).max(999)]),
+    ) as Record<(typeof BUSINESS_OUTCOME_KEYS)[number], z.ZodNumber>,
+  )
   .strict();
 const variantGenerationSchema = z
   .object({
@@ -411,5 +424,39 @@ export function recordServiceMissionFeedbackResponse(
       feedback: missionFeedbackDto(result.feedback),
       activity: missionActivityDto(result.activity),
     };
+  });
+}
+
+export function recordServiceBusinessOutcomeResponse(
+  request: Request,
+  serviceSlug: string,
+  bunshinId: string,
+  dailyMissionId: string,
+) {
+  return respond(request, async () => {
+    requireSameOrigin(request);
+    const parsed = businessOutcomeSchema.safeParse(await body(request));
+    if (!parsed.success) throw new ApplicationError('VALIDATION_ERROR', 'invalid body');
+    const service = await resolvePublicServiceContext(serviceSlug);
+    const onboarding = readServiceOnboardingSettings(
+      service.configuration.registration.onboardingConfig,
+      service.configuration.registration.surveyConfig,
+    );
+    if (!onboarding.businessProfileEnabled)
+      throw new ApplicationError('FORBIDDEN', 'business outcome reporting is not enabled');
+    const value = await scope(serviceSlug, bunshinId);
+    const db = await import('@bunshin/database');
+    const repository = new db.PrismaMissionOutcomeRepository();
+    const post = await repository.getPost({
+      ...value,
+      dailyMissionId: uuidSchema.parse(dailyMissionId),
+    });
+    if (!post) throw new ApplicationError('CONFLICT', 'post must be recorded first');
+    const outcomes = readBusinessOutcomes({ businessOutcomes: parsed.data });
+    await db.prisma.postRecord.update({
+      where: { id: post.id },
+      data: { manualMetrics: writeBusinessOutcomes(post.manualMetrics, outcomes) },
+    });
+    return { outcomes };
   });
 }

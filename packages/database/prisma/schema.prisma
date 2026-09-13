@@ -3551,6 +3551,10 @@ model ExternalTrackingSystem {
   updatedByUserId  String                           @map("updated_by_user_id") @db.Uuid
   createdAt        DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resultIngestTokenHash      String?                @map("result_ingest_token_hash") @db.VarChar(64)
+  resultIngestTokenPrefix    String?                @map("result_ingest_token_prefix") @db.VarChar(16)
+  resultIngestTokenCreatedAt DateTime?              @map("result_ingest_token_created_at") @db.Timestamptz(6)
+  lastResultReceivedAt       DateTime?              @map("last_result_received_at") @db.Timestamptz(6)
   workspace        Workspace                        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   group            Group                            @relation(fields: [groupId], references: [id], onDelete: Cascade)
   createdBy        User                             @relation("ExternalTrackingSystemCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -3558,6 +3562,7 @@ model ExternalTrackingSystem {
   allowedDomains   ExternalTrackingAllowedDomain[]
   memberIdentities ExternalTrackingMemberIdentity[]
   links            ExternalTrackingLink[]
+  results          ExternalTrackingResult[]
 
   @@unique([workspaceId, groupId, name])
   @@index([groupId, status])
@@ -3610,6 +3615,7 @@ model ExternalTrackingMemberIdentity {
   createdBy         User                                 @relation("ExternalTrackingIdentityCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   updatedBy         User                                 @relation("ExternalTrackingIdentityUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict)
   links             ExternalTrackingLink[]
+  results           ExternalTrackingResult[]
 
   @@unique([systemId, groupMembershipId])
   @@index([workspaceId, groupId, status])
@@ -3654,6 +3660,7 @@ model ExternalTrackingLink {
   contentLinkUsages     ContentLinkUsage[]
   memberProductProfiles MemberProductProfile[]
   memberProductContentRuns MemberProductContentRun[]
+  results                  ExternalTrackingResult[]
 
   @@index([workspaceId, groupId, status])
   @@index([systemId, scopeKey, status])
@@ -3661,6 +3668,32 @@ model ExternalTrackingLink {
   @@index([productPackId, status])
   @@index([campaignId, status])
   @@map("external_tracking_links")
+}
+
+model ExternalTrackingResult {
+  id                       String                          @id @default(uuid()) @db.Uuid
+  workspaceId              String                          @map("workspace_id") @db.Uuid
+  groupId                  String                          @map("group_id") @db.Uuid
+  systemId                 String                          @map("system_id") @db.Uuid
+  externalEventId          String                          @map("external_event_id") @db.VarChar(200)
+  metricType               String                          @map("metric_type") @db.VarChar(40)
+  count                    Int                             @default(1)
+  amountMinor              Int?                            @map("amount_minor")
+  currency                 String?                         @db.VarChar(3)
+  occurredAt               DateTime                        @map("occurred_at") @db.Timestamptz(6)
+  receivedAt               DateTime                        @default(now()) @map("received_at") @db.Timestamptz(6)
+  externalTrackingLinkId   String?                         @map("external_tracking_link_id") @db.Uuid
+  memberIdentityId         String?                         @map("member_identity_id") @db.Uuid
+  system                   ExternalTrackingSystem          @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  externalTrackingLink     ExternalTrackingLink?           @relation(fields: [externalTrackingLinkId], references: [id], onDelete: SetNull)
+  memberIdentity           ExternalTrackingMemberIdentity? @relation(fields: [memberIdentityId], references: [id], onDelete: SetNull)
+
+  @@unique([systemId, externalEventId])
+  @@index([workspaceId, groupId, occurredAt])
+  @@index([systemId, metricType, occurredAt])
+  @@index([externalTrackingLinkId, occurredAt])
+  @@index([memberIdentityId, occurredAt])
+  @@map("external_tracking_results")
 }
 
 model ExternalTrackingAuditLog {

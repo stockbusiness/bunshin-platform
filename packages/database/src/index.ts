@@ -13254,80 +13254,130 @@ export class PrismaExternalTrackingLinkRepository
       select: { id: true, name: true, status: true },
     });
     if (!group) return null;
-    const [systems, identities, links, audits, members, usages, products, campaigns] =
-      await this.client.$transaction([
-        this.client.externalTrackingSystem.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          include: { allowedDomains: { orderBy: { hostname: 'asc' } } },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.client.externalTrackingMemberIdentity.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          include: {
-            groupMembership: { select: { id: true, userId: true, role: true, status: true } },
+    const [
+      systems,
+      identities,
+      links,
+      audits,
+      members,
+      usages,
+      products,
+      campaigns,
+      results,
+      resultTotals,
+    ] = await this.client.$transaction([
+      this.client.externalTrackingSystem.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        select: {
+          id: true,
+          name: true,
+          systemType: true,
+          externalSystemId: true,
+          status: true,
+          resultIngestTokenPrefix: true,
+          resultIngestTokenCreatedAt: true,
+          lastResultReceivedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          allowedDomains: { orderBy: { hostname: 'asc' } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.client.externalTrackingMemberIdentity.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        include: {
+          groupMembership: { select: { id: true, userId: true, role: true, status: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.client.externalTrackingLink.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          groupId: input.groupId,
+          status: { not: 'DELETED' },
+        },
+        include: {
+          system: { select: { id: true, name: true, status: true } },
+          allowedDomain: { select: { id: true, hostname: true, status: true } },
+          memberIdentity: { select: { id: true, groupMembershipId: true } },
+          productPack: { select: { id: true, name: true } },
+          campaign: { select: { id: true, name: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.client.externalTrackingAuditLog.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        orderBy: { performedAt: 'desc' },
+        take: 100,
+      }),
+      this.client.groupMembership.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId, status: 'ACTIVE' },
+        select: {
+          id: true,
+          role: true,
+          consentedAt: true,
+          user: { select: { id: true, displayName: true, email: true } },
+        },
+        orderBy: { user: { displayName: 'asc' } },
+      }),
+      this.client.contentLinkUsage.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        select: {
+          id: true,
+          createdAt: true,
+          insertedUrlSnapshot: true,
+          linkNameSnapshot: true,
+          expiresAtSnapshot: true,
+          advertisingClassification: true,
+          groupMembership: {
+            select: { id: true, user: { select: { displayName: true } } },
           },
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.client.externalTrackingLink.findMany({
-          where: {
-            workspaceId: input.workspaceId,
-            groupId: input.groupId,
-            status: { not: 'DELETED' },
-          },
-          include: {
-            system: { select: { id: true, name: true, status: true } },
-            allowedDomain: { select: { id: true, hostname: true, status: true } },
-            memberIdentity: { select: { id: true, groupMembershipId: true } },
-            productPack: { select: { id: true, name: true } },
-            campaign: { select: { id: true, name: true } },
-          },
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.client.externalTrackingAuditLog.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          orderBy: { performedAt: 'desc' },
-          take: 100,
-        }),
-        this.client.groupMembership.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId, status: 'ACTIVE' },
-          select: {
-            id: true,
-            role: true,
-            consentedAt: true,
-            user: { select: { id: true, displayName: true, email: true } },
-          },
-          orderBy: { user: { displayName: 'asc' } },
-        }),
-        this.client.contentLinkUsage.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          select: {
-            id: true,
-            createdAt: true,
-            insertedUrlSnapshot: true,
-            linkNameSnapshot: true,
-            expiresAtSnapshot: true,
-            advertisingClassification: true,
-            groupMembership: {
-              select: { id: true, user: { select: { displayName: true } } },
+          productPack: { select: { id: true, name: true } },
+          campaign: { select: { id: true, name: true } },
+          dailyMission: { select: { id: true, missionDate: true, format: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.client.productPack.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        select: { id: true, name: true, status: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.client.campaign.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        select: { id: true, name: true, status: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.client.externalTrackingResult.findMany({
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        select: {
+          id: true,
+          externalEventId: true,
+          metricType: true,
+          count: true,
+          amountMinor: true,
+          currency: true,
+          occurredAt: true,
+          receivedAt: true,
+          system: { select: { id: true, name: true } },
+          externalTrackingLink: { select: { id: true, name: true } },
+          memberIdentity: {
+            select: {
+              groupMembership: { select: { user: { select: { displayName: true } } } },
             },
-            productPack: { select: { id: true, name: true } },
-            campaign: { select: { id: true, name: true } },
-            dailyMission: { select: { id: true, missionDate: true, format: true } },
           },
-          orderBy: { createdAt: 'desc' },
-          take: 500,
-        }),
-        this.client.productPack.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          select: { id: true, name: true, status: true },
-          orderBy: { name: 'asc' },
-        }),
-        this.client.campaign.findMany({
-          where: { workspaceId: input.workspaceId, groupId: input.groupId },
-          select: { id: true, name: true, status: true },
-          orderBy: { name: 'asc' },
-        }),
-      ]);
+        },
+        orderBy: { occurredAt: 'desc' },
+        take: 200,
+      }),
+      this.client.externalTrackingResult.groupBy({
+        by: ['metricType', 'currency'],
+        where: { workspaceId: input.workspaceId, groupId: input.groupId },
+        orderBy: [{ metricType: 'asc' }, { currency: 'asc' }],
+        _sum: { count: true, amountMinor: true },
+      }),
+    ]);
     return {
       group,
       systems,
@@ -13355,6 +13405,13 @@ export class PrismaExternalTrackingLinkRepository
       usages,
       products,
       campaigns,
+      results,
+      resultTotals: resultTotals.map((item) => ({
+        metricType: item.metricType,
+        currency: item.currency,
+        count: item._sum?.count ?? 0,
+        amountMinor: item._sum?.amountMinor ?? 0,
+      })),
     };
   }
 

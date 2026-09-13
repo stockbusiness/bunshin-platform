@@ -10,6 +10,7 @@ import {
   updateExternalTrackingLinkResponse,
   upsertExternalTrackingIdentityResponse,
 } from '../../../../../../src/http/external-tracking-links';
+import { rotateExternalTrackingResultTokenResponse } from '../../../../../../src/http/external-tracking-results';
 import { resolvePublicServiceContext } from '../../../../../../src/services/public-service';
 
 type Context = { params: Promise<{ serviceSlug: string; path?: string[] }> };
@@ -43,6 +44,13 @@ export async function POST(request: Request, context: Context) {
     return upsertExternalTrackingIdentityResponse(...args);
   if (path.length === 1 && path[0] === 'links') return createExternalTrackingLinkResponse(...args);
   if (path.length === 1 && path[0] === 'import') return importExternalTrackingCsvResponse(...args);
+  if (path.length === 3 && path[0] === 'systems' && path[2] === 'result-token')
+    return rotateExternalTrackingResultTokenResponse(
+      request,
+      service.workspaceId,
+      path[1]!,
+      service.serviceId,
+    );
   if (path.length === 2 && path[0] === 'links')
     return updateExternalTrackingLinkResponse(
       request,

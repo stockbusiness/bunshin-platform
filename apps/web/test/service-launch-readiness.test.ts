@@ -97,4 +97,43 @@ describe('service launch readiness', () => {
     );
     expect(items.find((item) => item.key === 'TRACKING_LINK')?.ready).toBe(true);
   });
+
+  it('uses the free business launch conditions without paid media or knowledge requirements', () => {
+    const items = buildServiceLaunchReadiness({
+      ...readyInput,
+      emailEnabled: false,
+      lineEnabled: true,
+      lineConfigurationReady: true,
+      activeKnowledgeCount: 0,
+      businessDailyIdeas: {
+        businessProfileEnabled: true,
+        deliveryEnabled: true,
+        cadence: 'DAILY',
+        contentMode: 'READY_TO_USE',
+        mediaMode: 'TEXT_ONLY',
+      },
+    });
+    expect(items.find((item) => item.key === 'BUSINESS_PROFILE')?.ready).toBe(true);
+    expect(items.find((item) => item.key === 'DAILY_DELIVERY')?.ready).toBe(true);
+    expect(items.some((item) => item.key === 'KNOWLEDGE')).toBe(false);
+    expect(items.every((item) => item.ready)).toBe(true);
+  });
+
+  it('blocks the free business launch when email or automatic paid media is enabled', () => {
+    const items = buildServiceLaunchReadiness({
+      ...readyInput,
+      emailEnabled: true,
+      lineEnabled: true,
+      lineConfigurationReady: true,
+      businessDailyIdeas: {
+        businessProfileEnabled: true,
+        deliveryEnabled: true,
+        cadence: 'DAILY',
+        contentMode: 'READY_TO_USE',
+        mediaMode: 'IMAGE_AND_VIDEO',
+      },
+    });
+    expect(items.find((item) => item.key === 'REGISTRATION')?.ready).toBe(false);
+    expect(items.find((item) => item.key === 'DAILY_DELIVERY')?.ready).toBe(false);
+  });
 });

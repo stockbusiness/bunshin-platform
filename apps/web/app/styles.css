@@ -2092,6 +2092,8 @@ a {
 
 .daily-action__history li div {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -2101,6 +2103,26 @@ a {
   background: transparent;
   color: #a33;
   text-decoration: underline;
+}
+
+.daily-action__history li button.daily-action__image-use {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #1769e0;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #1769e0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.daily-action__history li button.daily-action__image-use.is-selected {
+  background: #1769e0;
+  color: #fff;
+}
+
+.daily-action__history li button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 @media (max-width: 420px) {

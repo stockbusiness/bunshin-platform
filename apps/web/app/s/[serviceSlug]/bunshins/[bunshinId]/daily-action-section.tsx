@@ -11,6 +11,7 @@ export type DailyActionView = {
   label: string;
   hasPhoto: boolean;
   attachmentStatus: 'PENDING_UPLOAD' | 'READY' | 'REJECTED' | null;
+  useForAutomaticImages: boolean;
   createdAt: string;
 };
 
@@ -92,6 +93,7 @@ export function DailyActionSection({
   const [selected, setSelected] = useState<DailyActionType | null>(null);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [updatingPhotoId, setUpdatingPhotoId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const choice = choices.find((item) => item.type === selected) ?? null;
   const question = useMemo(() => {
@@ -186,6 +188,41 @@ export function DailyActionSection({
       setActions((current) => current.filter(({ id }) => id !== action.id));
       setMessage('記録を削除しました。');
     } else setMessage('削除できませんでした。もう一度お試しください。');
+  }
+
+  async function setAutomaticImagePhoto(action: DailyActionView, enabled: boolean) {
+    if (updatingPhotoId) return;
+    setUpdatingPhotoId(action.id);
+    setMessage(enabled ? '毎日の画像に使う写真を設定しています…' : '写真の使用を停止しています…');
+    try {
+      const response = await fetch(`${endpoint}/${encodeURIComponent(action.id)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ useForAutomaticImages: enabled }),
+      });
+      const payload = (await response.json()) as {
+        data?: DailyActionView;
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data)
+        throw new Error(payload.error?.message ?? '写真を設定できませんでした。');
+      setActions((current) =>
+        current.map((item) => ({
+          ...item,
+          useForAutomaticImages:
+            item.id === payload.data!.id ? payload.data!.useForAutomaticImages : false,
+        })),
+      );
+      setMessage(
+        enabled
+          ? '設定しました。画像プランの毎日の投稿画像に、この写真を使います。'
+          : '毎日の画像で、この写真を使わない設定にしました。',
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '写真を設定できませんでした。');
+    } finally {
+      setUpdatingPhotoId(null);
+    }
   }
 
   return (
@@ -291,9 +328,25 @@ export function DailyActionSection({
                 <p>{action.text}</p>
                 <div>
                   {action.hasPhoto ? (
-                    <a href={`${endpoint}/${action.id}/photo`} target="_blank" rel="noreferrer">
-                      写真を見る・保存する
-                    </a>
+                    <>
+                      <a href={`${endpoint}/${action.id}/photo`} target="_blank" rel="noreferrer">
+                        写真を見る・保存する
+                      </a>
+                      <button
+                        type="button"
+                        className={`daily-action__image-use${action.useForAutomaticImages ? ' is-selected' : ''}`}
+                        disabled={updatingPhotoId !== null}
+                        onClick={() =>
+                          void setAutomaticImagePhoto(action, !action.useForAutomaticImages)
+                        }
+                      >
+                        {updatingPhotoId === action.id
+                          ? '設定中…'
+                          : action.useForAutomaticImages
+                            ? '毎日の画像に使用中（やめる）'
+                            : '毎日の画像に使う'}
+                      </button>
+                    </>
                   ) : null}
                   <button type="button" onClick={() => void remove(action)}>
                     削除
@@ -303,6 +356,11 @@ export function DailyActionSection({
             ))}
           </ul>
         </details>
+      ) : null}
+      {actions.some((action) => action.hasPhoto) ? (
+        <p className="daily-action__hint">
+          「毎日の画像に使う」は画像プラン用です。選んだ1枚を、次回以降の自動画像づくりに使います。
+        </p>
       ) : null}
     </section>
   );

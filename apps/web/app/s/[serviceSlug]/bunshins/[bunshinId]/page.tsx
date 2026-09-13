@@ -339,6 +339,7 @@ export default async function ServiceBunshinDetailPage({
         label: labels[type],
         hasPhoto: memory.attachmentStatus === 'READY',
         attachmentStatus: memory.attachmentStatus,
+        useForAutomaticImages: memory.automaticImageReference,
         createdAt: memory.createdAt.toISOString(),
       },
     ];

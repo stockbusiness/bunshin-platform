@@ -14,6 +14,10 @@ const generation = readFileSync(
   new URL('../src/services/daily-mission-generation.ts', import.meta.url),
   'utf8',
 );
+const automaticImage = readFileSync(
+  new URL('../src/services/automatic-daily-image.ts', import.meta.url),
+  'utf8',
+);
 
 describe('service Daily Action boundary', () => {
   it('derives owner, workspace, group and Bunshin scope on the server', () => {
@@ -42,5 +46,14 @@ describe('service Daily Action boundary', () => {
     expect(generation).toContain('PrismaOwnerBunshinMemoryRepository');
     expect(generation).toContain("memory.sourceId?.startsWith('daily-action:')");
     expect(generation).toContain("type: 'PERSONAL_MATERIAL'");
+  });
+
+  it('applies only the selected owned photo to automatic image generation', () => {
+    expect(ui).toContain('毎日の画像に使う');
+    expect(http).toContain('automaticImageReference: true');
+    expect(automaticImage).toContain('automaticImageReference: true');
+    expect(automaticImage).toContain('ownerUserId: input.actorUserId');
+    expect(automaticImage).toContain('referenceImage: reference?.referenceImage ?? null');
+    expect(automaticImage).toContain('storeReference');
   });
 });

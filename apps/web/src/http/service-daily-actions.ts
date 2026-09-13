@@ -42,6 +42,7 @@ const createSchema = z.discriminatedUnion('type', [
     z.object({ ...common, type: z.literal(type) }).strict(),
   ),
 ]);
+const preferenceSchema = z.object({ useForAutomaticImages: z.boolean() }).strict();
 
 const typeDetails: Record<
   DailyActionType,
@@ -101,6 +102,7 @@ function actionDto(value: {
   summary: string | null;
   sourceId: string | null;
   attachmentStatus: 'PENDING_UPLOAD' | 'READY' | 'REJECTED' | null;
+  automaticImageReference: boolean;
   createdAt: Date;
 }) {
   const type = actionType(value.sourceId);
@@ -112,6 +114,7 @@ function actionDto(value: {
     label: typeDetails[type].label,
     hasPhoto: value.attachmentStatus === 'READY',
     attachmentStatus: value.attachmentStatus,
+    useForAutomaticImages: value.automaticImageReference,
     createdAt: value.createdAt,
   };
 }
@@ -325,6 +328,51 @@ export async function serviceDailyActionPhotoResponse(
       headers: { 'cache-control': 'private, no-store' },
     });
   }
+}
+
+export function updateServiceDailyActionPhotoPreferenceResponse(
+  request: Request,
+  serviceSlug: string,
+  bunshinId: string,
+  actionId: string,
+) {
+  return respond(request, async () => {
+    requireSameOrigin(request);
+    const parsed = preferenceSchema.safeParse(await json(request));
+    if (!parsed.success)
+      throw new ApplicationError('VALIDATION_ERROR', '写真の設定を確認してください');
+    const scope = await actionScope(serviceSlug, bunshinId);
+    const action = await scope.db.prisma.bunshinMemory.findFirst({
+      where: {
+        id: uuid.parse(actionId),
+        workspaceId: scope.workspaceId,
+        bunshinId,
+        sourceType: 'USER_INPUT',
+        sourceId: { startsWith: 'daily-action:PHOTO:' },
+        attachmentStatus: 'READY',
+        active: true,
+        deletedAt: null,
+      },
+    });
+    if (!action) throw new ApplicationError('NOT_FOUND', '写真が見つかりません');
+
+    const updated = await scope.db.prisma.$transaction(async (tx) => {
+      if (parsed.data.useForAutomaticImages)
+        await tx.bunshinMemory.updateMany({
+          where: {
+            workspaceId: scope.workspaceId,
+            bunshinId,
+            automaticImageReference: true,
+          },
+          data: { automaticImageReference: false },
+        });
+      return tx.bunshinMemory.update({
+        where: { id: action.id },
+        data: { automaticImageReference: parsed.data.useForAutomaticImages },
+      });
+    });
+    return actionDto(updated);
+  });
 }
 
 export function deleteServiceDailyActionResponse(

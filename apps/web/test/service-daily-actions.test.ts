@@ -46,7 +46,7 @@ vi.mock('@bunshin/database', () => ({
     bunshinMemory: {
       findMany: () => Promise.resolve(state.memories),
       findFirst: (input: { where: { sourceId?: string; id?: string } }) => {
-        const wanted = input.where.sourceId ?? input.where.id;
+        const wanted = input.where.id ?? input.where.sourceId;
         return Promise.resolve(
           state.memories.find((item) => item['sourceId'] === wanted || item['id'] === wanted) ??
             null,
@@ -56,6 +56,10 @@ vi.mock('@bunshin/database', () => ({
       update: state.update,
       updateMany: state.updateMany,
     },
+    $transaction: (operation: (tx: unknown) => Promise<unknown>) =>
+      operation({
+        bunshinMemory: { update: state.update, updateMany: state.updateMany },
+      }),
   },
 }));
 
@@ -63,6 +67,7 @@ import {
   createServiceDailyActionResponse,
   deleteServiceDailyActionResponse,
   listServiceDailyActionsResponse,
+  updateServiceDailyActionPhotoPreferenceResponse,
 } from '../src/http/service-daily-actions';
 
 const serviceSlug = 'test-service';
@@ -89,6 +94,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     sourceId: `daily-action:CUSTOMER_QUESTION:${key}`,
     attachmentStatus: null,
     attachmentStorageKey: null,
+    automaticImageReference: false,
     createdAt: new Date('2026-09-12T00:00:00.000Z'),
     ...overrides,
   };
@@ -107,6 +113,9 @@ describe('service Daily Action HTTP', () => {
     state.bunshinFound = true;
     state.memories = [];
     state.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve(memory(data)),
+    );
+    state.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
       Promise.resolve(memory(data)),
     );
   });
@@ -150,6 +159,46 @@ describe('service Daily Action HTTP', () => {
     expect(await response.text()).not.toContain('予約なし');
   });
 
+  it('selects one ready owned photo for future automatic images', async () => {
+    state.memories = [
+      memory({
+        type: 'EXPERIENCE',
+        sourceId: `daily-action:PHOTO:${key}`,
+        attachmentStatus: 'READY',
+        attachmentStorageKey: 'workspace/owner/photo.jpg',
+      }),
+    ];
+
+    const response = await updateServiceDailyActionPhotoPreferenceResponse(
+      request(`/daily-actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ useForAutomaticImages: true }),
+      }),
+      serviceSlug,
+      bunshinId,
+      actionId,
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        workspaceId: '22222222-2222-4222-8222-222222222222',
+        bunshinId,
+        automaticImageReference: true,
+      }),
+      data: { automaticImageReference: false },
+    });
+    expect(state.update).toHaveBeenCalledWith({
+      where: { id: actionId },
+      data: { automaticImageReference: true },
+    });
+    const body = (await response.json()) as {
+      data: { useForAutomaticImages: boolean };
+    };
+    expect(body.data.useForAutomaticImages).toBe(true);
+  });
+
   it('requires same-origin before creating or deleting material', async () => {
     const create = await createServiceDailyActionResponse(
       new Request('http://localhost:3000/daily-actions', {
@@ -173,8 +222,19 @@ describe('service Daily Action HTTP', () => {
       bunshinId,
       actionId,
     );
+    const updatePhoto = await updateServiceDailyActionPhotoPreferenceResponse(
+      new Request(`http://localhost:3000/daily-actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { origin: 'https://attacker.test', 'content-type': 'application/json' },
+        body: JSON.stringify({ useForAutomaticImages: true }),
+      }),
+      serviceSlug,
+      bunshinId,
+      actionId,
+    );
     expect(create.status).toBe(403);
     expect(remove.status).toBe(403);
+    expect(updatePhoto.status).toBe(403);
     expect(state.create).not.toHaveBeenCalled();
     expect(state.update).not.toHaveBeenCalled();
   });

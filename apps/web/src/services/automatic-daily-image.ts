@@ -9,6 +9,9 @@ import {
   type JobEnvironment,
 } from '@bunshin/application';
 import { assertOrganizationGenerationQuota } from '../organization-generation-quota';
+import { DailyActionStorage } from '../daily-actions/daily-action-storage';
+import { normalizeImageReferenceBytes } from '../social-image-reference';
+import { SupabaseSocialImageStorage } from '../social-image-storage';
 import {
   finishServiceMediaGeneration,
   reserveServiceMediaGeneration,
@@ -98,7 +101,7 @@ export async function queueAutomaticDailyImage(input: {
     if (!['RESERVED', 'ALREADY_RESERVED'].includes(reservation.status))
       return { status: 'SKIPPED', reason: `PLAN_${reservation.status}` };
     const db = await import('@bunshin/database');
-    const [membership, mission, brand] = await Promise.all([
+    const [membership, mission, brand, selectedPhoto] = await Promise.all([
       db.prisma.groupMembership.findFirst({
         where: {
           workspaceId: input.workspaceId,
@@ -125,9 +128,33 @@ export async function queueAutomaticDailyImage(input: {
         where: { workspaceId: input.workspaceId, groupId: input.groupId },
         select: { primaryColor: true },
       }),
+      db.prisma.bunshinMemory.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          bunshinId: input.bunshinId,
+          sourceType: 'USER_INPUT',
+          sourceId: { startsWith: 'daily-action:PHOTO:' },
+          attachmentStatus: 'READY',
+          attachmentStorageKey: { not: null },
+          automaticImageReference: true,
+          active: true,
+          deletedAt: null,
+          bunshin: {
+            ownerUserId: input.actorUserId,
+            groupId: input.groupId,
+            status: { not: 'ARCHIVED' },
+          },
+        },
+        select: { attachmentStorageKey: true },
+      }),
     ]);
     if (!membership || !mission) throw new Error('automatic image scope is unavailable');
     await assertOrganizationGenerationQuota({ workspaceId: input.workspaceId, kind: 'IMAGE' });
+    const reference = selectedPhoto?.attachmentStorageKey
+      ? await normalizeImageReferenceBytes(
+          await new DailyActionStorage().read(selectedPhoto.attachmentStorageKey),
+        )
+      : null;
 
     const requests = new db.PrismaSocialImageGenerationRequestRepository();
     const slides = editorialSlidesForMission(input.mission);
@@ -151,10 +178,21 @@ export async function queueAutomaticDailyImage(input: {
       campaignId: mission.campaignId,
       productPackVersionId: mission.contentLinkUsage?.productPackVersionId ?? null,
       layout,
+      referenceImage: reference?.referenceImage ?? null,
       idempotencyKey: operationKey,
     });
+    if ((request.referenceImage?.sha256 ?? null) !== (reference?.referenceImage.sha256 ?? null))
+      throw new Error('automatic image reference conflict');
     if (request.status === 'READY_FOR_REVIEW')
       return { status: 'ALREADY_AVAILABLE', requestId: request.id };
+    if (reference)
+      await new SupabaseSocialImageStorage().storeReference({
+        workspaceId: input.workspaceId,
+        groupId: input.groupId,
+        ownerUserId: input.actorUserId,
+        requestId: request.id,
+        bytes: reference.bytes,
+      });
     if (request.status === 'DRAFT')
       request = await new TransitionSocialImageGenerationRequest(requests).execute({
         workspaceId: input.workspaceId,

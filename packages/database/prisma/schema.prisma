@@ -5184,6 +5184,7 @@ model BunshinMemory {
   attachmentSizeBytes  Int?                           @map("attachment_size_bytes")
   attachmentWidth      Int?                           @map("attachment_width")
   attachmentHeight     Int?                           @map("attachment_height")
+  automaticImageReference Boolean                     @default(false) @map("automatic_image_reference")
   confidence  Decimal                 @db.Decimal(4, 3)
   importance  Int
   active      Boolean                 @default(true)

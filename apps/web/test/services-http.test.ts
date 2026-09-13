@@ -202,6 +202,38 @@ describe('service admin HTTP', () => {
     );
   });
 
+  it('creates the free business service with public LINE-only registration', async () => {
+    const response = await createServiceResponse(
+      request({
+        ...body,
+        templateKey: 'BUSINESS_DAILY_IDEAS',
+        registrationMode: 'CLOSED',
+        emailEnabled: true,
+        lineEnabled: false,
+        inviteCodeEnabled: true,
+        referralEnabled: true,
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(state.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          registration: expect.objectContaining({
+            mode: 'PUBLIC',
+            emailEnabled: false,
+            lineEnabled: true,
+            inviteCodeEnabled: false,
+            referralEnabled: false,
+            onboardingConfig: expect.objectContaining({
+              templateKey: 'BUSINESS_DAILY_IDEAS',
+              businessProfileEnabled: true,
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
   it('keeps onboarding empty for a custom service', async () => {
     const response = await createServiceResponse(request({ ...body, templateKey: 'CUSTOM' }));
     expect(response.status).toBe(201);

@@ -9,6 +9,7 @@ import {
   SERVICE_CREATION_TEMPLATE_KEYS,
   SERVICE_CREATION_TEMPLATES,
 } from '../services/service-creation-templates';
+import { enforceBusinessFreeRegistrationSettings } from '../services/business-daily-service-settings';
 
 const uuid = z.string().uuid();
 const optionalUrl = z
@@ -107,6 +108,14 @@ export async function createServiceResponse(request: Request) {
             lockCadence: false as const,
             contentMode: 'READY_TO_USE' as const,
           };
+    const registration = enforceBusinessFreeRegistrationSettings({
+      businessProfileEnabled,
+      registrationMode: value.registrationMode,
+      emailEnabled: value.emailEnabled,
+      lineEnabled: value.lineEnabled,
+      inviteCodeEnabled: value.inviteCodeEnabled,
+      referralEnabled: value.referralEnabled,
+    });
     const db = await import('@bunshin/database');
     const service = await new ServiceFoundationService(
       new db.PrismaServiceFoundationRepository(),
@@ -136,11 +145,11 @@ export async function createServiceResponse(request: Request) {
           fontFamily: value.fontFamily,
         },
         registration: {
-          mode: value.registrationMode,
-          emailEnabled: value.emailEnabled,
-          lineEnabled: value.lineEnabled,
-          inviteCodeEnabled: value.inviteCodeEnabled,
-          referralEnabled: value.referralEnabled,
+          mode: registration.registrationMode,
+          emailEnabled: registration.emailEnabled,
+          lineEnabled: registration.lineEnabled,
+          inviteCodeEnabled: registration.inviteCodeEnabled,
+          referralEnabled: registration.referralEnabled,
           onboardingConfig: {
             templateKey: value.templateKey,
             welcomeTitle: template.onboarding.welcomeTitle,

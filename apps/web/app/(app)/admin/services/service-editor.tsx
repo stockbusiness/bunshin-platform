@@ -19,6 +19,7 @@ export function ServiceEditor({
     useState<ServiceCreationTemplateKey>('SIDE_HUSTLE_AFFILIATE');
   const [workspaceId, setWorkspaceId] = useState(workspaces[0]?.id ?? '');
   const template = SERVICE_CREATION_TEMPLATES[templateKey];
+  const businessFreeCreation = templateKey === 'BUSINESS_DAILY_IDEAS';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -198,15 +199,23 @@ export function ServiceEditor({
             <option value="PUBLIC">公開</option>
           </select>
         </label>
-        <label>
-          登録方法
-          <select name="registrationMode" defaultValue={template.registrationMode}>
-            <option value="INVITATION_ONLY">招待された人だけ</option>
-            <option value="PUBLIC">誰でも登録できる</option>
-            <option value="APPROVAL_REQUIRED">管理者の承認が必要</option>
-            <option value="CLOSED">新しい登録を止める</option>
-          </select>
-        </label>
+        {businessFreeCreation ? (
+          <section className="service-template-preview">
+            <h3>参加方法は無料運用に合わせて設定されます</h3>
+            <p>誰でもLINEから登録できます。メール、招待コード、紹介元記録は使用しません。</p>
+            <input type="hidden" name="registrationMode" value="PUBLIC" />
+          </section>
+        ) : (
+          <label>
+            登録方法
+            <select name="registrationMode" defaultValue={template.registrationMode}>
+              <option value="INVITATION_ONLY">招待された人だけ</option>
+              <option value="PUBLIC">誰でも登録できる</option>
+              <option value="APPROVAL_REQUIRED">管理者の承認が必要</option>
+              <option value="CLOSED">新しい登録を止める</option>
+            </select>
+          </label>
+        )}
         <label>
           ロゴ画像URL
           <input name="logoUrl" type="url" placeholder="https://..." />
@@ -227,32 +236,37 @@ export function ServiceEditor({
           プライバシーポリシーURL
           <input name="privacyUrl" type="url" placeholder="https://..." />
         </label>
-        <fieldset>
-          <legend>登録に使う方法</legend>
-          <label>
-            <input name="emailEnabled" type="checkbox" defaultChecked={template.emailEnabled} />{' '}
-            メール
-          </label>
-          <label>
-            <input name="lineEnabled" type="checkbox" defaultChecked={template.lineEnabled} /> LINE
-          </label>
-          <label>
-            <input
-              name="inviteCodeEnabled"
-              type="checkbox"
-              defaultChecked={template.inviteCodeEnabled}
-            />{' '}
-            招待コード
-          </label>
-          <label>
-            <input
-              name="referralEnabled"
-              type="checkbox"
-              defaultChecked={template.referralEnabled}
-            />{' '}
-            紹介元を記録
-          </label>
-        </fieldset>
+        {businessFreeCreation ? (
+          <input type="hidden" name="lineEnabled" value="on" />
+        ) : (
+          <fieldset>
+            <legend>登録に使う方法</legend>
+            <label>
+              <input name="emailEnabled" type="checkbox" defaultChecked={template.emailEnabled} />{' '}
+              メール
+            </label>
+            <label>
+              <input name="lineEnabled" type="checkbox" defaultChecked={template.lineEnabled} />{' '}
+              LINE
+            </label>
+            <label>
+              <input
+                name="inviteCodeEnabled"
+                type="checkbox"
+                defaultChecked={template.inviteCodeEnabled}
+              />{' '}
+              招待コード
+            </label>
+            <label>
+              <input
+                name="referralEnabled"
+                type="checkbox"
+                defaultChecked={template.referralEnabled}
+              />{' '}
+              紹介元を記録
+            </label>
+          </fieldset>
+        )}
         <label>
           <input name="poweredByEnabled" type="checkbox" defaultChecked /> 「Powered by
           ワタシワークス」を表示する

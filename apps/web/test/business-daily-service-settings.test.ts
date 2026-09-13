@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { enforceBusinessDailyServiceSettings } from '../src/services/business-daily-service-settings';
+import {
+  enforceBusinessDailyServiceSettings,
+  enforceBusinessFreeRegistrationSettings,
+} from '../src/services/business-daily-service-settings';
 import { DEFAULT_SERVICE_DAILY_IDEA_DELIVERY } from '../src/services/service-onboarding-settings';
 
 describe('business daily service settings', () => {
@@ -54,6 +57,26 @@ describe('business daily service settings', () => {
     expect(enforceBusinessDailyServiceSettings(value)).toBe(value);
   });
 
+  it('locks free business registration to public LINE access', () => {
+    expect(
+      enforceBusinessFreeRegistrationSettings({
+        businessProfileEnabled: true,
+        registrationMode: 'CLOSED',
+        emailEnabled: true,
+        lineEnabled: false,
+        inviteCodeEnabled: true,
+        referralEnabled: true,
+      }),
+    ).toEqual({
+      businessProfileEnabled: true,
+      registrationMode: 'PUBLIC',
+      emailEnabled: false,
+      lineEnabled: true,
+      inviteCodeEnabled: false,
+      referralEnabled: false,
+    });
+  });
+
   it('applies the lock in both the operator form and the save endpoint', () => {
     const editor = readFileSync(
       new URL(
@@ -70,5 +93,6 @@ describe('business daily service settings', () => {
     expect(editor).toContain('disabled={businessFreeSettingsLocked}');
     expect(editor).toContain('企業向け無料サービスはLINEだけを使用します。');
     expect(endpoint).toContain('enforceBusinessDailyServiceSettings(parsedValue)');
+    expect(endpoint).toContain('enforceBusinessFreeRegistrationSettings(');
   });
 });

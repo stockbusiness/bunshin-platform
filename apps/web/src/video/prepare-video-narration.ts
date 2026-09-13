@@ -185,7 +185,7 @@ export async function prepareVideoNarration(
     outputTokens: null,
     latencyMs,
     estimatedCostUsdMicros: attemptedCharacters * NARRATION_MICROS_PER_CHARACTER,
-    pricingVersion: 'tts-1-characters-2026-09-07',
+    pricingVersion: 'gpt-4o-mini-tts-character-estimate-2026-09-13',
     idempotencyKey: `video-narration:${renderId}:attempt:${attemptCount}`,
     errorCode: failure ? failureCode : null,
   });

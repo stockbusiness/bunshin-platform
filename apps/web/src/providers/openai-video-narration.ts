@@ -1,9 +1,11 @@
 import 'server-only';
 import { ApplicationError } from '@bunshin/shared';
 
-export const NARRATION_MODEL = 'tts-1';
-export const NARRATION_VOICE = 'alloy';
-export const NARRATION_VERSION = 'video-narration-pcm-v1';
+export const NARRATION_MODEL = 'gpt-4o-mini-tts';
+export const NARRATION_VOICE = 'marin';
+export const NARRATION_VERSION = 'video-narration-natural-ja-v2';
+export const NARRATION_INSTRUCTIONS =
+  '自然で聞き取りやすい日本語で話してください。落ち着いた温かい声で、親しい案内役のように話します。文節の区切りに短い間を取り、語尾を急がず、数字や英語も明瞭に読みます。広告のような大げさな調子、過度な感情、不自然な抑揚は避けてください。';
 export const NARRATION_MICROS_PER_CHARACTER = 15;
 const bytesPerMs = 48; // 24 kHz, mono, signed 16-bit PCM.
 
@@ -92,8 +94,9 @@ export class OpenAIVideoNarration {
           model: NARRATION_MODEL,
           voice: NARRATION_VOICE,
           input: text,
+          instructions: NARRATION_INSTRUCTIONS,
           response_format: 'pcm',
-          speed: 1,
+          speed: 0.96,
         }),
       });
     } catch {

@@ -4,6 +4,7 @@ vi.mock('server-only', () => ({}));
 
 import {
   composeNarration,
+  NARRATION_INSTRUCTIONS,
   NARRATION_MICROS_PER_CHARACTER,
   narrationCharacters,
   OpenAIVideoNarration,
@@ -47,11 +48,12 @@ describe('OpenAI video narration', () => {
     expect(init.headers).toMatchObject({ authorization: 'Bearer secret-key' });
     expect(init.body).toBe(
       JSON.stringify({
-        model: 'tts-1',
-        voice: 'alloy',
+        model: 'gpt-4o-mini-tts',
+        voice: 'marin',
         input: '案内',
+        instructions: NARRATION_INSTRUCTIONS,
         response_format: 'pcm',
-        speed: 1,
+        speed: 0.96,
       }),
     );
     expect(init.body).not.toContain('secret-key');

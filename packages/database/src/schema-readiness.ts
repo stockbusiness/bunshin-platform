@@ -1,1 +1,1 @@
-export const LATEST_DATABASE_MIGRATION = '20260913200000_add_video_narration_speed';
+export const LATEST_DATABASE_MIGRATION = '20260914090000_seed_watashi_works_official_service';

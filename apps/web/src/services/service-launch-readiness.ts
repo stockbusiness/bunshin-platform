@@ -29,14 +29,23 @@ export interface ServiceLaunchReadinessInput {
   activeProductPackCount?: number;
   activeCampaignCount?: number;
   activeTrackingLinkCount?: number;
+  businessDailyIdeas?: {
+    businessProfileEnabled: boolean;
+    deliveryEnabled: boolean;
+    cadence: 'DAILY' | 'WEEKDAYS';
+    contentMode: 'IDEA' | 'PROMPT' | 'READY_TO_USE';
+    mediaMode: 'TEXT_ONLY' | 'IMAGE' | 'VIDEO' | 'IMAGE_AND_VIDEO';
+  };
 }
 
 export function buildServiceLaunchReadiness(
   input: ServiceLaunchReadinessInput,
 ): ServiceLaunchReadinessItem[] {
   const base = `/s/${input.serviceSlug}/manage`;
-  const registrationReady =
-    input.registrationMode !== 'CLOSED' && (input.emailEnabled || input.lineEnabled);
+  const businessDailyIdeas = input.businessDailyIdeas;
+  const registrationReady = businessDailyIdeas
+    ? input.registrationMode !== 'CLOSED' && input.lineEnabled && !input.emailEnabled
+    : input.registrationMode !== 'CLOSED' && (input.emailEnabled || input.lineEnabled);
   const legal = new Set(input.publishedLegalTypes);
   const items: ServiceLaunchReadinessItem[] = [
     {
@@ -50,16 +59,38 @@ export function buildServiceLaunchReadiness(
       key: 'REGISTRATION',
       label: '参加方法',
       ready: registrationReady,
-      detail: '公開・招待・承認制と、LINEまたはメールの入口を確認します。',
+      detail: businessDailyIdeas
+        ? '企業向け無料はLINEから参加し、毎日の投稿案を受け取ります。'
+        : '公開・招待・承認制と、LINEまたはメールの入口を確認します。',
       path: `${base}/settings`,
     },
     {
-      key: 'ONBOARDING',
-      label: '最初の質問',
-      ready: input.onboardingQuestionCount > 0,
-      detail: '参加者に合う投稿パートナーを作るための質問です。',
+      key: businessDailyIdeas ? 'BUSINESS_PROFILE' : 'ONBOARDING',
+      label: businessDailyIdeas ? '企業情報の登録' : '最初の質問',
+      ready: businessDailyIdeas
+        ? businessDailyIdeas.businessProfileEnabled
+        : input.onboardingQuestionCount > 0,
+      detail: businessDailyIdeas
+        ? '業種、商品・サービス、対象顧客、発信目的を企業ごとに登録します。'
+        : '参加者に合う投稿パートナーを作るための質問です。',
       path: `${base}/settings`,
     },
+    ...(businessDailyIdeas
+      ? [
+          {
+            key: 'DAILY_DELIVERY',
+            label: '毎日の文章配信',
+            ready:
+              businessDailyIdeas.deliveryEnabled &&
+              ['DAILY', 'WEEKDAYS'].includes(businessDailyIdeas.cadence) &&
+              businessDailyIdeas.contentMode === 'READY_TO_USE' &&
+              businessDailyIdeas.mediaMode === 'TEXT_ONLY',
+            detail:
+              '1日1件の完成した投稿文章を届けます。画像・動画の自動生成は初期運用では使用しません。',
+            path: `${base}/settings`,
+          },
+        ]
+      : []),
     {
       key: 'LEGAL',
       label: '利用規約とプライバシー',
@@ -80,30 +111,43 @@ export function buildServiceLaunchReadiness(
     {
       key: 'LINE',
       label: '利用者への連絡方法',
-      ready: input.lineEnabled ? input.lineConfigurationReady : input.emailEnabled,
-      detail: input.lineEnabled
-        ? input.lineMode === 'DEDICATED'
-          ? 'このサービス専用LINEの接続確認・テスト許可・使用開始をそろえます。'
-          : input.lineMode === 'DISABLED'
-            ? 'サービス設定ではLINEを使います。LINEの使い方を共通または専用へ変更してください。'
-            : '確認済みのワタシワークス共通LINEを使用できる状態にします。'
-        : '現在はメールで参加できます。LINEは必要になった時に追加できます。',
+      ready: businessDailyIdeas
+        ? input.lineEnabled && input.lineConfigurationReady
+        : input.lineEnabled
+          ? input.lineConfigurationReady
+          : input.emailEnabled,
+      detail:
+        !input.lineEnabled && businessDailyIdeas
+          ? '企業向け無料ではLINEを有効にし、毎日の投稿案を受け取れる状態にします。'
+          : input.lineEnabled
+            ? input.lineMode === 'DEDICATED'
+              ? 'このサービス専用LINEの接続確認・テスト許可・使用開始をそろえます。'
+              : input.lineMode === 'DISABLED'
+                ? 'サービス設定ではLINEを使います。LINEの使い方を共通または専用へ変更してください。'
+                : '確認済みのワタシワークス共通LINEを使用できる状態にします。'
+            : '現在はメールで参加できます。LINEは必要になった時に追加できます。',
       path: input.lineEnabled ? `${base}/line` : `${base}/settings`,
     },
     {
       key: 'FEATURES',
       label: '利用できる機能',
       ready: input.activeFeatureCount > 0,
-      detail: '参加者が使う投稿・画像・動画などの機能を許可します。',
+      detail: businessDailyIdeas
+        ? '参加者が投稿案を確認、コピー、投稿完了できる機能を許可します。'
+        : '参加者が使う投稿・画像・動画などの機能を許可します。',
       path: `${base}/members`,
     },
-    {
-      key: 'KNOWLEDGE',
-      label: '公式資料・FAQ',
-      ready: input.activeKnowledgeCount > 0,
-      detail: 'AIが参照する正しい公式情報を1件以上用意します。',
-      path: `${base}/knowledge`,
-    },
+    ...(businessDailyIdeas
+      ? []
+      : [
+          {
+            key: 'KNOWLEDGE',
+            label: '公式資料・FAQ',
+            ready: input.activeKnowledgeCount > 0,
+            detail: 'AIが参照する正しい公式情報を1件以上用意します。',
+            path: `${base}/knowledge`,
+          },
+        ]),
     {
       key: 'PARTICIPANTS',
       label: '一般参加者',
@@ -113,7 +157,8 @@ export function buildServiceLaunchReadiness(
     },
   ];
   if (input.lineEnabled && input.lineMode === 'DEDICATED') {
-    items.splice(6, 0, {
+    const lineIndex = items.findIndex((item) => item.key === 'LINE');
+    items.splice(lineIndex + 1, 0, {
       key: 'LINE_RICH_MENU',
       label: '専用LINEの標準メニュー',
       ready: input.linePilotEnabled === true && input.lineRichMenuReady === true,

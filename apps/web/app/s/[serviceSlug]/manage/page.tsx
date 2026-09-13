@@ -96,6 +96,15 @@ const sections = [
   },
 ] as const;
 
+const businessDailySectionHrefs = new Set<string>([
+  'weekly-report',
+  'members',
+  'knowledge',
+  'line',
+  'settings',
+  'legal',
+]);
+
 export default async function ServiceManagementHome({
   params,
 }: {
@@ -423,6 +432,7 @@ export default async function ServiceManagementHome({
     configuration.registration.onboardingConfig,
     configuration.registration.surveyConfig,
   );
+  const isBusinessDailyService = onboarding.businessProfileEnabled;
   const lineMode = linePolicy?.mode ?? 'SHARED';
   const dedicatedLineReady = Boolean(
     linePolicy?.pilotEnabled &&
@@ -459,6 +469,17 @@ export default async function ServiceManagementHome({
     activeProductPackCount,
     activeCampaignCount,
     activeTrackingLinkCount,
+    ...(isBusinessDailyService
+      ? {
+          businessDailyIdeas: {
+            businessProfileEnabled: onboarding.businessProfileEnabled,
+            deliveryEnabled: onboarding.dailyIdeaDelivery.enabled,
+            cadence: onboarding.dailyIdeaDelivery.cadence,
+            contentMode: onboarding.dailyIdeaDelivery.contentMode,
+            mediaMode: onboarding.dailyIdeaDelivery.mediaMode,
+          },
+        }
+      : {}),
   });
   const readyCount = readiness.filter((item) => item.ready).length;
   const sideHustleFunnel = buildSideHustleContentFunnel({
@@ -558,7 +579,7 @@ export default async function ServiceManagementHome({
           },
         ]
       : []),
-    ...(pendingPostApprovalCount > 0
+    ...(!isBusinessDailyService && pendingPostApprovalCount > 0
       ? [
           {
             title: '商品投稿の確認待ち',
@@ -568,7 +589,7 @@ export default async function ServiceManagementHome({
           },
         ]
       : []),
-    ...(sideHustleFunnel.missingLinkWarning
+    ...(!isBusinessDailyService && sideHustleFunnel.missingLinkWarning
       ? [
           {
             title: '商品投稿案に専用URLがありません',
@@ -608,7 +629,7 @@ export default async function ServiceManagementHome({
           },
         ]
       : []),
-    ...(failedVideoRenders > 0
+    ...(!isBusinessDailyService && failedVideoRenders > 0
       ? [
           {
             title: '作成に失敗した動画',
@@ -627,6 +648,9 @@ export default async function ServiceManagementHome({
         ]
       : []),
   ];
+  const visibleSections = isBusinessDailyService
+    ? sections.filter((section) => businessDailySectionHrefs.has(section.href))
+    : sections;
 
   return (
     <PublicShell showPlatformBrand={false}>
@@ -637,6 +661,25 @@ export default async function ServiceManagementHome({
           <p>開始準備の確認と、日々の運営に必要な設定をまとめました。</p>
           <Link href={`/s/${configuration.slug}/help` as Route}>運営マニュアル・ヘルプを見る</Link>
         </header>
+        {isBusinessDailyService ? (
+          <section className="settings-card">
+            <h2>企業向け無料の限定運用</h2>
+            <p>
+              初期運用では、完成した投稿文章を1日1件LINEで届けます。画像・動画の自動生成、商品配布、紹介報酬は使用しません。
+            </p>
+            <ol>
+              <li>
+                開始準備：{readyCount} / {readiness.length}項目完了
+              </li>
+              <li>社内受信：直近7日間にLINE送信 {sentLineDeliveries}件</li>
+              <li>投稿確認：直近7日間に投稿完了 {postedMissions}件</li>
+              <li>限定テスト：現在の参加者 {group.memberships.length}名（最初の目安は3〜5社）</li>
+            </ol>
+            <p>
+              開始準備をすべて完了し、社内アカウントで受信と投稿を確認してから、3〜5社の7日間テストへ進みます。
+            </p>
+          </section>
+        ) : null}
         <section className="settings-card">
           <h2>直近7日間の活動</h2>
           <p>参加者の本文や個別の利用履歴は表示せず、サービス全体の件数だけを確認できます。</p>
@@ -657,10 +700,12 @@ export default async function ServiceManagementHome({
                 {copiedMissions}回 / {postedMissions}件
               </dd>
             </div>
-            <div className="settings-status-item">
-              <dt>話題を使った投稿案</dt>
-              <dd>{trendMissions}件</dd>
-            </div>
+            {!isBusinessDailyService ? (
+              <div className="settings-status-item">
+                <dt>話題を使った投稿案</dt>
+                <dd>{trendMissions}件</dd>
+              </div>
+            ) : null}
             <div className="settings-status-item">
               <dt>AIの処理</dt>
               <dd>
@@ -770,7 +815,7 @@ export default async function ServiceManagementHome({
         <section className="settings-card">
           <h2>運営メニュー</h2>
           <ul className="settings-status-list">
-            {sections.map((section) => (
+            {visibleSections.map((section) => (
               <li className="settings-status-item" key={section.href}>
                 <h3>{section.title}</h3>
                 <p>{section.description}</p>

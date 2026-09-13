@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { currentUserProvider } from '../../../../src/auth/current-user';
 import { isRouteNotFound } from '../../../../src/navigation/route-not-found';
 import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { PublicShell } from '../../../ui/public-shell';
 import { ServiceReferralShare } from './service-referral-share';
 
@@ -62,6 +63,13 @@ export default async function ServiceMemberActivityPage({
     select: { id: true },
   });
   if (!membership) redirect(`/s/${serviceSlug}` as Route);
+  const onboarding = readServiceOnboardingSettings(
+    service.configuration.registration.onboardingConfig,
+    service.configuration.registration.surveyConfig,
+  );
+  if (onboarding.businessProfileEnabled) {
+    redirect(`/s/${serviceSlug}/weekly-report` as Route);
+  }
 
   const rewardsPilotAccess = await db.getActiveRewardsPilotAccess(db.prisma, {
     workspaceId: service.workspaceId,

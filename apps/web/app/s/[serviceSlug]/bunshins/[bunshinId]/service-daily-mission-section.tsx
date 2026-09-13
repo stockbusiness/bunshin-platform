@@ -535,7 +535,7 @@ export function ServiceDailyMissionSection({
                       <MissionContent mission={missionWithSelectedVariant(mission)} />
                     </>
                   )}
-                  {active && !mission.variants[0] ? (
+                  {active && variantPointCost !== null && !mission.variants[0] ? (
                     <div className="mission-variant-actions">
                       <button
                         type="button"

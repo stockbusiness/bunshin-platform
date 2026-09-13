@@ -21,6 +21,8 @@ CREATE TABLE "external_tracking_results" (
   CONSTRAINT "external_tracking_results_pkey" PRIMARY KEY ("id")
 );
 
+ALTER TABLE "external_tracking_results" ENABLE ROW LEVEL SECURITY;
+
 CREATE UNIQUE INDEX "external_tracking_results_system_id_external_event_id_key"
   ON "external_tracking_results"("system_id", "external_event_id");
 CREATE INDEX "external_tracking_results_workspace_id_group_id_occurred_at_idx"

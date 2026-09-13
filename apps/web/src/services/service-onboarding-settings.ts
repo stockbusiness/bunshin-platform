@@ -14,6 +14,11 @@ export interface ServiceDailyIdeaDeliverySettings {
   lockCadence: boolean;
   contentMode: 'IDEA' | 'PROMPT' | 'READY_TO_USE';
   mediaMode: 'TEXT_ONLY' | 'IMAGE' | 'VIDEO' | 'IMAGE_AND_VIDEO';
+  videoNarration: {
+    enabled: boolean;
+    voice: 'marin' | 'cedar' | 'coral';
+    speed: 'SLOW' | 'STANDARD';
+  };
 }
 
 export type ServiceContentAssistanceLevel = 'IDEA_ONLY' | 'GUIDED' | 'READY_TO_USE';
@@ -51,6 +56,11 @@ export const DEFAULT_SERVICE_DAILY_IDEA_DELIVERY: ServiceDailyIdeaDeliverySettin
   lockCadence: false,
   contentMode: 'READY_TO_USE',
   mediaMode: 'TEXT_ONLY',
+  videoNarration: {
+    enabled: false,
+    voice: 'marin',
+    speed: 'SLOW',
+  },
 };
 
 export interface ServiceOnboardingChoicePreset {
@@ -212,6 +222,7 @@ export function readServiceOnboardingSettings(
   const survey = record(surveyConfig);
   const configuredProfileQuestions = record(onboarding.profileQuestions);
   const configuredDailyIdeaDelivery = record(onboarding.dailyIdeaDelivery);
+  const configuredVideoNarration = record(configuredDailyIdeaDelivery.videoNarration);
   const profileQuestions = Object.fromEntries(
     Object.entries(DEFAULT_SERVICE_PROFILE_QUESTIONS).map(([key, fallback]) => [
       key,
@@ -248,6 +259,14 @@ export function readServiceOnboardingSettings(
         configuredDailyIdeaDelivery.mediaMode === 'IMAGE'
           ? configuredDailyIdeaDelivery.mediaMode
           : 'TEXT_ONLY',
+      videoNarration: {
+        enabled: configuredVideoNarration.enabled === true,
+        voice:
+          configuredVideoNarration.voice === 'cedar' || configuredVideoNarration.voice === 'coral'
+            ? configuredVideoNarration.voice
+            : 'marin',
+        speed: configuredVideoNarration.speed === 'STANDARD' ? 'STANDARD' : 'SLOW',
+      },
     },
   };
 }

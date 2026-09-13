@@ -112,6 +112,30 @@ describe('daily subtitle videos', () => {
     expect(scenes.every((scene) => scene.visualType === 'GENERATED_IMAGE')).toBe(true);
     expect(scenes.reduce((sum, scene) => sum + scene.durationMs, 0)).toBe(30_000);
   });
+  it('keeps each automatic narration within its scene while preserving the full image copy', () => {
+    const scenes = buildDailyCarouselVideoScenes(
+      {
+        slides: Array.from({ length: 5 }, () => ({
+          headline: '午後の集中力を戻すための方法',
+          body: '席を立って水を飲み、深呼吸して机を整えます。',
+        })),
+      },
+      [
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        '44444444-4444-4444-8444-444444444444',
+        '55555555-5555-4555-8555-555555555555',
+      ],
+      true,
+    )!;
+    expect(
+      scenes.every(
+        (scene) => [...scene.narration].length <= Math.floor((scene.durationMs / 1_000) * 3),
+      ),
+    ).toBe(true);
+    expect(scenes[0]?.caption).toContain('深呼吸して机を整えます');
+  });
   it('isolates deterministic project identities by mission, workspace and bunshin', () => {
     const id = dailyVideoProjectId('w', 'b', 'm');
     expect(id).toBe(dailyVideoProjectId('w', 'b', 'm'));
@@ -190,13 +214,17 @@ describe('daily subtitle videos', () => {
         ...input,
         mediaMode: 'IMAGE_AND_VIDEO',
         socialImageGenerationRequestId: requestId,
+        videoNarration: { enabled: true, voice: 'cedar', speed: 'SLOW' },
       }),
     ).toEqual({ status: 'QUEUED' });
     expect(m.create).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'PHOTO_SLIDESHOW',
         socialImageGenerationRequestId: requestId,
-        aiProcessingTypes: [],
+        narrationEnabled: true,
+        narrationVoice: 'cedar',
+        narrationSpeed: 'SLOW',
+        aiProcessingTypes: ['VOICE_SYNTHESIS'],
       }),
     );
     expect(m.replace).toHaveBeenCalledWith(
@@ -204,6 +232,7 @@ describe('daily subtitle videos', () => {
         scenes: expect.arrayContaining([
           expect.objectContaining({ visualType: 'GENERATED_IMAGE' }),
         ]),
+        projectAiProcessingTypes: ['VOICE_SYNTHESIS'],
       }),
     );
   });

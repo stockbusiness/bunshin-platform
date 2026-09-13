@@ -144,6 +144,31 @@ describe('service automatic preparation and delivery', () => {
     await createDailyMissionJobHandler().execute({ job, localDate: '2026-09-07' });
     expect(m.video).not.toHaveBeenCalled();
   });
+  it('passes the service voice choice into a video backed by completed carousel images', async () => {
+    const videoNarration = { enabled: true, voice: 'coral', speed: 'SLOW' } as const;
+    m.policy.mockResolvedValue({
+      onboardingConfig: {
+        dailyIdeaDelivery: {
+          enabled: true,
+          cadence: 'DAILY',
+          defaultNotificationTime: '08:00',
+          lockCadence: true,
+          contentMode: 'READY_TO_USE',
+          mediaMode: 'IMAGE_AND_VIDEO',
+          videoNarration,
+        },
+      },
+      surveyConfig: null,
+    });
+    m.image.mockResolvedValue({ status: 'ALREADY_AVAILABLE', requestId: 'image-request' });
+    await createDailyMissionJobHandler().execute({ job, localDate: '2026-09-07' });
+    expect(m.video).toHaveBeenCalledWith(
+      expect.objectContaining({
+        socialImageGenerationRequestId: 'image-request',
+        videoNarration,
+      }),
+    );
+  });
   it('does not create a caption-only replacement when carousel preparation temporarily fails', async () => {
     m.policy.mockResolvedValue({
       onboardingConfig: {

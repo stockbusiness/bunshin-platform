@@ -573,6 +573,71 @@ export function ServiceSettingsEditor({
           <small>
             画像は完成原稿プラン、画像作成枠、画像Pilotと参加者の同意がすべて有効な場合だけ自動作成します。字幕動画は動画作成枠と動画機能が有効な場合に準備し、完成後にLINEで確認リンクを届けます。送信後も投稿前の確認が必要です。
           </small>
+          {dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
+            <fieldset>
+              <legend>5枚画像動画の読み上げ</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={dailyIdeaDelivery.videoNarration.enabled}
+                  onChange={(event) =>
+                    setDailyIdeaDelivery((current) => ({
+                      ...current,
+                      videoNarration: {
+                        ...current.videoNarration,
+                        enabled: event.target.checked,
+                      },
+                    }))
+                  }
+                />{' '}
+                投稿画像の要点をAI音声で読み上げる
+              </label>
+              {dailyIdeaDelivery.videoNarration.enabled ? (
+                <>
+                  <label>
+                    声
+                    <select
+                      value={dailyIdeaDelivery.videoNarration.voice}
+                      onChange={(event) =>
+                        setDailyIdeaDelivery((current) => ({
+                          ...current,
+                          videoNarration: {
+                            ...current.videoNarration,
+                            voice: event.target.value as 'marin' | 'cedar' | 'coral',
+                          },
+                        }))
+                      }
+                    >
+                      <option value="marin">やさしく落ち着いた声</option>
+                      <option value="cedar">はっきり信頼感のある声</option>
+                      <option value="coral">明るく親しみやすい声</option>
+                    </select>
+                  </label>
+                  <label>
+                    速さ
+                    <select
+                      value={dailyIdeaDelivery.videoNarration.speed}
+                      onChange={(event) =>
+                        setDailyIdeaDelivery((current) => ({
+                          ...current,
+                          videoNarration: {
+                            ...current.videoNarration,
+                            speed: event.target.value === 'STANDARD' ? 'STANDARD' : 'SLOW',
+                          },
+                        }))
+                      }
+                    >
+                      <option value="SLOW">ゆっくり（聞き取りやすい）</option>
+                      <option value="STANDARD">標準</option>
+                    </select>
+                  </label>
+                </>
+              ) : null}
+              <small>
+                各画像の見出しと説明から、表示時間に収まる短い台本を自動で作ります。AI音声の利用分が加算されます。既存サービスでは初期状態はオフです。
+              </small>
+            </fieldset>
+          ) : null}
         </section>
         <label>
           最初に表示する説明

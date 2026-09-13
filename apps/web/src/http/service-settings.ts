@@ -66,6 +66,14 @@ const schema = z
         lockCadence: z.boolean(),
         contentMode: z.enum(['IDEA', 'PROMPT', 'READY_TO_USE']),
         mediaMode: z.enum(['TEXT_ONLY', 'IMAGE', 'VIDEO', 'IMAGE_AND_VIDEO']),
+        videoNarration: z
+          .object({
+            enabled: z.boolean(),
+            voice: z.enum(['marin', 'cedar', 'coral']),
+            speed: z.enum(['SLOW', 'STANDARD']),
+          })
+          .strict()
+          .default({ enabled: false, voice: 'marin', speed: 'SLOW' }),
       })
       .strict()
       .default({
@@ -75,6 +83,7 @@ const schema = z
         lockCadence: false,
         contentMode: 'READY_TO_USE',
         mediaMode: 'TEXT_ONLY',
+        videoNarration: { enabled: false, voice: 'marin', speed: 'SLOW' },
       }),
     reason: z.string().min(1).max(1000),
   })

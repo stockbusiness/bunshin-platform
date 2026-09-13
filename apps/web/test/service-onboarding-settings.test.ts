@@ -49,6 +49,7 @@ describe('service onboarding settings', () => {
             lockCadence: true,
             contentMode: 'IDEA',
             mediaMode: 'IMAGE',
+            videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
           },
         },
         null,
@@ -62,6 +63,7 @@ describe('service onboarding settings', () => {
         lockCadence: true,
         contentMode: 'IDEA',
         mediaMode: 'IMAGE',
+        videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
       },
     });
   });
@@ -95,6 +97,11 @@ describe('service onboarding settings', () => {
         .dailyIdeaDelivery.mediaMode,
     ).toBe('IMAGE');
     expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.mediaMode).toBe('TEXT_ONLY');
+    expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.videoNarration).toEqual({
+      enabled: false,
+      voice: 'marin',
+      speed: 'SLOW',
+    });
   });
 
   it('allows each service to disable irrelevant profile questions', () => {

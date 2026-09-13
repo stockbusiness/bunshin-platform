@@ -61,7 +61,7 @@ describe('OpenAIVideoPlanGenerator', () => {
       fetch: fetcher,
     }).generate(input);
     expect(result).toMatchObject({
-      promptVersion: 'video-plan-v4-openai-schema-compatible',
+      promptVersion: 'video-plan-v5-natural-spoken-ja',
       inputTokens: 100,
       outputTokens: 200,
     });
@@ -91,6 +91,8 @@ describe('OpenAIVideoPlanGenerator', () => {
     expect(serializedSchema).not.toContain('maxLength');
     expect(request.input[1]?.content).toContain('asset-1');
     expect(request.input[1]?.content).toContain('#PR');
+    expect(request.input[0]?.content).toContain('耳で一度聞いて分かる自然な話し言葉');
+    expect(request.input[0]?.content).toContain('narrationと同じ文章を繰り返さない');
   });
 
   it('maps provider failures without exposing the API key', async () => {

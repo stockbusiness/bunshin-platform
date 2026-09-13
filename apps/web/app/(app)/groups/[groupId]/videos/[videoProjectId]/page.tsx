@@ -11,6 +11,8 @@ import { VideoAiSceneRequester } from '../../../../../ui/video-ai-scene-requeste
 import { VideoDeliveryActions } from '../../../../../ui/video-delivery-actions';
 import { VideoSceneEditor } from '../../../../../ui/video-scene-editor';
 import { VideoReviewActions } from '../../../../../ui/video-review-actions';
+import { VideoPostCopy } from '../../../../../ui/video-post-copy';
+import { resolveVideoPostCopy } from '../../../../../../src/video/video-post-copy';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +157,12 @@ export default async function VideoProjectPage({
     delivery.expiresAt <= new Date()
       ? 'EXPIRED'
       : delivery?.status;
+  const postCopy = await resolveVideoPostCopy({
+    disclosureSnapshot: project.disclosureSnapshot,
+    socialImageGenerationRequestId: project.socialImageGenerationRequestId,
+    workspaceId: project.workspaceId,
+    ownerUserId: project.ownerUserId,
+  });
   return (
     <main className="app-page">
       <header className="app-page__heading">
@@ -170,6 +178,12 @@ export default async function VideoProjectPage({
         <section className="settings-card">
           <h2>動画ができました</h2>
           <p>内容を確認してください。動画は一般公開されていません。</p>
+          {postCopy ? (
+            <VideoPostCopy
+              value={postCopy}
+              authorizationPath={`/video-access/${project.id}/copy-authorization`}
+            />
+          ) : null}
           {delivery && serviceSlug ? (
             <>
               <VideoDeliveryActions
@@ -212,6 +226,12 @@ export default async function VideoProjectPage({
         <section className="settings-card">
           <h2>この動画を使うことを記録しました</h2>
           <p>動画を開き、iPhoneの共有メニューから「ビデオを保存」を選べます。</p>
+          {postCopy ? (
+            <VideoPostCopy
+              value={postCopy}
+              authorizationPath={`/video-access/${project.id}/copy-authorization`}
+            />
+          ) : null}
           <p>
             <a
               className="button button--primary"

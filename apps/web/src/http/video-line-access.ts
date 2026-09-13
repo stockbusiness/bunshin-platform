@@ -15,6 +15,8 @@ import {
   verifyServiceLineCode,
 } from '../line/service-line-oauth';
 import { SupabaseVideoRenderOutputStorage } from '../video/video-render-output-storage';
+import { resolveVideoPostCopy } from '../video/video-post-copy';
+import { AuthorizeDailyMissionCopy } from '@bunshin/capability-social';
 
 const proofCookie = 'video-line-proof';
 const viewerCookie = (id: string) => `video-view-${id}`;
@@ -56,6 +58,8 @@ export async function videoViewScope(id: string) {
       title: true,
       reviewDecision: true,
       reviewedAt: true,
+      disclosureSnapshot: true,
+      socialImageGenerationRequestId: true,
       renderAttempts: {
         where: {
           status: 'SUCCEEDED',
@@ -70,6 +74,12 @@ export async function videoViewScope(id: string) {
     },
   });
   if (!project) return null;
+  const postCopy = await resolveVideoPostCopy({
+    disclosureSnapshot: project.disclosureSnapshot,
+    socialImageGenerationRequestId: project.socialImageGenerationRequestId,
+    workspaceId: project.workspaceId,
+    ownerUserId: project.ownerUserId,
+  });
   const connection = await db.prisma.groupLineConnection.findFirst({
     where: {
       workspaceId: project.workspaceId,
@@ -92,7 +102,7 @@ export async function videoViewScope(id: string) {
     },
     include: { configuration: true },
   });
-  return { db, project, connection };
+  return { db, project, connection, postCopy };
 }
 
 export async function authorizedVideoView(id: string) {
@@ -284,5 +294,39 @@ export async function recordVideoReviewDecision(request: Request, id: string) {
   } catch {
     logger.warn('video_review_decision_failed', { operation: 'review', projectId: id });
     return redirectTo(`${destination}?result=decision-failed`);
+  }
+}
+
+export async function authorizeVideoPostCopy(request: Request, id: string) {
+  try {
+    requireSameOrigin(request);
+    if (!request.headers.get('content-type')?.startsWith('application/json'))
+      throw new Error('Invalid content type');
+    await request.json();
+    const scope = await authorizedVideoView(id);
+    if (!scope?.project.socialImageGenerationRequestId) throw new Error('Unavailable');
+    const source = await scope.db.prisma.socialImageGenerationRequest.findFirst({
+      where: {
+        id: scope.project.socialImageGenerationRequestId,
+        workspaceId: scope.project.workspaceId,
+        ownerUserId: scope.project.ownerUserId,
+      },
+      select: { bunshinId: true, dailyMissionId: true },
+    });
+    if (!source) throw new Error('Unavailable');
+    const data = await new AuthorizeDailyMissionCopy(
+      new scope.db.PrismaDailyMissionRepository(),
+    ).execute({
+      workspaceId: scope.project.workspaceId,
+      bunshinId: source.bunshinId,
+      actorUserId: scope.project.ownerUserId,
+      dailyMissionId: source.dailyMissionId,
+    });
+    return Response.json({ data }, { headers: { 'cache-control': 'private, no-store' } });
+  } catch {
+    return Response.json(
+      { error: { message: '投稿文をコピーできません。' } },
+      { status: 403, headers: { 'cache-control': 'private, no-store' } },
+    );
   }
 }

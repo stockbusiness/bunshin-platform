@@ -13,6 +13,8 @@ const m = vi.hoisted(() => ({
   verify: vi.fn(),
   download: vi.fn(),
   review: vi.fn(),
+  source: vi.fn(),
+  authorizeCopy: vi.fn(),
 }));
 vi.mock('@bunshin/config', () => ({
   getServerEnvironment: () => ({ APP_URL: 'https://example.com' }),
@@ -42,6 +44,7 @@ vi.mock('../src/video/video-render-output-storage', () => ({
 vi.mock('@bunshin/database', () => ({
   prisma: {
     videoProject: { findFirst: m.project, updateMany: m.review },
+    socialImageGenerationRequest: { findFirst: m.source },
     groupLineConnection: { findFirst: m.connection },
     videoLineAccess: {
       findUnique: m.find,
@@ -51,8 +54,12 @@ vi.mock('@bunshin/database', () => ({
       deleteMany: vi.fn(),
     },
   },
+  PrismaDailyMissionRepository: class {
+    authorizeCopy = m.authorizeCopy;
+  },
 }));
 import {
+  authorizeVideoPostCopy,
   authorizedVideoView,
   downloadVideoView,
   finishVideoLineAccess,
@@ -69,6 +76,8 @@ const project = {
   workspaceId: 'workspace',
   groupId: 'group',
   title: 'Private video',
+  disclosureSnapshot: { postCopy: '投稿文です。' },
+  socialImageGenerationRequestId: 'image-request',
   renderAttempts: [{ id: 'render', outputStorageKey: 'workspace/owner/render.mp4' }],
 };
 const connection = {
@@ -102,6 +111,8 @@ beforeEach(() => {
   m.verify.mockResolvedValue({ providerUserId: subject, following: true });
   m.download.mockResolvedValue('https://storage.example/signed-video');
   m.review.mockResolvedValue({ count: 1 });
+  m.source.mockResolvedValue({ bunshinId: 'bunshin', dailyMissionId: 'mission' });
+  m.authorizeCopy.mockResolvedValue({ allowed: true, reason: null, reviewNote: null });
 });
 describe('LINE video viewing without changing app login', () => {
   it('redirects the already-sent legacy URL before the authenticated layout, preserving management access', async () => {
@@ -158,6 +169,27 @@ describe('LINE video viewing without changing app login', () => {
       where: expect.objectContaining({ id, ownerUserId: 'owner' }),
       data: { reviewDecision: 'ADOPTED', reviewedAt: expect.any(Date) },
     });
+  });
+  it('authorizes copying the source mission text for the verified video owner', async () => {
+    m.actor.mockResolvedValue({ userId: 'owner' });
+    const response = await authorizeVideoPostCopy(
+      new Request(`https://example.com/video-access/${id}/copy-authorization`, {
+        method: 'POST',
+        headers: { origin: 'https://example.com', 'content-type': 'application/json' },
+        body: '{}',
+      }),
+      id,
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { allowed: true } });
+    expect(m.authorizeCopy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'workspace',
+        bunshinId: 'bunshin',
+        dailyMissionId: 'mission',
+        actorUserId: 'owner',
+      }),
+    );
   });
   it('creates a project-scoped, short-lived HttpOnly cookie only after matching the verified recipient', async () => {
     const response = await callback();

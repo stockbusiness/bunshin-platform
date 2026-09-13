@@ -37,6 +37,7 @@ import {
   resolveOpenAiRuntimeConfiguration,
 } from '../ai/runtime-provider-configuration';
 import { assertPrivateVideoStorageConfiguration } from '../video/video-storage-configuration';
+import { resolveMissionPostCopy } from '../video/video-post-copy';
 import { currentLineEnvironment } from '../line/secure-configuration';
 import { assertOrganizationGenerationQuota } from '../organization-generation-quota';
 import { normalizeImageReference } from '../social-image-reference';
@@ -547,6 +548,12 @@ export async function createCarouselVideoResponse(
     const disclosure = await new ResolveVideoDisclosurePolicy(
       new db.PrismaVideoDisclosurePolicyRepository(),
     ).execute({ environment: currentLineEnvironment(), platform: 'INSTAGRAM' });
+    const postCopy = await resolveMissionPostCopy({
+      workspaceId: scope.workspaceId,
+      bunshinId: scope.bunshinId,
+      dailyMissionId: scope.dailyMissionId,
+      actorUserId: actor,
+    });
     const projects = new db.PrismaVideoProjectRepository();
     let project = await new CreateVideoProject(projects).execute({
       id: scope.imageRequestId,
@@ -577,6 +584,7 @@ export async function createCarouselVideoResponse(
         guidance: disclosure.guidance,
         outputMetadata: disclosure.outputMetadata,
         resolvedAt: disclosure.resolvedAt.toISOString(),
+        ...(postCopy ? { postCopy, postCopySource: 'DAILY_MISSION' } : {}),
       },
     });
     if (project.status === 'DRAFT')

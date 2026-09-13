@@ -123,6 +123,19 @@ export interface VideoProjectRepository {
   }): Promise<VideoProjectRecord | null>;
 }
 
+export type VideoProjectReviewAction = 'ADOPT' | 'REVISE';
+
+export interface VideoProjectReviewRepository {
+  review(input: {
+    workspaceId: string;
+    groupId: string;
+    actorUserId: string;
+    videoProjectId: string;
+    expectedRevision: number;
+    action: VideoProjectReviewAction;
+  }): Promise<VideoProjectRecord | null>;
+}
+
 export type VideoRenderStatus =
   'QUEUED' | 'SUBMITTED' | 'RENDERING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
@@ -572,6 +585,27 @@ export class ApproveVideoPlan {
       expectedRevision: input.expectedRevision,
     });
     if (!value) throw new ApplicationError('CONFLICT', 'video project approval conflict');
+    return value;
+  }
+}
+
+export class ReviewFinishedVideo {
+  constructor(private readonly repository: VideoProjectReviewRepository) {}
+
+  async execute(input: Parameters<VideoProjectReviewRepository['review']>[0]) {
+    if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1)
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid expectedRevision');
+    if (!['ADOPT', 'REVISE'].includes(input.action))
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid review action');
+    const value = await this.repository.review({
+      workspaceId: id(input.workspaceId, 'workspaceId'),
+      groupId: id(input.groupId, 'groupId'),
+      actorUserId: id(input.actorUserId, 'actorUserId'),
+      videoProjectId: id(input.videoProjectId, 'videoProjectId'),
+      expectedRevision: input.expectedRevision,
+      action: input.action,
+    });
+    if (!value) throw new ApplicationError('CONFLICT', 'video review conflict');
     return value;
   }
 }

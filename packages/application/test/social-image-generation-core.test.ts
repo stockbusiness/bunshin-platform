@@ -252,9 +252,10 @@ describe('Social image generation core', () => {
       createdAt: now,
       updatedAt: now,
     };
+    const setMediaStatus = vi.fn().mockResolvedValue(media);
     const requests = repository({
       findOwned: vi.fn().mockResolvedValue(record('READY_FOR_REVIEW')),
-      setMediaStatus: vi.fn().mockResolvedValue(media),
+      setMediaStatus,
     });
     await expect(
       new DecideSocialImageMedia(requests).execute({
@@ -268,7 +269,7 @@ describe('Social image generation core', () => {
         reviewNote: null,
       }),
     ).resolves.toMatchObject({ status: 'ADOPTED' });
-    expect(requests.setMediaStatus).toHaveBeenCalledWith(
+    expect(setMediaStatus).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'ADOPTED', reviewReason: null, reviewNote: null }),
     );
   });

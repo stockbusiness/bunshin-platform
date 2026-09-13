@@ -14,6 +14,7 @@ export interface ServiceDailyIdeaDeliverySettings {
   lockCadence: boolean;
   contentMode: 'IDEA' | 'PROMPT' | 'READY_TO_USE';
   mediaMode: 'TEXT_ONLY' | 'IMAGE' | 'VIDEO' | 'IMAGE_AND_VIDEO';
+  videoStyle: 'STANDARD' | 'CALM' | 'MINIMAL';
   videoNarration: {
     enabled: boolean;
     voice: 'marin' | 'cedar' | 'coral';
@@ -60,6 +61,7 @@ export const DEFAULT_SERVICE_DAILY_IDEA_DELIVERY: ServiceDailyIdeaDeliverySettin
   lockCadence: false,
   contentMode: 'READY_TO_USE',
   mediaMode: 'TEXT_ONLY',
+  videoStyle: 'STANDARD',
   videoNarration: {
     enabled: false,
     voice: 'marin',
@@ -268,6 +270,11 @@ export function readServiceOnboardingSettings(
         configuredDailyIdeaDelivery.mediaMode === 'IMAGE'
           ? configuredDailyIdeaDelivery.mediaMode
           : 'TEXT_ONLY',
+      videoStyle:
+        configuredDailyIdeaDelivery.videoStyle === 'CALM' ||
+        configuredDailyIdeaDelivery.videoStyle === 'MINIMAL'
+          ? configuredDailyIdeaDelivery.videoStyle
+          : 'STANDARD',
       videoNarration: {
         enabled: configuredVideoNarration.enabled === true,
         voice:

@@ -214,6 +214,7 @@ describe('daily subtitle videos', () => {
         ...input,
         mediaMode: 'IMAGE_AND_VIDEO',
         socialImageGenerationRequestId: requestId,
+        videoStyle: 'CALM',
         videoNarration: { enabled: true, voice: 'cedar', speed: 'SLOW' },
       }),
     ).toEqual({ status: 'QUEUED' });
@@ -225,6 +226,7 @@ describe('daily subtitle videos', () => {
         narrationVoice: 'cedar',
         narrationSpeed: 'SLOW',
         aiProcessingTypes: ['VOICE_SYNTHESIS'],
+        disclosureSnapshot: expect.objectContaining({ videoStyle: 'CALM' }),
       }),
     );
     expect(m.replace).toHaveBeenCalledWith(

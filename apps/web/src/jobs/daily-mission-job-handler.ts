@@ -111,6 +111,7 @@ export function createDailyMissionJobHandler(): MissionAutomationHandler {
           correlationId: job.correlationId,
           mission,
           mediaMode: dailyIdeas.mediaMode,
+          videoStyle: dailyIdeas.videoStyle,
           videoNarration: dailyIdeas.videoNarration,
           ...(automaticImage?.status === 'ALREADY_AVAILABLE'
             ? { socialImageGenerationRequestId: automaticImage.requestId }

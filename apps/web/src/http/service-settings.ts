@@ -66,6 +66,7 @@ const schema = z
         lockCadence: z.boolean(),
         contentMode: z.enum(['IDEA', 'PROMPT', 'READY_TO_USE']),
         mediaMode: z.enum(['TEXT_ONLY', 'IMAGE', 'VIDEO', 'IMAGE_AND_VIDEO']),
+        videoStyle: z.enum(['STANDARD', 'CALM', 'MINIMAL']).default('STANDARD'),
         videoNarration: z
           .object({
             enabled: z.boolean(),
@@ -90,6 +91,7 @@ const schema = z
         lockCadence: false,
         contentMode: 'READY_TO_USE',
         mediaMode: 'TEXT_ONLY',
+        videoStyle: 'STANDARD',
         videoNarration: { enabled: false, voice: 'marin', speed: 'SLOW' },
         visualCharacter: { enabled: false, profileVersionId: null },
       }),

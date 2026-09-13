@@ -35,6 +35,42 @@ export function classifyCreatomateStatus(status: number) {
   return new VideoRenderProviderError('PROVIDER_ERROR', status >= 500, status);
 }
 
+export type DailyVideoStyle = 'STANDARD' | 'CALM' | 'MINIMAL';
+
+export function dailyVideoStyleFromSnapshot(snapshot: unknown): DailyVideoStyle {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return 'STANDARD';
+  const value = (snapshot as Record<string, unknown>).videoStyle;
+  return value === 'CALM' || value === 'MINIMAL' ? value : 'STANDARD';
+}
+
+function carouselImageAnimations(style: DailyVideoStyle, index: number) {
+  if (style === 'MINIMAL') return [];
+  const calm = style === 'CALM';
+  const scale = calm ? 102 : 104;
+  return [
+    ...(index === 0
+      ? []
+      : [
+          {
+            duration: calm ? 0.75 : 0.45,
+            easing: 'cubic-in-out',
+            transition: true,
+            type: 'slide',
+            fade: true,
+            direction: index % 2 === 0 ? '0°' : '180°',
+          },
+        ]),
+    {
+      easing: 'linear',
+      type: 'scale',
+      scope: 'element',
+      start_scale: index % 2 === 0 ? `${scale}%` : '100%',
+      end_scale: index % 2 === 0 ? '100%' : `${scale}%`,
+      fade: false,
+    },
+  ];
+}
+
 export function buildCreatomateRenderScript(
   project: VideoProjectRecord,
   aiSceneSources: Array<{ videoSceneId: string; url: string }> = [],
@@ -77,6 +113,7 @@ export function buildCreatomateRenderScript(
   if (sources.size !== aiSceneSources.length)
     throw new VideoRenderProviderError('INVALID_REQUEST', false);
 
+  const videoStyle = dailyVideoStyleFromSnapshot(project.disclosureSnapshot);
   let time = 0;
   const elements = project.scenes.flatMap((scene, index) => {
     const duration = scene.durationMs / 1000;
@@ -92,28 +129,7 @@ export function buildCreatomateRenderScript(
     if (scene.visualType === 'GENERATED_IMAGE' && !generatedImage)
       throw new VideoRenderProviderError('INVALID_REQUEST', false);
     const image = generatedImage ?? photo;
-    const imageAnimations = [
-      ...(index === 0
-        ? []
-        : [
-            {
-              duration: 0.45,
-              easing: 'cubic-in-out',
-              transition: true,
-              type: 'slide',
-              fade: true,
-              direction: index % 2 === 0 ? '0°' : '180°',
-            },
-          ]),
-      {
-        easing: 'linear',
-        type: 'scale',
-        scope: 'element',
-        start_scale: index % 2 === 0 ? '104%' : '100%',
-        end_scale: index % 2 === 0 ? '100%' : '104%',
-        fade: false,
-      },
-    ];
+    const imageAnimations = carouselImageAnimations(videoStyle, index);
     const visualElement = image
       ? {
           type: 'image',

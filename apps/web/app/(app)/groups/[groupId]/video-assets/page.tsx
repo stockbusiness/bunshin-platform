@@ -81,7 +81,7 @@ export default async function VideoAssetsPage({
         <h1>写真・動画・ロゴ</h1>
         <p>
           {membership.group.name}
-          の素材を保管します。JPEG・PNG・WebPの写真とロゴを、動画作成時に5枚まで選択して使えます。
+          の素材を保管します。写真・ロゴ・短い動画に加え、権利を確認したMP3・WAVのBGMを保存できます。
         </p>
         <a
           href={serviceSlug ? `/s/${serviceSlug}/videos` : `/groups/${membership.group.id}/videos`}

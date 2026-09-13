@@ -16,7 +16,7 @@ const prepareSchema = z
   .object({
     groupMembershipId: z.uuid(),
     videoProjectId: z.uuid().nullable().optional(),
-    kind: z.enum(['IMAGE', 'VIDEO', 'LOGO']),
+    kind: z.enum(['IMAGE', 'VIDEO', 'LOGO', 'AUDIO']),
     originalFilename: z.string().trim().min(1).max(255),
     declaredMimeType: z.string().trim().min(1).max(100),
     declaredSizeBytes: z.number().int().positive().max(200_000_000),

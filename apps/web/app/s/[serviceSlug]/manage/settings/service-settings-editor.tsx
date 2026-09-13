@@ -107,10 +107,12 @@ export function ServiceSettingsEditor({
   serviceSlug,
   value,
   visualCharacters,
+  audioTracks,
 }: {
   serviceSlug: string;
   value: ServiceSettingsValue;
   visualCharacters: Array<{ id: string; name: string; version: number }>;
+  audioTracks: Array<{ id: string; originalFilename: string }>;
 }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -667,6 +669,83 @@ export function ServiceSettingsEditor({
               <small>
                 文字を読みやすくしたい場合は「ゆったり」か「動きなし」を選んでください。次に作る動画から反映されます。
               </small>
+            </fieldset>
+          ) : null}
+          {dailyIdeaDelivery.mediaMode === 'VIDEO' ||
+          dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
+            <fieldset>
+              <legend>動画のBGM</legend>
+              {audioTracks.length > 0 ? (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={dailyIdeaDelivery.videoBgm.enabled}
+                      onChange={(event) =>
+                        setDailyIdeaDelivery((current) => ({
+                          ...current,
+                          videoBgm: {
+                            ...current.videoBgm,
+                            enabled: event.target.checked,
+                            assetId: current.videoBgm.assetId ?? audioTracks[0]?.id ?? null,
+                          },
+                        }))
+                      }
+                    />{' '}
+                    権利確認済みのBGMを入れる
+                  </label>
+                  {dailyIdeaDelivery.videoBgm.enabled ? (
+                    <>
+                      <label>
+                        BGM
+                        <select
+                          value={dailyIdeaDelivery.videoBgm.assetId ?? ''}
+                          onChange={(event) =>
+                            setDailyIdeaDelivery((current) => ({
+                              ...current,
+                              videoBgm: {
+                                ...current.videoBgm,
+                                assetId: event.target.value || null,
+                              },
+                            }))
+                          }
+                        >
+                          {audioTracks.map((track) => (
+                            <option key={track.id} value={track.id}>
+                              {track.originalFilename}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        BGMの音量
+                        <select
+                          value={dailyIdeaDelivery.videoBgm.volumePercent}
+                          onChange={(event) =>
+                            setDailyIdeaDelivery((current) => ({
+                              ...current,
+                              videoBgm: {
+                                ...current.videoBgm,
+                                volumePercent: Number(event.target.value),
+                              },
+                            }))
+                          }
+                        >
+                          <option value={8}>小さめ</option>
+                          <option value={12}>おすすめ</option>
+                          <option value={20}>やや大きめ</option>
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <p>
+                  <a href={`/s/${serviceSlug}/video-assets`}>BGMを保存する</a>
+                  と、ここで選べるようになります。
+                </p>
+              )}
+              <small>自分で使用権を確認したMP3・WAVだけを使用してください。</small>
             </fieldset>
           ) : null}
           {dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (

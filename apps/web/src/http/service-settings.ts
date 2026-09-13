@@ -67,6 +67,14 @@ const schema = z
         contentMode: z.enum(['IDEA', 'PROMPT', 'READY_TO_USE']),
         mediaMode: z.enum(['TEXT_ONLY', 'IMAGE', 'VIDEO', 'IMAGE_AND_VIDEO']),
         videoStyle: z.enum(['STANDARD', 'CALM', 'MINIMAL']).default('STANDARD'),
+        videoBgm: z
+          .object({
+            enabled: z.boolean(),
+            assetId: z.uuid().nullable(),
+            volumePercent: z.number().int().min(5).max(30),
+          })
+          .strict()
+          .default({ enabled: false, assetId: null, volumePercent: 12 }),
         videoNarration: z
           .object({
             enabled: z.boolean(),
@@ -92,6 +100,7 @@ const schema = z
         contentMode: 'READY_TO_USE',
         mediaMode: 'TEXT_ONLY',
         videoStyle: 'STANDARD',
+        videoBgm: { enabled: false, assetId: null, volumePercent: 12 },
         videoNarration: { enabled: false, voice: 'marin', speed: 'SLOW' },
         visualCharacter: { enabled: false, profileVersionId: null },
       }),
@@ -99,6 +108,23 @@ const schema = z
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.dailyIdeaDelivery.videoBgm.enabled && !value.dailyIdeaDelivery.videoBgm.assetId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dailyIdeaDelivery', 'videoBgm', 'assetId'],
+        message: '使用するBGMを選んでください。',
+      });
+    }
+    if (
+      value.dailyIdeaDelivery.videoBgm.enabled &&
+      !['VIDEO', 'IMAGE_AND_VIDEO'].includes(value.dailyIdeaDelivery.mediaMode)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dailyIdeaDelivery', 'videoBgm', 'enabled'],
+        message: 'BGMを使う場合は、動画を準備する設定を選んでください。',
+      });
+    }
     if (
       value.dailyIdeaDelivery.visualCharacter.enabled &&
       !value.dailyIdeaDelivery.visualCharacter.profileVersionId
@@ -161,6 +187,22 @@ export async function updateServiceSettingsResponse(request: Request, serviceSlu
     ]);
     const current = service.configuration;
     const db = await import('@bunshin/database');
+    if (value.dailyIdeaDelivery.videoBgm.enabled) {
+      const track = await db.prisma.videoAsset.findFirst({
+        where: {
+          id: value.dailyIdeaDelivery.videoBgm.assetId!,
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          ownerUserId: actor.userId,
+          kind: 'AUDIO',
+          status: 'READY',
+          deletedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { id: true },
+      });
+      if (!track) throw new ApplicationError('VALIDATION_ERROR', '選んだBGMを使用できません');
+    }
     const saved = await new ServiceFoundationService(
       new db.PrismaServiceFoundationRepository(),
     ).save({

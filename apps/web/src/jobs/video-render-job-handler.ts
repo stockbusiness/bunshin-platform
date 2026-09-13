@@ -63,6 +63,7 @@ export function createVideoRenderJobHandler(): VideoRenderJobHandler {
             createUrl: (storageKey) =>
               new SupabaseSocialImageStorage().createDownloadUrl(storageKey),
           },
+          { createUrl: (storageKey) => photos.createDownloadUrl(storageKey) },
         ).execute(input);
         if (result.status !== 'SUCCEEDED') return result;
         const completedAt = result.render.completedAt ?? new Date();

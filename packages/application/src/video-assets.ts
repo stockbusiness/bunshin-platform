@@ -1,6 +1,6 @@
 import { ApplicationError } from '@bunshin/shared';
 
-export type VideoAssetKind = 'IMAGE' | 'VIDEO' | 'LOGO';
+export type VideoAssetKind = 'IMAGE' | 'VIDEO' | 'LOGO' | 'AUDIO';
 export type VideoAssetStatus = 'PENDING_UPLOAD' | 'READY' | 'REJECTED' | 'DELETED';
 
 export interface VideoAssetRecord {
@@ -106,6 +106,7 @@ const limits: Record<VideoAssetKind, { mimeTypes: string[]; maxBytes: number }> 
   IMAGE: { mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxBytes: 20_000_000 },
   LOGO: { mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxBytes: 20_000_000 },
   VIDEO: { mimeTypes: ['video/mp4', 'video/quicktime'], maxBytes: 200_000_000 },
+  AUDIO: { mimeTypes: ['audio/mpeg', 'audio/wav', 'audio/x-wav'], maxBytes: 20_000_000 },
 };
 
 function uploadInput(input: {
@@ -230,10 +231,12 @@ export class CompleteVideoAssetUpload {
         ? inspected.durationMs !== null &&
           inspected.durationMs > 0 &&
           inspected.durationMs <= 120_000
-        : inspected.width !== null &&
-          inspected.width > 0 &&
-          inspected.height !== null &&
-          inspected.height > 0);
+        : asset.kind === 'AUDIO'
+          ? inspected.width === null && inspected.height === null
+          : inspected.width !== null &&
+            inspected.width > 0 &&
+            inspected.height !== null &&
+            inspected.height > 0);
     if (!valid) {
       await this.assets.reject({ ...scope, failureCode: 'UPLOAD_INSPECTION_FAILED' });
       throw new ApplicationError('VALIDATION_ERROR', 'uploaded video asset is invalid');

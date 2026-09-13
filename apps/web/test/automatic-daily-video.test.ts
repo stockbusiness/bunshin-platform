@@ -216,6 +216,11 @@ describe('daily subtitle videos', () => {
         socialImageGenerationRequestId: requestId,
         videoStyle: 'CALM',
         videoNarration: { enabled: true, voice: 'cedar', speed: 'SLOW' },
+        videoBgm: {
+          enabled: true,
+          assetId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          volumePercent: 8,
+        },
       }),
     ).toEqual({ status: 'QUEUED' });
     expect(m.create).toHaveBeenCalledWith(
@@ -226,7 +231,13 @@ describe('daily subtitle videos', () => {
         narrationVoice: 'cedar',
         narrationSpeed: 'SLOW',
         aiProcessingTypes: ['VOICE_SYNTHESIS'],
-        disclosureSnapshot: expect.objectContaining({ videoStyle: 'CALM' }),
+        disclosureSnapshot: expect.objectContaining({
+          videoStyle: 'CALM',
+          backgroundMusic: {
+            assetId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            volumePercent: 8,
+          },
+        }),
       }),
     );
     expect(m.replace).toHaveBeenCalledWith(

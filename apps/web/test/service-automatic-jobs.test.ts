@@ -146,6 +146,11 @@ describe('service automatic preparation and delivery', () => {
   });
   it('passes the service voice choice into a video backed by completed carousel images', async () => {
     const videoNarration = { enabled: true, voice: 'coral', speed: 'SLOW' } as const;
+    const videoBgm = {
+      enabled: true,
+      assetId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      volumePercent: 20,
+    } as const;
     m.policy.mockResolvedValue({
       onboardingConfig: {
         dailyIdeaDelivery: {
@@ -157,6 +162,7 @@ describe('service automatic preparation and delivery', () => {
           mediaMode: 'IMAGE_AND_VIDEO',
           videoStyle: 'MINIMAL',
           videoNarration,
+          videoBgm,
         },
       },
       surveyConfig: null,
@@ -168,6 +174,7 @@ describe('service automatic preparation and delivery', () => {
         socialImageGenerationRequestId: 'image-request',
         videoStyle: 'MINIMAL',
         videoNarration,
+        videoBgm,
       }),
     );
   });

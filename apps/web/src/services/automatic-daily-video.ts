@@ -124,6 +124,7 @@ export async function queueAutomaticDailyVideo(input: {
   correlationId: string;
   mediaMode: ServiceDailyIdeaDeliverySettings['mediaMode'];
   videoStyle?: ServiceDailyIdeaDeliverySettings['videoStyle'];
+  videoBgm?: ServiceDailyIdeaDeliverySettings['videoBgm'];
   videoNarration?: ServiceDailyIdeaDeliverySettings['videoNarration'];
   mission: { id: string; assistanceLevel: string; topic: string };
   socialImageGenerationRequestId?: string;
@@ -247,6 +248,14 @@ export async function queueAutomaticDailyVideo(input: {
             source: 'SERVICE_DAILY_VIDEO',
             dailyMissionId: mission.id,
             videoStyle: input.videoStyle ?? 'STANDARD',
+            ...(input.videoBgm?.enabled && input.videoBgm.assetId
+              ? {
+                  backgroundMusic: {
+                    assetId: input.videoBgm.assetId,
+                    volumePercent: input.videoBgm.volumePercent,
+                  },
+                }
+              : {}),
             policyId: disclosure.policyId,
             policyVersion: disclosure.policyVersion,
             disclosureText: disclosure.disclosureText,
@@ -370,6 +379,7 @@ async function prepareDailyCarouselVideoAfterImage(input: {
     correlationId: input.correlationId,
     mediaMode: dailyIdeas.mediaMode,
     videoStyle: dailyIdeas.videoStyle,
+    videoBgm: dailyIdeas.videoBgm,
     videoNarration: dailyIdeas.videoNarration,
     mission,
     socialImageGenerationRequestId: request.id,

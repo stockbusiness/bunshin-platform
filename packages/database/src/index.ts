@@ -16938,12 +16938,57 @@ export class PrismaVideoRenderRepository implements VideoRenderRepository {
               return { videoSceneId: scene.id, storageKey: image.completedStorageKey };
             })
         : [];
+    const savedSnapshot = row.project.disclosureSnapshot;
+    const snapshot =
+      savedSnapshot && typeof savedSnapshot === 'object' && !Array.isArray(savedSnapshot)
+        ? (savedSnapshot as Record<string, unknown>)
+        : {};
+    const backgroundMusic =
+      snapshot.backgroundMusic &&
+      typeof snapshot.backgroundMusic === 'object' &&
+      !Array.isArray(snapshot.backgroundMusic)
+        ? (snapshot.backgroundMusic as Record<string, unknown>)
+        : null;
+    const backgroundMusicAssetId =
+      typeof backgroundMusic?.assetId === 'string' ? backgroundMusic.assetId : null;
+    const backgroundMusicVolume =
+      typeof backgroundMusic?.volumePercent === 'number' &&
+      Number.isInteger(backgroundMusic.volumePercent) &&
+      backgroundMusic.volumePercent >= 5 &&
+      backgroundMusic.volumePercent <= 30
+        ? backgroundMusic.volumePercent
+        : 12;
+    const backgroundAudio =
+      row.status === 'QUEUED' && backgroundMusicAssetId
+        ? await this.client.videoAsset.findFirst({
+            where: {
+              id: backgroundMusicAssetId,
+              workspaceId: input.workspaceId,
+              groupId: row.groupId,
+              kind: 'AUDIO',
+              status: 'READY',
+              deletedAt: null,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            select: { storageKey: true },
+          })
+        : null;
+    if (row.status === 'QUEUED' && backgroundMusicAssetId && !backgroundAudio)
+      throw new ApplicationError('VALIDATION_ERROR', 'BGMを選び直して動画を再作成してください。');
     return {
       render: videoRenderRecord(row),
       project: videoProjectRecord(row.project),
       aiSceneSources,
       photoSceneSources,
       generatedImageSceneSources,
+      ...(backgroundAudio
+        ? {
+            backgroundAudioSource: {
+              storageKey: backgroundAudio.storageKey,
+              volumePercent: backgroundMusicVolume,
+            },
+          }
+        : {}),
     };
   }
 
@@ -17551,6 +17596,7 @@ export class PrismaVideoPlanningContextRepository implements VideoPlanningContex
         groupId: input.groupId,
         ownerUserId: input.actorUserId,
         status: 'READY',
+        kind: { in: ['IMAGE', 'VIDEO', 'LOGO'] },
         AND: [
           { OR: [{ videoProjectId: null }, { videoProjectId: input.videoProjectId }] },
           { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
@@ -17640,7 +17686,7 @@ export class PrismaVideoPlanningContextRepository implements VideoPlanningContex
       approvedAssets,
       userAssets: userAssets.map((asset) => ({
         assetId: asset.id,
-        kind: asset.kind,
+        kind: asset.kind as 'IMAGE' | 'VIDEO' | 'LOGO',
         description: `${asset.originalFilename}${asset.usageTerms ? `（${asset.usageTerms}）` : ''}`,
       })),
     };

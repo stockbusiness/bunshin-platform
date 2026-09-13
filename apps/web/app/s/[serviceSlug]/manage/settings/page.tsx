@@ -18,46 +18,65 @@ export default async function ServiceSettingsPage({
   if (!service) notFound();
   const value = service.configuration;
   const db = await import('@bunshin/database');
-  const [characterProfiles, characterVersions, characterReferences, characterLicenses] =
-    await Promise.all([
-      db.prisma.aiCharacterProfile.findMany({
-        where: {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          scope: 'SERVICE',
-          status: 'ACTIVE',
-        },
-        select: { id: true, name: true },
-      }),
-      db.prisma.aiCharacterProfileVersion.findMany({
-        where: {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          status: 'PUBLISHED',
-        },
-        select: { id: true, characterProfileId: true, licenseVersionId: true, version: true },
-      }),
-      db.prisma.aiCharacterReferenceAsset.findMany({
-        where: {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          status: 'READY',
-        },
-        select: { characterProfileVersionId: true },
-      }),
-      db.prisma.aiCharacterLicenseVersion.findMany({
-        where: {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          commercialUseAllowed: true,
-          derivativeUseAllowed: true,
-          redistributionAllowed: true,
-          startsAt: { lte: new Date() },
-          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
-        },
-        select: { id: true },
-      }),
-    ]);
+  const [
+    characterProfiles,
+    characterVersions,
+    characterReferences,
+    characterLicenses,
+    audioTracks,
+  ] = await Promise.all([
+    db.prisma.aiCharacterProfile.findMany({
+      where: {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        scope: 'SERVICE',
+        status: 'ACTIVE',
+      },
+      select: { id: true, name: true },
+    }),
+    db.prisma.aiCharacterProfileVersion.findMany({
+      where: {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        status: 'PUBLISHED',
+      },
+      select: { id: true, characterProfileId: true, licenseVersionId: true, version: true },
+    }),
+    db.prisma.aiCharacterReferenceAsset.findMany({
+      where: {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        status: 'READY',
+      },
+      select: { characterProfileVersionId: true },
+    }),
+    db.prisma.aiCharacterLicenseVersion.findMany({
+      where: {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        commercialUseAllowed: true,
+        derivativeUseAllowed: true,
+        redistributionAllowed: true,
+        startsAt: { lte: new Date() },
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+      },
+      select: { id: true },
+    }),
+    db.prisma.videoAsset.findMany({
+      where: {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        ownerUserId: actor.userId,
+        kind: 'AUDIO',
+        status: 'READY',
+        deletedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { id: true, originalFilename: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    }),
+  ]);
   const referenceVersionIds = new Set(
     characterReferences.map((reference) => reference.characterProfileVersionId),
   );
@@ -92,6 +111,7 @@ export default async function ServiceSettingsPage({
             serviceSlug={value.slug}
             value={value}
             visualCharacters={visualCharacters}
+            audioTracks={audioTracks}
           />
         </section>
         <a href={`/s/${value.slug}/home`}>サービスホームへ戻る</a>

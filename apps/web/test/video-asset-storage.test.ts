@@ -3,6 +3,7 @@ import { SupabaseVideoAssetStorage } from '../src/video/video-asset-storage';
 
 function storageClient() {
   const createBucket = vi.fn().mockResolvedValue({ data: {}, error: null });
+  const updateBucket = vi.fn().mockResolvedValue({ data: {}, error: null });
   const createSignedUploadUrl = vi.fn().mockResolvedValue({
     data: { signedUrl: 'https://project.supabase.co/storage/v1/object/upload/sign/key?token=safe' },
     error: null,
@@ -15,10 +16,11 @@ function storageClient() {
     storage: {
       getBucket: vi.fn().mockResolvedValue({ data: null, error: null }),
       createBucket,
+      updateBucket,
       from: vi.fn(() => ({ createSignedUploadUrl, createSignedUrl })),
     },
   };
-  return { client, createBucket, createSignedUploadUrl, createSignedUrl };
+  return { client, createBucket, updateBucket, createSignedUploadUrl, createSignedUrl };
 }
 
 describe('SupabaseVideoAssetStorage', () => {
@@ -44,6 +46,27 @@ describe('SupabaseVideoAssetStorage', () => {
       upsert: false,
     });
     expect(result).toMatchObject({ method: 'PUT', headers: { 'content-type': 'image/png' } });
+  });
+
+  it('updates an existing image-only bucket before authorizing audio uploads', async () => {
+    const fake = storageClient();
+    fake.client.storage.getBucket.mockResolvedValueOnce({
+      data: { allowed_mime_types: ['image/png'] },
+      error: null,
+    });
+    const adapter = new SupabaseVideoAssetStorage({
+      client: fake.client,
+      configuration: { publicKey: 'public-key' },
+    } as never);
+    await adapter.createUploadAuthorization({
+      storageKey: 'video-assets/workspace/user/bgm',
+      mimeType: 'audio/mpeg',
+      sizeBytes: 24,
+    });
+    expect(fake.updateBucket).toHaveBeenCalledWith(
+      'video-assets',
+      expect.objectContaining({ allowedMimeTypes: expect.arrayContaining(['audio/mpeg']) }),
+    );
   });
 
   it('recognizes PNG bytes instead of trusting the declared content type', async () => {
@@ -97,5 +120,28 @@ describe('SupabaseVideoAssetStorage', () => {
       mimeType: 'application/octet-stream',
       signatureVerified: false,
     });
+  });
+
+  it('recognizes WAV bytes without trusting the declared content type', async () => {
+    const fake = storageClient();
+    const bytes = new Uint8Array(32);
+    bytes.set(Buffer.from('RIFF'), 0);
+    bytes.set(Buffer.from('WAVE'), 8);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(bytes, {
+          status: 206,
+          headers: { 'content-range': 'bytes 0-31/32' },
+        }),
+      ),
+    );
+    const adapter = new SupabaseVideoAssetStorage({
+      client: fake.client,
+      configuration: { publicKey: 'public-key' },
+    } as never);
+    await expect(
+      adapter.inspectUploadedObject({ storageKey: 'video-assets/workspace/user/bgm' }),
+    ).resolves.toMatchObject({ mimeType: 'audio/wav', signatureVerified: true });
   });
 });

@@ -122,6 +122,18 @@ function videoInspection(bytes: Uint8Array) {
   };
 }
 
+function audioInspection(bytes: Uint8Array) {
+  const buffer = Buffer.from(bytes);
+  const wav =
+    bytes.length >= 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WAVE';
+  if (wav) return { mimeType: 'audio/wav' };
+  const id3 = bytes.length >= 3 && buffer.subarray(0, 3).toString('ascii') === 'ID3';
+  const frame = bytes.length >= 2 && bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0;
+  return id3 || frame ? { mimeType: 'audio/mpeg' } : null;
+}
+
 function totalSize(response: Response, received: number) {
   const range = response.headers.get('content-range');
   const parsed = range?.match(/\/(\d+)$/)?.[1];
@@ -139,11 +151,28 @@ export class SupabaseVideoAssetStorage implements VideoAssetStoragePort {
 
   private async ensureBucket() {
     const found = await this.storage.storage.getBucket(BUCKET);
-    if (found.data) return;
-    const created = await this.storage.storage.createBucket(BUCKET, {
+    const bucketOptions = {
       public: false,
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'],
-    });
+      allowedMimeTypes: [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'video/mp4',
+        'video/quicktime',
+        'audio/mpeg',
+        'audio/wav',
+        'audio/x-wav',
+      ],
+    };
+    if (found.data) {
+      if (!found.data.allowed_mime_types?.includes('audio/mpeg')) {
+        const updated = await this.storage.storage.updateBucket(BUCKET, bucketOptions);
+        if (updated.error)
+          throw new ApplicationError('INTERNAL_ERROR', '素材の保存先を更新できませんでした');
+      }
+      return;
+    }
+    const created = await this.storage.storage.createBucket(BUCKET, bucketOptions);
     if (created.error && !/already exists/i.test(created.error.message))
       throw new ApplicationError('INTERNAL_ERROR', '素材の保存先を準備できませんでした');
   }
@@ -199,6 +228,16 @@ export class SupabaseVideoAssetStorage implements VideoAssetStoragePort {
         sizeBytes,
         width: image.width,
         height: image.height,
+        durationMs: null,
+        signatureVerified: true,
+      };
+    const audio = audioInspection(head);
+    if (audio)
+      return {
+        mimeType: audio.mimeType,
+        sizeBytes,
+        width: null,
+        height: null,
         durationMs: null,
         signatureVerified: true,
       };

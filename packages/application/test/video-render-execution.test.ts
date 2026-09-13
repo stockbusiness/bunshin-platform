@@ -329,6 +329,43 @@ describe('video render execution', () => {
       }),
     );
   });
+
+  it('signs the selected background audio only when composition starts', async () => {
+    const values = repository(render());
+    values.findForExecution = vi.fn().mockResolvedValue({
+      render: render(),
+      project: project(),
+      aiSceneSources: [],
+      backgroundAudioSource: {
+        storageKey: 'video-assets/workspace/owner/bgm.mp3',
+        volumePercent: 12,
+      },
+    });
+    const provider = {
+      submit: vi.fn().mockResolvedValue({ externalJobId: 'job' }),
+      inspect: vi.fn(),
+    };
+    const backgroundAudio = {
+      createUrl: vi.fn().mockResolvedValue('https://storage.example/bgm.mp3?short=1'),
+    };
+    await new ExecuteVideoRenderStep(
+      values,
+      provider,
+      { store: vi.fn() },
+      { createUrl: vi.fn().mockResolvedValue('https://app.example/webhook') },
+      { createUrl: vi.fn() },
+      undefined,
+      undefined,
+      backgroundAudio,
+    ).execute({ workspaceId, renderId });
+    expect(backgroundAudio.createUrl).toHaveBeenCalledWith('video-assets/workspace/owner/bgm.mp3');
+    expect(provider.submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backgroundAudioUrl: 'https://storage.example/bgm.mp3?short=1',
+        backgroundAudioVolumePercent: 12,
+      }),
+    );
+  });
 });
 
 const job: Job = {

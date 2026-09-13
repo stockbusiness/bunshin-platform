@@ -66,6 +66,11 @@ export default async function ServiceBunshinDetailPage({
 }) {
   const { serviceSlug, bunshinId } = await params;
   const service = await context(serviceSlug);
+  const onboarding = readServiceOnboardingSettings(
+    service.configuration.registration.onboardingConfig,
+    service.configuration.registration.surveyConfig,
+  );
+  const isBusinessDailyService = onboarding.businessProfileEnabled;
   const actor = await (await currentUserProvider()).getCurrentUser();
   const returnTo = `/s/${service.configuration.slug}/bunshins/${bunshinId}` as Route;
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
@@ -112,20 +117,22 @@ export default async function ServiceBunshinDetailPage({
     const missionRepository = new db.PrismaDailyMissionRepository();
     const missionRecords = await new ListDailyMissions(missionRepository).execute(scope);
     const engagementRepository = new db.PrismaMissionEngagementRepository();
-    const videoProjects = await db.prisma.videoProject.findMany({
-      where: {
-        workspaceId: service.workspaceId,
-        groupId: service.serviceId,
-        ownerUserId: actor.userId,
-        bunshinId,
-        id: {
-          in: missionRecords.map((mission) =>
-            dailyVideoProjectId(service.workspaceId, bunshinId, mission.id),
-          ),
-        },
-      },
-      select: { id: true, status: true },
-    });
+    const videoProjects = isBusinessDailyService
+      ? []
+      : await db.prisma.videoProject.findMany({
+          where: {
+            workspaceId: service.workspaceId,
+            groupId: service.serviceId,
+            ownerUserId: actor.userId,
+            bunshinId,
+            id: {
+              in: missionRecords.map((mission) =>
+                dailyVideoProjectId(service.workspaceId, bunshinId, mission.id),
+              ),
+            },
+          },
+          select: { id: true, status: true },
+        });
     for (const mission of missionRecords) {
       const video = videoProjects.find(
         (item) => item.id === dailyVideoProjectId(service.workspaceId, bunshinId, mission.id),
@@ -158,27 +165,31 @@ export default async function ServiceBunshinDetailPage({
         }),
       ),
     );
-    variantPointCost = await new ListPointRewardCatalog(new db.PrismaPointRedemptionRepository())
-      .execute({
-        workspaceId: service.workspaceId,
-        groupId: service.serviceId,
-        actorUserId: actor.userId,
-      })
-      .then(
-        (catalog) =>
-          catalog.find(({ rewardType }) => rewardType === 'ALTERNATIVE_PLAN_GENERATION')
-            ?.pointCost ?? null,
-      )
-      .catch(() => null);
-    rewardsPilotActive = Boolean(
-      await db
-        .getActiveRewardsPilotAccess(db.prisma, {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          userId: actor.userId,
-        })
-        .catch(() => null),
-    );
+    variantPointCost = isBusinessDailyService
+      ? null
+      : await new ListPointRewardCatalog(new db.PrismaPointRedemptionRepository())
+          .execute({
+            workspaceId: service.workspaceId,
+            groupId: service.serviceId,
+            actorUserId: actor.userId,
+          })
+          .then(
+            (catalog) =>
+              catalog.find(({ rewardType }) => rewardType === 'ALTERNATIVE_PLAN_GENERATION')
+                ?.pointCost ?? null,
+          )
+          .catch(() => null);
+    rewardsPilotActive =
+      !isBusinessDailyService &&
+      Boolean(
+        await db
+          .getActiveRewardsPilotAccess(db.prisma, {
+            workspaceId: service.workspaceId,
+            groupId: service.serviceId,
+            userId: actor.userId,
+          })
+          .catch(() => null),
+      );
     dailyMissions = missionRecords.map((mission, index) => ({
       id: mission.id,
       missionDate: mission.missionDate,
@@ -205,25 +216,26 @@ export default async function ServiceBunshinDetailPage({
             fitReason: mission.trendContext.snapshot.candidate.fitReason,
           }
         : null,
-      externalLinkUsage: mission.linkUsage
-        ? {
-            linkName: mission.linkUsage.linkName,
-            insertedUrl: mission.linkUsage.insertedUrl,
-            expiresAt: mission.linkUsage.expiresAt?.toISOString() ?? null,
-            productName: mission.linkUsage.productName,
-            campaignName: mission.linkUsage.campaignName,
-            advertisingClassification: mission.linkUsage.advertisingClassification,
-          }
-        : null,
-      variants: missionVariants[index]!.map(
-        ({ id, sequence, content, qualityScore, selectedAt }) => ({
-          id,
-          sequence,
-          content,
-          qualityScore,
-          selectedAt: selectedAt?.toISOString() ?? null,
-        }),
-      ),
+      externalLinkUsage:
+        !isBusinessDailyService && mission.linkUsage
+          ? {
+              linkName: mission.linkUsage.linkName,
+              insertedUrl: mission.linkUsage.insertedUrl,
+              expiresAt: mission.linkUsage.expiresAt?.toISOString() ?? null,
+              productName: mission.linkUsage.productName,
+              campaignName: mission.linkUsage.campaignName,
+              advertisingClassification: mission.linkUsage.advertisingClassification,
+            }
+          : null,
+      variants: isBusinessDailyService
+        ? []
+        : missionVariants[index]!.map(({ id, sequence, content, qualityScore, selectedAt }) => ({
+            id,
+            sequence,
+            content,
+            qualityScore,
+            selectedAt: selectedAt?.toISOString() ?? null,
+          })),
     }));
   } catch (error) {
     if (isRouteNotFound(error)) notFound();
@@ -242,10 +254,7 @@ export default async function ServiceBunshinDetailPage({
   const deliveryEnabled = Boolean(
     notification.preference?.enabled && notification.preference.notificationConsentAt,
   );
-  const deliveryPolicy = readServiceOnboardingSettings(
-    service.configuration.registration.onboardingConfig,
-    service.configuration.registration.surveyConfig,
-  ).dailyIdeaDelivery;
+  const deliveryPolicy = onboarding.dailyIdeaDelivery;
   const deliveryTime = notification.preference?.localTime ?? deliveryPolicy.defaultNotificationTime;
   const deliveryTimezone = notification.preference?.timezone ?? 'Asia/Tokyo';
   const today = localDateInTimezone(new Date(), deliveryTimezone);
@@ -257,30 +266,32 @@ export default async function ServiceBunshinDetailPage({
     missionDates: dailyMissions.map(({ missionDate }) => missionDate),
   });
   const generationProfile = socialProfiles.find(({ status }) => status === 'ACTIVE');
-  const imageMembership = await db.prisma.groupMembership.findFirst({
-    where: {
-      workspaceId: service.workspaceId,
-      groupId: service.serviceId,
-      userId: actor.userId,
-      status: 'ACTIVE',
-      consentedAt: { not: null },
-      group: { status: 'ACTIVE', workspace: { status: 'ACTIVE' } },
-    },
-    select: {
-      featureAssignments: {
-        where: { featureKey: 'SOCIAL.IMAGE_GENERATION', status: 'ENABLED' },
-        select: { startsAt: true, endsAt: true },
-      },
-      group: {
+  const imageMembership = isBusinessDailyService
+    ? null
+    : await db.prisma.groupMembership.findFirst({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          userId: actor.userId,
+          status: 'ACTIVE',
+          consentedAt: { not: null },
+          group: { status: 'ACTIVE', workspace: { status: 'ACTIVE' } },
+        },
         select: {
-          featurePolicies: {
+          featureAssignments: {
             where: { featureKey: 'SOCIAL.IMAGE_GENERATION', status: 'ENABLED' },
             select: { startsAt: true, endsAt: true },
           },
+          group: {
+            select: {
+              featurePolicies: {
+                where: { featureKey: 'SOCIAL.IMAGE_GENERATION', status: 'ENABLED' },
+                select: { startsAt: true, endsAt: true },
+              },
+            },
+          },
         },
-      },
-    },
-  });
+      });
   const entitlementNow = new Date();
   const isCurrent = (value: { startsAt: Date | null; endsAt: Date | null }) =>
     (!value.startsAt || value.startsAt <= entitlementNow) &&
@@ -354,7 +365,9 @@ export default async function ServiceBunshinDetailPage({
         </header>
         {dedicatedLine ? (
           <a href={`/s/${service.configuration.slug}/bunshins/${bunshin.id}/line`}>
-            LINEの接続と動画の完成通知を確認する
+            {isBusinessDailyService
+              ? 'LINEの接続を確認する'
+              : 'LINEの接続と動画の完成通知を確認する'}
           </a>
         ) : null}
         <SimpleFirstPostSetup
@@ -438,7 +451,7 @@ export default async function ServiceBunshinDetailPage({
             </section>
           </div>
         </details>
-        {bunshin.ownerUserId === actor.userId ? (
+        {!isBusinessDailyService && bunshin.ownerUserId === actor.userId ? (
           <section className="service-entry__card" id="daily-action">
             <DailyActionSection
               endpoint={`/api/services/${encodeURIComponent(service.configuration.slug)}/bunshins/${encodeURIComponent(bunshin.id)}/daily-actions`}

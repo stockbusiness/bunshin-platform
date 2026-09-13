@@ -88,6 +88,7 @@ export default async function ServiceMemberHome({
     service.configuration.registration.onboardingConfig,
     service.configuration.registration.surveyConfig,
   );
+  const isBusinessDailyService = onboarding.businessProfileEnabled;
   const announcement = readServiceAnnouncement(service.configuration.registration.onboardingConfig);
   if (
     (onboarding.questions.length > 0 && !membership.serviceOnboardingResponse) ||
@@ -104,14 +105,17 @@ export default async function ServiceMemberHome({
       (item) => item.featureKey === featureKey && active(item),
     ) &&
     membership.featureAssignments.some((item) => item.featureKey === featureKey && active(item));
-  const imageAvailable = available('SOCIAL.IMAGE_GENERATION');
-  const videoAvailable = available('VIDEO_GENERATION');
-  const rewardsPilotAccess = await db.getActiveRewardsPilotAccess(db.prisma, {
-    workspaceId: service.workspaceId,
-    groupId: service.serviceId,
-    userId: actor.userId,
-  });
+  const imageAvailable = !isBusinessDailyService && available('SOCIAL.IMAGE_GENERATION');
+  const videoAvailable = !isBusinessDailyService && available('VIDEO_GENERATION');
+  const rewardsPilotAccess = isBusinessDailyService
+    ? null
+    : await db.getActiveRewardsPilotAccess(db.prisma, {
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        userId: actor.userId,
+      });
   const trackingLinkAvailable =
+    !isBusinessDailyService &&
     (await db.prisma.externalTrackingSystem.count({
       where: {
         workspaceId: service.workspaceId,
@@ -254,8 +258,9 @@ export default async function ServiceMemberHome({
         </section>
 
         <section className="service-entry__card">
-          <h2>利用できる機能</h2>
-          {!imageAvailable &&
+          <h2>{isBusinessDailyService ? '毎日の投稿を進める' : '利用できる機能'}</h2>
+          {!isBusinessDailyService &&
+            !imageAvailable &&
             !videoAvailable &&
             !rewardsPilotAccess &&
             !['SERVICE_OWNER', 'SERVICE_ADMIN'].includes(membership.serviceRole) && (
@@ -278,18 +283,22 @@ export default async function ServiceMemberHome({
             >
               今週できたことを見る
             </Link>
-            <Link
-              className="button button--primary"
-              href={`/s/${service.configuration.slug}/activity` as Route}
-            >
-              活動・紹介を見る
-            </Link>
-            <Link
-              className="button button--primary"
-              href={`/s/${service.configuration.slug}/programs` as Route}
-            >
-              参加中のプログラムと目標
-            </Link>
+            {!isBusinessDailyService && (
+              <Link
+                className="button button--primary"
+                href={`/s/${service.configuration.slug}/activity` as Route}
+              >
+                活動・紹介を見る
+              </Link>
+            )}
+            {!isBusinessDailyService && (
+              <Link
+                className="button button--primary"
+                href={`/s/${service.configuration.slug}/programs` as Route}
+              >
+                参加中のプログラムと目標
+              </Link>
+            )}
             <Link
               className="button button--primary"
               href={`/s/${service.configuration.slug}/bunshins` as Route}
@@ -299,9 +308,11 @@ export default async function ServiceMemberHome({
             <Link className="button" href={`/s/${service.configuration.slug}/help` as Route}>
               使い方・困ったとき
             </Link>
-            <Link className="button" href={`/s/${service.configuration.slug}/credits` as Route}>
-              画像作成回数を見る
-            </Link>
+            {!isBusinessDailyService && (
+              <Link className="button" href={`/s/${service.configuration.slug}/credits` as Route}>
+                画像作成回数を見る
+              </Link>
+            )}
             {trackingLinkAvailable && (
               <Link
                 className="button"
@@ -352,12 +363,19 @@ export default async function ServiceMemberHome({
               <a className="button" href={`/s/${service.configuration.slug}/manage/members`}>
                 参加者と利用機能
               </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/programs`}>
-                実践プログラム
-              </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/program-goals`}>
-                支援方法と目標候補
-              </a>
+              {!isBusinessDailyService && (
+                <a className="button" href={`/s/${service.configuration.slug}/manage/programs`}>
+                  実践プログラム
+                </a>
+              )}
+              {!isBusinessDailyService && (
+                <a
+                  className="button"
+                  href={`/s/${service.configuration.slug}/manage/program-goals`}
+                >
+                  支援方法と目標候補
+                </a>
+              )}
               <a className="button" href={`/s/${service.configuration.slug}/manage/characters`}>
                 AIキャラクター
               </a>
@@ -367,21 +385,28 @@ export default async function ServiceMemberHome({
               <a className="button" href={`/s/${service.configuration.slug}/manage/legal`}>
                 利用規約
               </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/badges`}>
-                バッジ
-              </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/product-packs`}>
-                公式商品情報
-              </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/campaigns`}>
-                参加募集
-              </a>
-              <a
-                className="button"
-                href={`/s/${service.configuration.slug}/manage/external-tracking`}
-              >
-                参加者の専用URL
-              </a>
+              {!isBusinessDailyService && (
+                <>
+                  <a className="button" href={`/s/${service.configuration.slug}/manage/badges`}>
+                    バッジ
+                  </a>
+                  <a
+                    className="button"
+                    href={`/s/${service.configuration.slug}/manage/product-packs`}
+                  >
+                    公式商品情報
+                  </a>
+                  <a className="button" href={`/s/${service.configuration.slug}/manage/campaigns`}>
+                    参加募集
+                  </a>
+                  <a
+                    className="button"
+                    href={`/s/${service.configuration.slug}/manage/external-tracking`}
+                  >
+                    参加者の専用URL
+                  </a>
+                </>
+              )}
             </div>
           </section>
         )}
@@ -389,17 +414,28 @@ export default async function ServiceMemberHome({
         {membership.serviceRole === 'CONTENT_EDITOR' && (
           <section className="service-entry__card">
             <h2>公式コンテンツを管理する</h2>
-            <p>公式資料、商品情報、参加募集だけをこのサービスの範囲で管理します。</p>
+            <p>
+              {isBusinessDailyService
+                ? '投稿案の作成に使う公式資料とFAQを管理します。'
+                : '公式資料、商品情報、参加募集だけをこのサービスの範囲で管理します。'}
+            </p>
             <div className="service-home-actions">
               <a className="button" href={`/s/${service.configuration.slug}/manage/knowledge`}>
                 公式資料・FAQ
               </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/product-packs`}>
-                公式商品情報
-              </a>
-              <a className="button" href={`/s/${service.configuration.slug}/manage/campaigns`}>
-                参加募集
-              </a>
+              {!isBusinessDailyService && (
+                <>
+                  <a
+                    className="button"
+                    href={`/s/${service.configuration.slug}/manage/product-packs`}
+                  >
+                    公式商品情報
+                  </a>
+                  <a className="button" href={`/s/${service.configuration.slug}/manage/campaigns`}>
+                    参加募集
+                  </a>
+                </>
+              )}
             </div>
           </section>
         )}

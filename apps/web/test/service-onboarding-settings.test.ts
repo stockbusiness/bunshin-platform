@@ -37,7 +37,7 @@ describe('service onboarding settings', () => {
     });
   });
 
-  it('reads the enterprise daily idea delivery policy without affecting legacy services', () => {
+  it('enforces the free business delivery policy for previously saved services', () => {
     expect(
       readServiceOnboardingSettings(
         {
@@ -68,21 +68,21 @@ describe('service onboarding settings', () => {
       businessProfileEnabled: true,
       dailyIdeaDelivery: {
         enabled: true,
-        cadence: 'WEEKDAYS',
+        cadence: 'DAILY',
         defaultNotificationTime: '09:30',
         lockCadence: true,
-        contentMode: 'IDEA',
-        mediaMode: 'IMAGE',
+        contentMode: 'READY_TO_USE',
+        mediaMode: 'TEXT_ONLY',
         videoStyle: 'CALM',
-        videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
+        videoNarration: { enabled: false, voice: 'coral', speed: 'STANDARD' },
         videoBgm: {
-          enabled: true,
-          assetId: '22222222-2222-4222-8222-222222222222',
+          enabled: false,
+          assetId: null,
           volumePercent: 20,
         },
         visualCharacter: {
-          enabled: true,
-          profileVersionId: '11111111-1111-4111-8111-111111111111',
+          enabled: false,
+          profileVersionId: null,
         },
       },
     });

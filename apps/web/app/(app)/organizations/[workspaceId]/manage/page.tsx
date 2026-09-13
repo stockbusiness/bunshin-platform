@@ -348,7 +348,7 @@ export default async function OrganizationManagePage({
       <header className="app-page__heading">
         <p className="eyebrow">運営団体の管理</p>
         <h1>{organization.name}</h1>
-        <p>クライアント企業・団体の基本情報、運営者、利用するグループを管理します。</p>
+        <p>運営団体の基本情報、運営者、この団体に所属するプロジェクトを管理します。</p>
       </header>
       <section className="operations-overview" aria-label="団体の設定状況">
         <div>
@@ -367,7 +367,7 @@ export default async function OrganizationManagePage({
           </strong>
         </div>
         <div>
-          <span>運用グループ</span>
+          <span>プロジェクト</span>
           <strong>{organization.groups.length}件</strong>
         </div>
       </section>
@@ -403,7 +403,7 @@ export default async function OrganizationManagePage({
           {query.error === 'operator-limit'
             ? '契約で許可された運営者数の上限に達しています。システム管理者へお問い合わせください。'
             : query.error === 'group-limit'
-              ? '契約で許可されたグループ数の上限に達しているか、団体が利用期間外です。システム管理者へお問い合わせください。'
+              ? '契約で許可されたプロジェクト数の上限に達しているか、団体が利用期間外です。システム管理者へお問い合わせください。'
               : '団体の新規設定は現在停止されています。システム管理者へお問い合わせください。'}
         </p>
       ) : null}
@@ -415,7 +415,7 @@ export default async function OrganizationManagePage({
           </div>
           <span>あとから変更できます</span>
         </div>
-        <p>請求・連絡・サービス設定の基準になる情報です。あとからいつでも変更できます。</p>
+        <p>請求・連絡・プロジェクト設定の基準になる情報です。あとからいつでも変更できます。</p>
         <form className="form-stack" action={saveProfile}>
           <input type="hidden" name="workspaceId" value={organization.id} />
           <label className="field">
@@ -519,7 +519,7 @@ export default async function OrganizationManagePage({
           </div>
           <span>{organization.memberships.length}人が参加中</span>
         </div>
-        <p>運営管理者は、団体内のグループを作成し、参加者・LINE・利用機能を管理できます。</p>
+        <p>運営管理者は、団体内のプロジェクトを作成し、参加者・LINE・利用機能を管理できます。</p>
         <form className="form-stack" action={createOperatorInvitation}>
           <input type="hidden" name="workspaceId" value={organization.id} />
           <label className="field">
@@ -606,17 +606,17 @@ export default async function OrganizationManagePage({
         <div className="management-section__heading">
           <div>
             <p className="management-section__eyebrow">3. 日々の運用</p>
-            <h2>グループを作る</h2>
+            <h2>プロジェクトを作る</h2>
           </div>
           <span>{organization.groups.length}件を運用中</span>
         </div>
         <p>
-          参加者・商品・LINE・投稿運用をまとめる単位です。作成した人は、そのグループのサービス所有者になります。
+          参加者・商品・LINE・投稿運用をまとめる単位です。作成した人は、そのプロジェクトの運営者になります。
         </p>
         <form className="form-stack" action={createGroup}>
           <input type="hidden" name="workspaceId" value={organization.id} />
           <label className="field">
-            <span className="field__label">グループ名</span>
+            <span className="field__label">プロジェクト名</span>
             <input
               className="field__control"
               name="name"
@@ -626,7 +626,7 @@ export default async function OrganizationManagePage({
             />
           </label>
           <button className="button" type="submit">
-            グループを作成する
+            プロジェクトを作成する
           </button>
         </form>
         {organization.groups.length ? (
@@ -644,7 +644,7 @@ export default async function OrganizationManagePage({
             ))}
           </ul>
         ) : (
-          <p>まだグループはありません。</p>
+          <p>まだプロジェクトはありません。</p>
         )}
       </section>
     </main>

@@ -15,7 +15,7 @@ describe('service manager entry boundary', () => {
       expect(page).toContain('SERVICE_ADMIN');
       expect(page).toContain('/manage');
     }
-    expect(groups).toContain('サービス運営画面を開く');
+    expect(groups).toContain('プロジェクト運営画面を開く');
     expect(account).toContain('を運営する');
   });
 

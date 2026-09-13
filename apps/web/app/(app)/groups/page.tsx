@@ -5,7 +5,7 @@ import { currentUserProvider } from '../../../src/auth/current-user';
 export const dynamic = 'force-dynamic';
 
 const roleLabel = {
-  MANAGER: 'グループ管理者',
+  MANAGER: 'プロジェクト管理者',
   PARTICIPANT: '参加者',
 } as const;
 
@@ -39,7 +39,7 @@ export default async function GroupsPage({
           id: true,
           name: true,
           serviceConfiguration: { select: { slug: true } },
-          workspace: { select: { name: true } },
+          workspace: { select: { id: true, name: true } },
           featurePolicies: {
             where: {
               featureKey: { in: ['VIDEO_GENERATION', 'SOCIAL.IMAGE_GENERATION'] },
@@ -54,13 +54,25 @@ export default async function GroupsPage({
     orderBy: { group: { name: 'asc' } },
   });
   const query = await searchParams;
+  const organizations = [
+    ...new Map(
+      memberships.map((membership) => [membership.group.workspace.id, membership.group.workspace]),
+    ).values(),
+  ]
+    .map((organization) => ({
+      ...organization,
+      memberships: memberships.filter(
+        (membership) => membership.group.workspace.id === organization.id,
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
   return (
     <main className="app-page">
       <header className="app-page__heading">
-        <p className="eyebrow">参加中のサービス</p>
-        <h1>あなたの活動プログラム</h1>
-        <p>参加中の活動プログラムと、今日使える機能を確認できます。</p>
+        <p className="eyebrow">運営団体の中で参加中</p>
+        <h1>あなたのプロジェクト</h1>
+        <p>運営団体ごとに、参加中のプロジェクトと今日使える機能を確認できます。</p>
       </header>
 
       {memberships.length > 0 ? (
@@ -88,7 +100,7 @@ export default async function GroupsPage({
 
       {query.joined === '1' ? (
         <p className="notice notice--success" role="status">
-          グループに参加しました。
+          プロジェクトに参加しました。
         </p>
       ) : null}
       {query.declined === '1' ? (
@@ -104,111 +116,122 @@ export default async function GroupsPage({
 
       {memberships.length === 0 ? (
         <section className="settings-card">
-          <h2>参加中のグループはありません</h2>
-          <p>グループから招待されると、ここに表示されます。</p>
+          <h2>参加中のプロジェクトはありません</h2>
+          <p>運営団体のプロジェクトから招待されると、ここに表示されます。</p>
         </section>
       ) : null}
 
-      {memberships.map((membership) => {
-        const now = new Date();
-        const active = (value: { startsAt: Date | null; endsAt: Date | null }) =>
-          (!value.startsAt || value.startsAt <= now) && (!value.endsAt || value.endsAt > now);
-        const videoAvailable =
-          membership.group.featurePolicies.some(
-            (item) => item.featureKey === 'VIDEO_GENERATION' && active(item),
-          ) &&
-          membership.featureAssignments.some(
-            (item) => item.featureKey === 'VIDEO_GENERATION' && active(item),
-          );
-        const imageAvailable =
-          membership.group.featurePolicies.some(
-            (item) => item.featureKey === 'SOCIAL.IMAGE_GENERATION' && active(item),
-          ) &&
-          membership.featureAssignments.some(
-            (item) => item.featureKey === 'SOCIAL.IMAGE_GENERATION' && active(item),
-          );
-        const canManageService =
-          ['SERVICE_OWNER', 'SERVICE_ADMIN'].includes(membership.serviceRole) &&
-          membership.group.serviceConfiguration;
-        return (
-          <section className="group-dashboard-card" key={membership.id}>
-            <div className="group-dashboard-card__heading">
-              <div>
-                <p>{membership.group.workspace.name}</p>
-                <h2>{membership.group.name}</h2>
-              </div>
-              <span>{roleLabel[membership.role]}</span>
+      {organizations.map((organization) => (
+        <section className="settings-card" key={organization.id}>
+          <div className="management-section__heading">
+            <div>
+              <p className="management-section__eyebrow">運営団体</p>
+              <h2>{organization.name}</h2>
             </div>
-            <p className="group-dashboard-card__meta">
-              参加者 {membership.group._count.memberships}人
-            </p>
-            <div className="group-dashboard-card__availability">
-              <span className={videoAvailable ? 'is-available' : ''}>
-                動画 {videoAvailable ? '利用可' : '未設定'}
-              </span>
-              <span className={imageAvailable ? 'is-available' : ''}>
-                画像 {imageAvailable ? '利用可' : '未設定'}
-              </span>
-            </div>
-            <div className="group-dashboard-card__actions">
-              {canManageService ? (
-                <Link
-                  className="button"
-                  href={`/s/${membership.group.serviceConfiguration!.slug}/manage`}
-                >
-                  サービス運営画面を開く
-                </Link>
-              ) : null}
-              {videoAvailable ? (
-                <>
-                  <Link className="button" href={`/groups/${membership.group.id}/videos`}>
-                    動画を作る
-                  </Link>
-                  <Link
-                    className="button button--secondary"
-                    href={`/groups/${membership.group.id}/video-assets`}
-                  >
-                    動画に使う素材を管理
-                  </Link>
-                </>
-              ) : null}
-              {imageAvailable ? (
-                <Link className="button" href={`/groups/${membership.group.id}/images`}>
-                  投稿に使う画像を作る
-                </Link>
-              ) : null}
-              {membership.role === 'MANAGER' ? (
-                <>
-                  <Link className="button" href={`/groups/${membership.group.id}/knowledge`}>
-                    公式資料・FAQを登録
-                  </Link>
-                  <Link className="button" href={`/groups/${membership.group.id}/members`}>
-                    参加者が使える機能を設定
-                  </Link>
-                  <Link
-                    className="button button--secondary"
-                    href={`/groups/${membership.group.id}/badges`}
-                  >
-                    グループのバッジを管理
-                  </Link>
-                  {imageAvailable ? (
+            <span>{organization.memberships.length}プロジェクト</span>
+          </div>
+          {organization.memberships.map((membership) => {
+            const now = new Date();
+            const active = (value: { startsAt: Date | null; endsAt: Date | null }) =>
+              (!value.startsAt || value.startsAt <= now) && (!value.endsAt || value.endsAt > now);
+            const videoAvailable =
+              membership.group.featurePolicies.some(
+                (item) => item.featureKey === 'VIDEO_GENERATION' && active(item),
+              ) &&
+              membership.featureAssignments.some(
+                (item) => item.featureKey === 'VIDEO_GENERATION' && active(item),
+              );
+            const imageAvailable =
+              membership.group.featurePolicies.some(
+                (item) => item.featureKey === 'SOCIAL.IMAGE_GENERATION' && active(item),
+              ) &&
+              membership.featureAssignments.some(
+                (item) => item.featureKey === 'SOCIAL.IMAGE_GENERATION' && active(item),
+              );
+            const canManageService =
+              ['SERVICE_OWNER', 'SERVICE_ADMIN'].includes(membership.serviceRole) &&
+              membership.group.serviceConfiguration;
+            return (
+              <article className="group-dashboard-card" key={membership.id}>
+                <div className="group-dashboard-card__heading">
+                  <div>
+                    <p>プロジェクト</p>
+                    <h2>{membership.group.name}</h2>
+                  </div>
+                  <span>{roleLabel[membership.role]}</span>
+                </div>
+                <p className="group-dashboard-card__meta">
+                  参加者 {membership.group._count.memberships}人
+                </p>
+                <div className="group-dashboard-card__availability">
+                  <span className={videoAvailable ? 'is-available' : ''}>
+                    動画 {videoAvailable ? '利用可' : '未設定'}
+                  </span>
+                  <span className={imageAvailable ? 'is-available' : ''}>
+                    画像 {imageAvailable ? '利用可' : '未設定'}
+                  </span>
+                </div>
+                <div className="group-dashboard-card__actions">
+                  {canManageService ? (
                     <Link
-                      className="button button--secondary"
-                      href={`/groups/${membership.group.id}/image-operations`}
+                      className="button"
+                      href={`/s/${membership.group.serviceConfiguration!.slug}/manage`}
                     >
-                      画像生成の利用状況
+                      プロジェクト運営画面を開く
                     </Link>
                   ) : null}
-                </>
-              ) : (
-                <p className="group-dashboard-card__hint">
-                  使える機能はグループ管理者が設定します。
-                </p>
-              )}
-            </div>
-          </section>
-        );
-      })}
+                  {videoAvailable ? (
+                    <>
+                      <Link className="button" href={`/groups/${membership.group.id}/videos`}>
+                        動画を作る
+                      </Link>
+                      <Link
+                        className="button button--secondary"
+                        href={`/groups/${membership.group.id}/video-assets`}
+                      >
+                        動画に使う素材を管理
+                      </Link>
+                    </>
+                  ) : null}
+                  {imageAvailable ? (
+                    <Link className="button" href={`/groups/${membership.group.id}/images`}>
+                      投稿に使う画像を作る
+                    </Link>
+                  ) : null}
+                  {membership.role === 'MANAGER' ? (
+                    <>
+                      <Link className="button" href={`/groups/${membership.group.id}/knowledge`}>
+                        公式資料・FAQを登録
+                      </Link>
+                      <Link className="button" href={`/groups/${membership.group.id}/members`}>
+                        参加者が使える機能を設定
+                      </Link>
+                      <Link
+                        className="button button--secondary"
+                        href={`/groups/${membership.group.id}/badges`}
+                      >
+                        プロジェクトのバッジを管理
+                      </Link>
+                      {imageAvailable ? (
+                        <Link
+                          className="button button--secondary"
+                          href={`/groups/${membership.group.id}/image-operations`}
+                        >
+                          画像生成の利用状況
+                        </Link>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="group-dashboard-card__hint">
+                      使える機能はプロジェクト管理者が設定します。
+                    </p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ))}
     </main>
   );
 }

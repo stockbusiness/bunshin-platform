@@ -9,15 +9,20 @@ import {
 export function ServiceEditor({
   workspaces,
   groups,
+  defaultWorkspaceId,
+  defaultGroupId,
 }: {
   workspaces: { id: string; name: string }[];
   groups: { id: string; workspaceId: string; name: string }[];
+  defaultWorkspaceId?: string;
+  defaultGroupId?: string;
 }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [templateKey, setTemplateKey] =
     useState<ServiceCreationTemplateKey>('SIDE_HUSTLE_AFFILIATE');
-  const [workspaceId, setWorkspaceId] = useState(workspaces[0]?.id ?? '');
+  const [workspaceId, setWorkspaceId] = useState(defaultWorkspaceId ?? workspaces[0]?.id ?? '');
+  const [groupId, setGroupId] = useState(defaultGroupId ?? '');
   const template = SERVICE_CREATION_TEMPLATES[templateKey];
   const businessFreeCreation = templateKey === 'BUSINESS_DAILY_IDEAS';
 
@@ -30,7 +35,7 @@ export function ServiceEditor({
       return typeof value === 'string' ? value : '';
     };
     setSaving(true);
-    setMessage('サービスを作成しています…');
+    setMessage('プロジェクトの公開設定を作成しています…');
     try {
       const response = await fetch('/api/admin/services', {
         method: 'POST',
@@ -64,21 +69,21 @@ export function ServiceEditor({
       });
       const result = (await response.json()) as { error?: { message?: string } };
       if (!response.ok)
-        throw new Error(result.error?.message ?? 'サービスを作成できませんでした。');
-      setMessage('サービスを作成しました。画面を更新します…');
+        throw new Error(result.error?.message ?? '公開設定を作成できませんでした。');
+      setMessage('プロジェクトの公開設定を作成しました。画面を更新します…');
       window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'サービスを作成できませんでした。');
+      setMessage(error instanceof Error ? error.message : '公開設定を作成できませんでした。');
       setSaving(false);
     }
   }
 
   return (
     <section className="settings-card">
-      <h2>新しいサービスを作る</h2>
-      <p>名前・専用URL・登録方法をまとめて保存します。作成直後は非公開をおすすめします。</p>
+      <h2>プロジェクトの公開設定を作る</h2>
+      <p>運営団体を選び、公開名・専用URL・登録方法をまとめて保存します。</p>
       <label>
-        サービスの種類
+        プロジェクトの種類
         <select
           value={templateKey}
           onChange={(event) => setTemplateKey(event.target.value as ServiceCreationTemplateKey)}
@@ -128,7 +133,7 @@ export function ServiceEditor({
                 <li key={question}>{question}</li>
               ))}
             </ol>
-            <p>作成後、サービス管理画面で文章と質問を変更できます。</p>
+            <p>作成後、プロジェクト運営画面で文章と質問を変更できます。</p>
           </details>
         ) : (
           <p>初回案内と質問は、サービス作成後に必要なものだけ設定できます。</p>
@@ -142,7 +147,10 @@ export function ServiceEditor({
             name="workspaceId"
             required
             value={workspaceId}
-            onChange={(event) => setWorkspaceId(event.target.value)}
+            onChange={(event) => {
+              setWorkspaceId(event.target.value);
+              setGroupId('');
+            }}
           >
             {workspaces.map((workspace) => (
               <option key={workspace.id} value={workspace.id}>
@@ -152,9 +160,14 @@ export function ServiceEditor({
           </select>
         </label>
         <label>
-          利用するグループ
-          <select key={workspaceId} name="groupId" defaultValue="">
-            <option value="">新しいグループを自動作成する</option>
+          対象プロジェクト
+          <select
+            key={workspaceId}
+            name="groupId"
+            value={groupId}
+            onChange={(event) => setGroupId(event.target.value)}
+          >
+            <option value="">新しいプロジェクトをこの団体内に自動作成する</option>
             {groups
               .filter((group) => group.workspaceId === workspaceId)
               .map((group) => (
@@ -163,10 +176,12 @@ export function ServiceEditor({
                 </option>
               ))}
           </select>
-          <small>先に作成したグループがある場合は、ここで選ぶと設定を引き継げます。</small>
+          <small>
+            先にプロジェクトを作成した場合は、ここで選ぶと参加者や機能の設定を引き継げます。
+          </small>
         </label>
         <label>
-          サービス名
+          公開するプロジェクト名
           <input name="displayName" required maxLength={120} />
         </label>
         <label>
@@ -185,7 +200,7 @@ export function ServiceEditor({
           <input name="operatorName" required maxLength={160} />
         </label>
         <label>
-          サービス説明
+          プロジェクト説明
           <textarea name="description" required maxLength={1000} rows={3} />
         </label>
         <label>
@@ -273,10 +288,10 @@ export function ServiceEditor({
         </label>
         <label>
           作成理由
-          <input name="reason" required maxLength={1000} placeholder="例：第一号サービスの準備" />
+          <input name="reason" required maxLength={1000} placeholder="例：プロジェクトの公開準備" />
         </label>
         <button type="submit" disabled={saving}>
-          {saving ? '作成中…' : 'サービスを作成する'}
+          {saving ? '作成中…' : '公開設定を作成する'}
         </button>
       </form>
       <p role="status" aria-live="polite">

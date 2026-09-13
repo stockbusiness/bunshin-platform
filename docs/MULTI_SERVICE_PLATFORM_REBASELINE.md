@@ -8,20 +8,26 @@
 
 ## 2. 採用する内部構造
 
-既存`Group.id`を、初期の`service_id`相当として使用する。Groupと並行する別のService識別子を追加して二重管理しない。
+ワタシワークス全体はシステム管理の境界であり、利用者向けプロジェクトを直接所有しない。運営主体は`Workspace(type=ORGANIZATION)`として登録し、すべてのプロジェクトをその配下の`Group`として作成する。
+
+既存`Group.id`を、プロジェクトの識別子および初期の`service_id`相当として使用する。Groupと並行する別のProject識別子を追加して二重管理しない。`ServiceConfiguration`はプロジェクト自体ではなく、その公開名、URL、ブランド、登録方法を保持する1対1の公開設定とする。
 
 ```text
-User（共通ユーザー）
-└── GroupMembership（サービス参加情報）
-    └── Group（内部的なサービス境界）
-        ├── ServiceConfiguration
-        ├── ServiceBrand
-        ├── ServiceRegistrationPolicy
-        ├── ServiceLegalDocument
-        └── サービス固有データ
+ワタシワークス全体（PlatformAdminによるシステム管理）
+└── 運営団体（Workspace / ORGANIZATION）
+    ├── 団体運営者（WorkspaceMembership）
+    └── プロジェクト（Group）
+        ├── 参加者・プロジェクト運営者（GroupMembership）
+        ├── 公開設定（ServiceConfiguration）
+        ├── ブランド（ServiceBrand）
+        ├── 登録方法（ServiceRegistrationPolicy）
+        ├── 法務文書（ServiceLegalDocument）
+        └── プロジェクト固有データ
 ```
 
-コード内の既存Groupモデルは段階移行のため維持する。利用者・導入企業向けUIでは「グループ」を原則表示せず、用途に応じて「サービス」「公式プログラム」「発信プログラム」「アンバサダープログラム」「活動プログラム」を使う。
+コード内の既存Groupモデルは維持する。システム管理画面と運営者画面では原則「プロジェクト」と表示する。参加者向け画面では用途に応じて「サービス」「公式プログラム」「発信プログラム」「アンバサダープログラム」「活動プログラム」を使える。
+
+`PlatformAdmin`と`WorkspaceMembership`は別の権限である。システム管理者であることを理由に団体運営権限を暗黙付与せず、団体運営者であることを理由にシステム管理権限も付与しない。
 
 ## 3. 既存実装の評価
 

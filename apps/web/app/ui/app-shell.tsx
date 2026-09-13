@@ -23,11 +23,11 @@ const adminNavigationGroups = [
     ],
   },
   {
-    label: 'サービスを作る・管理する',
+    label: '運営団体・プロジェクト',
     items: [
       { href: '/admin/organizations', label: '運営団体' },
-      { href: '/admin/groups', label: 'グループ管理' },
-      { href: '/admin/services', label: 'サービス管理' },
+      { href: '/admin/groups', label: 'プロジェクト管理' },
+      { href: '/admin/services', label: '公開設定' },
       { href: '/admin/activity-rules', label: '続けやすさのルール' },
       { href: '/admin/badges', label: 'グループバッジ確認' },
       { href: '/admin/badges/rewards', label: 'バッジ特典運用' },
@@ -117,8 +117,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="admin-layout">
           <aside className="admin-sidebar">
             <div className="admin-sidebar__heading">
-              <strong>運用管理</strong>
-              <span>管理メニュー</span>
+              <strong>ワタシワークス全体</strong>
+              <span>システム管理</span>
             </div>
             <nav aria-label="管理画面ナビゲーション">
               {adminNavigationGroups.map((group) => {

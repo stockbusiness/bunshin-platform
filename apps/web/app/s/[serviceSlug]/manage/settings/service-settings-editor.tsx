@@ -703,7 +703,10 @@ export function ServiceSettingsEditor({
                           onChange={(event) =>
                             setDailyIdeaDelivery((current) => ({
                               ...current,
-                              videoBgm: { ...current.videoBgm, assetId: event.target.value || null },
+                              videoBgm: {
+                                ...current.videoBgm,
+                                assetId: event.target.value || null,
+                              },
                             }))
                           }
                         >

@@ -358,9 +358,7 @@ describe('video render execution', () => {
       undefined,
       backgroundAudio,
     ).execute({ workspaceId, renderId });
-    expect(backgroundAudio.createUrl).toHaveBeenCalledWith(
-      'video-assets/workspace/owner/bgm.mp3',
-    );
+    expect(backgroundAudio.createUrl).toHaveBeenCalledWith('video-assets/workspace/owner/bgm.mp3');
     expect(provider.submit).toHaveBeenCalledWith(
       expect.objectContaining({
         backgroundAudioUrl: 'https://storage.example/bgm.mp3?short=1',

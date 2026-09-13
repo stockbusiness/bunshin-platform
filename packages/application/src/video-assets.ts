@@ -233,10 +233,10 @@ export class CompleteVideoAssetUpload {
           inspected.durationMs <= 120_000
         : asset.kind === 'AUDIO'
           ? inspected.width === null && inspected.height === null
-        : inspected.width !== null &&
-          inspected.width > 0 &&
-          inspected.height !== null &&
-          inspected.height > 0);
+          : inspected.width !== null &&
+            inspected.width > 0 &&
+            inspected.height !== null &&
+            inspected.height > 0);
     if (!valid) {
       await this.assets.reject({ ...scope, failureCode: 'UPLOAD_INSPECTION_FAILED' });
       throw new ApplicationError('VALIDATION_ERROR', 'uploaded video asset is invalid');

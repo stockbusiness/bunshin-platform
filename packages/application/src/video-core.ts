@@ -505,6 +505,60 @@ export class ReplaceVideoPlan {
   }
 }
 
+export class UpdateVideoSceneDraft {
+  constructor(private readonly repository: VideoProjectRepository) {}
+
+  async execute(input: {
+    workspaceId: string;
+    groupId: string;
+    actorUserId: string;
+    videoProjectId: string;
+    sceneId: string;
+    expectedRevision: number;
+    narration: string;
+    caption: string;
+  }) {
+    if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1)
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid expectedRevision');
+    const scope = {
+      workspaceId: id(input.workspaceId, 'workspaceId'),
+      groupId: id(input.groupId, 'groupId'),
+      actorUserId: id(input.actorUserId, 'actorUserId'),
+      videoProjectId: id(input.videoProjectId, 'videoProjectId'),
+    };
+    const sceneId = id(input.sceneId, 'sceneId');
+    const project = await this.repository.findOwned(scope);
+    if (
+      !project ||
+      project.status !== 'WAITING_APPROVAL' ||
+      project.revision !== input.expectedRevision
+    )
+      throw new ApplicationError('CONFLICT', 'video scene revision is unavailable');
+    if (!project.scenes.some((scene) => scene.id === sceneId))
+      throw new ApplicationError('NOT_FOUND', 'video scene not found');
+
+    return new ReplaceVideoPlan(this.repository).execute({
+      ...scope,
+      expectedRevision: input.expectedRevision,
+      scenes: project.scenes.map((scene) => ({
+        sceneNo: scene.sceneNo,
+        durationMs: scene.durationMs,
+        narration:
+          scene.id === sceneId ? text(input.narration, 'narration', 2_000) : scene.narration,
+        caption: scene.id === sceneId ? text(input.caption, 'caption', 240) : scene.caption,
+        visualType: scene.visualType,
+        visualPrompt: scene.visualPrompt,
+        keywords: scene.keywords,
+        aiProcessingTypes: scene.aiProcessingTypes,
+        locked: scene.locked,
+      })),
+      projectAiProcessingTypes: project.aiProcessingTypes,
+      standardComposition: project.standardComposition,
+      aiVideoSceneCount: project.aiVideoSceneCount,
+    });
+  }
+}
+
 export class ApproveVideoPlan {
   constructor(private readonly repository: VideoProjectRepository) {}
   async execute(input: Parameters<VideoProjectRepository['approvePlan']>[0]) {

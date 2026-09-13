@@ -5,6 +5,7 @@ import {
   GetVideoProject,
   QueueVideoRender,
   ReplaceVideoPlan,
+  UpdateVideoSceneDraft,
   type VideoProjectRecord,
   type VideoProjectRepository,
   type VideoRenderRepository,
@@ -141,6 +142,67 @@ describe('Video Core', () => {
       status: 'WAITING_APPROVAL',
       revision: 2,
     });
+  });
+
+  it('updates only one scene while the generated plan is waiting for approval', async () => {
+    const scenes = planInput().scenes.map((scene, index) => ({
+      ...scene,
+      id: `${index + 1}0000000-0000-4000-8000-000000000000`,
+      videoProjectId: ids.videoProjectId,
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    const replacePlan = vi.fn<VideoProjectRepository['replacePlan']>().mockResolvedValue({
+      ...project(),
+      status: 'WAITING_APPROVAL',
+      revision: 3,
+      scenes,
+    });
+    const value = repository({
+      findOwned: vi.fn().mockResolvedValue({
+        ...project(),
+        status: 'WAITING_APPROVAL',
+        revision: 2,
+        scenes,
+      }),
+      replacePlan,
+    });
+    await new UpdateVideoSceneDraft(value).execute({
+      ...ids,
+      sceneId: scenes[1]!.id,
+      expectedRevision: 2,
+      narration: '短く話します。',
+      caption: '短い字幕',
+    });
+    expect(replacePlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedRevision: 2,
+        scenes: expect.arrayContaining([
+          expect.objectContaining({
+            sceneNo: 2,
+            narration: '短く話します。',
+            caption: '短い字幕',
+          }),
+          expect.objectContaining({ sceneNo: 1, narration: '場面1の説明' }),
+        ]),
+      }),
+    );
+  });
+
+  it('does not edit a scene after the plan revision or status changes', async () => {
+    const value = repository({
+      findOwned: vi.fn().mockResolvedValue({ ...project(), status: 'APPROVED', revision: 3 }),
+    });
+    await expect(
+      new UpdateVideoSceneDraft(value).execute({
+        ...ids,
+        sceneId: '77777777-7777-4777-8777-777777777777',
+        expectedRevision: 2,
+        narration: '短い台本',
+        caption: '短い字幕',
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 
   it('accepts a five-page 25-second generated-image plan', async () => {

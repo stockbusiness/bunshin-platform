@@ -8,6 +8,7 @@ import {
   QueueVideoRender,
   QueueVideoSceneGenerations,
   ResolveVideoDisclosurePolicy,
+  UpdateVideoSceneDraft,
   VIDEO_AI_SCENE_GENERATION_JOB_TYPE,
   VIDEO_RENDER_JOB_TYPE,
   isAiVideoScene,
@@ -54,6 +55,13 @@ const createSchema = z
 const generateSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
 const approveSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
 const renderSchema = z.object({ expectedRevision: z.number().int().positive() }).strict();
+const updateSceneSchema = z
+  .object({
+    expectedRevision: z.number().int().positive(),
+    narration: z.string().trim().min(1).max(2_000),
+    caption: z.string().trim().min(1).max(240),
+  })
+  .strict();
 const queueAiScenesSchema = z
   .object({
     expectedRevision: z.number().int().positive(),
@@ -281,6 +289,43 @@ export async function approveVideoPlanResponse(
       actorUserId: actor.userId,
       videoProjectId: uuid.parse(videoProjectId),
       expectedRevision: input.expectedRevision,
+    });
+    return Response.json(
+      { data: publicProject(project), requestId },
+      { headers: { 'cache-control': 'private, no-store' } },
+    );
+  } catch (error) {
+    const mapped = toApiError(error, requestId);
+    return Response.json(mapped.body, {
+      status: mapped.status,
+      headers: { 'cache-control': 'private, no-store' },
+    });
+  }
+}
+
+export async function updateVideoSceneDraftResponse(
+  request: Request,
+  workspaceId: string,
+  groupId: string,
+  videoProjectId: string,
+  sceneId: string,
+) {
+  const requestId = requestIdFromHeader(request.headers.get('x-request-id'));
+  try {
+    requireSameOrigin(request);
+    if (!request.headers.get('content-type')?.startsWith('application/json'))
+      throw new ApplicationError('VALIDATION_ERROR', 'application/json required');
+    const actor = await (await currentUserProvider()).getCurrentUser();
+    if (!actor) throw new ApplicationError('UNAUTHENTICATED', 'session required');
+    const input = updateSceneSchema.parse(await request.json());
+    const db = await import('@bunshin/database');
+    const project = await new UpdateVideoSceneDraft(new db.PrismaVideoProjectRepository()).execute({
+      workspaceId: uuid.parse(workspaceId),
+      groupId: uuid.parse(groupId),
+      actorUserId: actor.userId,
+      videoProjectId: uuid.parse(videoProjectId),
+      sceneId: uuid.parse(sceneId),
+      ...input,
     });
     return Response.json(
       { data: publicProject(project), requestId },

@@ -9,6 +9,7 @@ import { VideoPlanApprover } from '../../../../../ui/video-plan-approver';
 import { VideoRenderRequester } from '../../../../../ui/video-render-requester';
 import { VideoAiSceneRequester } from '../../../../../ui/video-ai-scene-requester';
 import { VideoDeliveryActions } from '../../../../../ui/video-delivery-actions';
+import { VideoSceneEditor } from '../../../../../ui/video-scene-editor';
 
 export const dynamic = 'force-dynamic';
 
@@ -254,6 +255,19 @@ export default async function VideoProjectPage({
                   <strong>画像を作るときの指示：</strong>
                   {scene.visualPrompt}
                 </p>
+              ) : null}
+              {project.status === 'WAITING_APPROVAL' ? (
+                <VideoSceneEditor
+                  workspaceId={project.workspaceId}
+                  groupId={project.groupId}
+                  projectId={project.id}
+                  sceneId={scene.id}
+                  revision={project.revision}
+                  narration={scene.narration}
+                  caption={scene.caption}
+                  narrationEnabled={project.narrationEnabled ?? false}
+                  maxNarrationLength={Math.floor((scene.durationMs / 1_000) * 3)}
+                />
               ) : null}
             </section>
           ))}

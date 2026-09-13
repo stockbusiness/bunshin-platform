@@ -1,5 +1,10 @@
 import 'server-only';
-import { DEFAULT_VIDEO_NARRATION_VOICE, type VideoNarrationVoice } from '@bunshin/application';
+import {
+  DEFAULT_VIDEO_NARRATION_SPEED,
+  DEFAULT_VIDEO_NARRATION_VOICE,
+  type VideoNarrationSpeed,
+  type VideoNarrationVoice,
+} from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
 
 export const NARRATION_MODEL = 'gpt-4o-mini-tts';
@@ -11,6 +16,10 @@ export const NARRATION_MICROS_PER_CHARACTER = 15;
 const bytesPerMs = 48; // 24 kHz, mono, signed 16-bit PCM.
 const maxPreviewBytes = 2 * 1024 * 1024;
 export const NARRATION_PREVIEW_TEXT = 'こんにちは。今日も無理なく、一歩ずつ進めていきましょう。';
+
+export function narrationSpeedValue(speed: VideoNarrationSpeed) {
+  return speed === 'SLOW' ? 0.88 : 0.96;
+}
 
 export class OpenAIVideoNarrationError extends Error {
   constructor(
@@ -91,6 +100,7 @@ export class OpenAIVideoNarration {
     voice: VideoNarrationVoice;
     responseFormat: 'pcm' | 'mp3';
     maxBytes: number;
+    speed: VideoNarrationSpeed;
   }) {
     let response: Response;
     try {
@@ -104,7 +114,7 @@ export class OpenAIVideoNarration {
           input: input.text,
           instructions: NARRATION_INSTRUCTIONS,
           response_format: input.responseFormat,
-          speed: 0.96,
+          speed: narrationSpeedValue(input.speed),
         }),
       });
     } catch {
@@ -141,21 +151,32 @@ export class OpenAIVideoNarration {
     return Buffer.concat(chunks);
   }
 
-  async speak(text: string, durationMs: number, voice: VideoNarrationVoice = NARRATION_VOICE) {
+  async speak(
+    text: string,
+    durationMs: number,
+    voice: VideoNarrationVoice = NARRATION_VOICE,
+    speed: VideoNarrationSpeed = DEFAULT_VIDEO_NARRATION_SPEED,
+  ) {
     return this.requestSpeech({
       text,
       voice,
       responseFormat: 'pcm',
       maxBytes: durationMs * bytesPerMs,
+      speed,
     });
   }
 
-  async preview(voice: VideoNarrationVoice) {
+  async preview(
+    voice: VideoNarrationVoice,
+    speed: VideoNarrationSpeed = DEFAULT_VIDEO_NARRATION_SPEED,
+    text = NARRATION_PREVIEW_TEXT,
+  ) {
     return this.requestSpeech({
-      text: NARRATION_PREVIEW_TEXT,
+      text,
       voice,
       responseFormat: 'mp3',
       maxBytes: maxPreviewBytes,
+      speed,
     });
   }
 }

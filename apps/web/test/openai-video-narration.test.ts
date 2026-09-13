@@ -70,6 +70,16 @@ describe('OpenAI video narration', () => {
     });
   });
 
+  it('uses the slower speed for an easier-to-hear preview and final narration', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(Uint8Array.from([3, 4])));
+    const speech = new OpenAIVideoNarration('secret-key', request);
+    await speech.preview('marin', 'SLOW', '実際の台本です。');
+    expect(JSON.parse(String(request.mock.calls[0]![1]?.body))).toMatchObject({
+      input: '実際の台本です。',
+      speed: 0.88,
+    });
+  });
+
   it.each([
     [400, 'INVALID_REQUEST', false],
     [429, 'RATE_LIMIT', true],

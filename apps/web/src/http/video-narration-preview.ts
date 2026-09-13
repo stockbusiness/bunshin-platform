@@ -1,5 +1,5 @@
 import 'server-only';
-import { VIDEO_NARRATION_VOICES } from '@bunshin/application';
+import { VIDEO_NARRATION_SPEEDS, VIDEO_NARRATION_VOICES } from '@bunshin/application';
 import { requestIdFromHeader } from '@bunshin/observability';
 import { ApplicationError, toApiError } from '@bunshin/shared';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ const inputSchema = z
     groupMembershipId: z.string().uuid(),
     bunshinId: z.string().uuid(),
     voice: z.enum(VIDEO_NARRATION_VOICES),
+    speed: z.enum(VIDEO_NARRATION_SPEEDS),
     previewRequestId: z.string().uuid(),
   })
   .strict();
@@ -86,7 +87,7 @@ export async function previewVideoNarrationResponse(
       workspaceId: safeWorkspaceId,
       groupId: safeGroupId,
       operationKey,
-      generate: () => new OpenAIVideoNarration(runtime.apiKey).preview(input.voice),
+      generate: () => new OpenAIVideoNarration(runtime.apiKey).preview(input.voice, input.speed),
     });
     await recordAiUsageSafely({
       workspaceId: safeWorkspaceId,

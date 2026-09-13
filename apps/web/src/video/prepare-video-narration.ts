@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { VideoRenderJobHandlerError, type VideoProjectRecord } from '@bunshin/application';
-import { DEFAULT_VIDEO_NARRATION_VOICE } from '@bunshin/application';
+import { DEFAULT_VIDEO_NARRATION_SPEED, DEFAULT_VIDEO_NARRATION_VOICE } from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
 import { resolveOpenAiRuntimeConfiguration } from '../ai/runtime-provider-configuration';
 import { recordAiUsageSafely } from '../observability/ai-usage';
@@ -26,6 +26,7 @@ export async function prepareVideoNarration(
 ): Promise<string | undefined> {
   if (!project.narrationEnabled) return undefined;
   const narrationVoice = project.narrationVoice ?? DEFAULT_VIDEO_NARRATION_VOICE;
+  const narrationSpeed = project.narrationSpeed ?? DEFAULT_VIDEO_NARRATION_SPEED;
   validateNarrationScenes(project.scenes);
   const db = await import('@bunshin/database');
   const scope = {
@@ -52,11 +53,20 @@ export async function prepareVideoNarration(
   await assertActive();
   const textHash = createHash('sha256')
     .update(
-      JSON.stringify([
-        NARRATION_VERSION,
-        narrationVoice,
-        project.scenes.map((scene) => [scene.id, scene.narration.trim(), scene.durationMs]),
-      ]),
+      JSON.stringify(
+        narrationSpeed === 'STANDARD'
+          ? [
+              NARRATION_VERSION,
+              narrationVoice,
+              project.scenes.map((scene) => [scene.id, scene.narration.trim(), scene.durationMs]),
+            ]
+          : [
+              NARRATION_VERSION,
+              narrationVoice,
+              narrationSpeed,
+              project.scenes.map((scene) => [scene.id, scene.narration.trim(), scene.durationMs]),
+            ],
+      ),
     )
     .digest('hex');
   const storage = new SupabaseVideoNarrationStorage();
@@ -105,6 +115,7 @@ export async function prepareVideoNarration(
             textHash,
             model: NARRATION_MODEL,
             voice: narrationVoice,
+            speed: narrationSpeed === 'SLOW' ? 0.88 : 0.96,
             promptVersion: NARRATION_VERSION,
             attemptCount,
             expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60_000),
@@ -138,7 +149,7 @@ export async function prepareVideoNarration(
               estimatedCostUsdMicros: totalAttemptedCharacters * NARRATION_MICROS_PER_CHARACTER,
             },
           });
-          return speech.speak(text, durationMs, narrationVoice);
+          return speech.speak(text, durationMs, narrationVoice, narrationSpeed);
         });
         await assertActive();
         await storage.store(key, wav);

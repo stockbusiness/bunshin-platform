@@ -12,6 +12,7 @@ import { VideoDeliveryActions } from '../../../../../ui/video-delivery-actions';
 import { VideoSceneEditor } from '../../../../../ui/video-scene-editor';
 import { VideoReviewActions } from '../../../../../ui/video-review-actions';
 import { VideoPostCopy } from '../../../../../ui/video-post-copy';
+import { VideoNarrationSettings } from '../../../../../ui/video-narration-settings';
 import { resolveVideoPostCopy } from '../../../../../../src/video/video-post-copy';
 
 export const dynamic = 'force-dynamic';
@@ -332,6 +333,16 @@ export default async function VideoProjectPage({
               <p>この画面では動画本体はまだ作りません。</p>
             ) : null}
           </section>
+          {project.narrationEnabled && project.status === 'WAITING_APPROVAL' ? (
+            <VideoNarrationSettings
+              workspaceId={project.workspaceId}
+              groupId={project.groupId}
+              projectId={project.id}
+              revision={project.revision}
+              initialVoice={project.narrationVoice ?? 'marin'}
+              initialSpeed={project.narrationSpeed ?? 'STANDARD'}
+            />
+          ) : null}
           {project.scenes.map((scene) => (
             <section className="settings-card" key={scene.id}>
               <h2>

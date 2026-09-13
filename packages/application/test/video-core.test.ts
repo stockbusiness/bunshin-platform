@@ -7,6 +7,7 @@ import {
   ReviewFinishedVideo,
   ReplaceVideoPlan,
   UpdateVideoSceneDraft,
+  UpdateVideoNarrationSettings,
   type VideoProjectRecord,
   type VideoProjectRepository,
   type VideoProjectReviewRepository,
@@ -54,6 +55,12 @@ const repository = (overrides: Partial<VideoProjectRepository> = {}): VideoProje
   findOwned: vi.fn().mockResolvedValue(project()),
   replacePlan: vi.fn().mockResolvedValue({ ...project(), status: 'WAITING_APPROVAL', revision: 2 }),
   approvePlan: vi.fn().mockResolvedValue({ ...project(), status: 'APPROVED', revision: 3 }),
+  updateNarrationSettings: vi.fn().mockResolvedValue({
+    ...project(),
+    narrationVoice: 'cedar',
+    narrationSpeed: 'SLOW',
+    revision: 2,
+  }),
   ...overrides,
 });
 
@@ -98,7 +105,9 @@ describe('Video Core', () => {
     ).resolves.toMatchObject({ id: ids.videoProjectId, groupId: ids.groupId });
     // Repository methods are Vitest mocks in this test.
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(value.create).toHaveBeenCalledWith(expect.objectContaining({ narrationVoice: 'marin' }));
+    expect(value.create).toHaveBeenCalledWith(
+      expect.objectContaining({ narrationVoice: 'marin', narrationSpeed: 'STANDARD' }),
+    );
   });
 
   it('keeps the narration voice selected before rendering', async () => {
@@ -113,12 +122,30 @@ describe('Video Core', () => {
       durationSeconds: 30,
       narrationEnabled: true,
       narrationVoice: 'coral',
+      narrationSpeed: 'SLOW',
       standardComposition: true,
       aiProcessingTypes: [],
       disclosureSnapshot: {},
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(value.create).toHaveBeenCalledWith(expect.objectContaining({ narrationVoice: 'coral' }));
+    expect(value.create).toHaveBeenCalledWith(
+      expect.objectContaining({ narrationVoice: 'coral', narrationSpeed: 'SLOW' }),
+    );
+  });
+
+  it('updates voice and speed together before plan approval', async () => {
+    const value = repository();
+    await expect(
+      new UpdateVideoNarrationSettings(value).execute({
+        workspaceId: ids.workspaceId,
+        groupId: ids.groupId,
+        actorUserId: ids.actorUserId,
+        videoProjectId: ids.videoProjectId,
+        expectedRevision: 1,
+        voice: 'cedar',
+        speed: 'SLOW',
+      }),
+    ).resolves.toMatchObject({ narrationVoice: 'cedar', narrationSpeed: 'SLOW', revision: 2 });
   });
 
   it('requires one to five unique photos for a photo slideshow', async () => {

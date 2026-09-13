@@ -146,6 +146,7 @@ import type {
   VideoAiProviderCostPolicyRepository,
   VideoPlatform,
   VideoNarrationVoice,
+  VideoNarrationSpeed,
   VideoPlanningContextRepository,
   VideoRenderRecord,
   VideoRenderRepository,
@@ -15661,6 +15662,7 @@ const videoProjectRecord = (
   platform: row.platform as VideoPlatform,
   durationSeconds: row.durationSeconds as 25 | 30 | 60,
   narrationVoice: row.narrationVoice as VideoNarrationVoice,
+  narrationSpeed: row.narrationSpeed as VideoNarrationSpeed,
   reviewDecision: row.reviewDecision as 'ADOPTED' | 'REJECTED' | null,
   aiProcessingTypes: row.aiProcessingTypes as unknown as VideoAiProcessingType[],
   disclosureSnapshot: row.disclosureSnapshot as Record<string, unknown>,
@@ -15837,6 +15839,7 @@ export class PrismaVideoProjectRepository
           photoAssetIds: input.photoAssetIds ?? [],
           narrationEnabled: input.narrationEnabled ?? false,
           narrationVoice: input.narrationVoice ?? 'marin',
+          narrationSpeed: input.narrationSpeed ?? 'STANDARD',
           socialImageGenerationRequestId: input.socialImageGenerationRequestId ?? null,
           standardComposition: input.standardComposition,
           aiProcessingTypes: input.aiProcessingTypes,
@@ -15979,6 +15982,68 @@ export class PrismaVideoProjectRepository
           standardComposition: input.standardComposition,
           aiVideoSceneCount: input.aiVideoSceneCount,
         },
+        include: { scenes: { orderBy: { sceneNo: 'asc' } } },
+      });
+      return videoProjectRecord(row);
+    });
+  }
+
+  async updateNarrationSettings(
+    input: Parameters<VideoProjectRepository['updateNarrationSettings']>[0],
+  ) {
+    return this.client.$transaction(async (tx) => {
+      const now = new Date();
+      const project = await tx.videoProject.findFirst({
+        where: {
+          id: input.videoProjectId,
+          workspaceId: input.workspaceId,
+          groupId: input.groupId,
+          ownerUserId: input.actorUserId,
+          revision: input.expectedRevision,
+          status: 'WAITING_APPROVAL',
+          narrationEnabled: true,
+          scenes: { some: {} },
+          group: { status: 'ACTIVE' },
+          groupMembership: { userId: input.actorUserId, status: 'ACTIVE' },
+        },
+        select: {
+          id: true,
+          groupMembershipId: true,
+          socialImageGenerationRequestId: true,
+        },
+      });
+      if (!project) return null;
+      if (
+        !(await hasActiveVideoProjectEntitlement(
+          tx,
+          {
+            workspaceId: input.workspaceId,
+            groupId: input.groupId,
+            groupMembershipId: project.groupMembershipId,
+            socialImageGenerationRequestId: project.socialImageGenerationRequestId,
+          },
+          now,
+        ))
+      )
+        return null;
+      const updated = await tx.videoProject.updateMany({
+        where: {
+          id: project.id,
+          workspaceId: input.workspaceId,
+          groupId: input.groupId,
+          ownerUserId: input.actorUserId,
+          revision: input.expectedRevision,
+          status: 'WAITING_APPROVAL',
+        },
+        data: {
+          narrationVoice: input.voice,
+          narrationSpeed: input.speed,
+          revision: { increment: 1 },
+        },
+      });
+      if (updated.count !== 1) return null;
+      const row = await tx.videoProject.findUniqueOrThrow({
+        where: { id: project.id },
         include: { scenes: { orderBy: { sceneNo: 'asc' } } },
       });
       return videoProjectRecord(row);

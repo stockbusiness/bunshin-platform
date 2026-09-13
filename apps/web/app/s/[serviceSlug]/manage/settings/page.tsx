@@ -17,6 +17,59 @@ export default async function ServiceSettingsPage({
   const service = await resolveManagedServiceContext(serviceSlug, actor.userId).catch(() => null);
   if (!service) notFound();
   const value = service.configuration;
+  const db = await import('@bunshin/database');
+  const [characterProfiles, characterVersions, characterReferences, characterLicenses] =
+    await Promise.all([
+      db.prisma.aiCharacterProfile.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          scope: 'SERVICE',
+          status: 'ACTIVE',
+        },
+        select: { id: true, name: true },
+      }),
+      db.prisma.aiCharacterProfileVersion.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          status: 'PUBLISHED',
+        },
+        select: { id: true, characterProfileId: true, licenseVersionId: true, version: true },
+      }),
+      db.prisma.aiCharacterReferenceAsset.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          status: 'READY',
+        },
+        select: { characterProfileVersionId: true },
+      }),
+      db.prisma.aiCharacterLicenseVersion.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          commercialUseAllowed: true,
+          derivativeUseAllowed: true,
+          redistributionAllowed: true,
+          startsAt: { lte: new Date() },
+          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        },
+        select: { id: true },
+      }),
+    ]);
+  const referenceVersionIds = new Set(
+    characterReferences.map((reference) => reference.characterProfileVersionId),
+  );
+  const activeLicenseIds = new Set(characterLicenses.map((license) => license.id));
+  const visualCharacters = characterVersions.flatMap((version) => {
+    const profile = characterProfiles.find((item) => item.id === version.characterProfileId);
+    return profile &&
+      referenceVersionIds.has(version.id) &&
+      activeLicenseIds.has(version.licenseVersionId)
+      ? [{ id: version.id, name: profile.name, version: version.version }]
+      : [];
+  });
   return (
     <PublicShell showPlatformBrand={false}>
       <main className="app-page">
@@ -35,7 +88,11 @@ export default async function ServiceSettingsPage({
           <p>専用URL、公開状態、利用期間、「Powered by」の表示はシステム管理者が管理します。</p>
         </section>
         <section className="settings-card service-settings-card">
-          <ServiceSettingsEditor serviceSlug={value.slug} value={value} />
+          <ServiceSettingsEditor
+            serviceSlug={value.slug}
+            value={value}
+            visualCharacters={visualCharacters}
+          />
         </section>
         <a href={`/s/${value.slug}/home`}>サービスホームへ戻る</a>
       </main>

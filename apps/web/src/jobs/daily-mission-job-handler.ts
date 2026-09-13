@@ -93,6 +93,7 @@ export function createDailyMissionJobHandler(): MissionAutomationHandler {
               correlationId: job.correlationId,
               mission,
               mediaMode: dailyIdeas.mediaMode,
+              visualCharacter: dailyIdeas.visualCharacter,
             })
           : null;
       const activityRule = await currentActivityContinuityRule();

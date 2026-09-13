@@ -19,6 +19,10 @@ export interface ServiceDailyIdeaDeliverySettings {
     voice: 'marin' | 'cedar' | 'coral';
     speed: 'SLOW' | 'STANDARD';
   };
+  visualCharacter: {
+    enabled: boolean;
+    profileVersionId: string | null;
+  };
 }
 
 export type ServiceContentAssistanceLevel = 'IDEA_ONLY' | 'GUIDED' | 'READY_TO_USE';
@@ -60,6 +64,10 @@ export const DEFAULT_SERVICE_DAILY_IDEA_DELIVERY: ServiceDailyIdeaDeliverySettin
     enabled: false,
     voice: 'marin',
     speed: 'SLOW',
+  },
+  visualCharacter: {
+    enabled: false,
+    profileVersionId: null,
   },
 };
 
@@ -223,6 +231,7 @@ export function readServiceOnboardingSettings(
   const configuredProfileQuestions = record(onboarding.profileQuestions);
   const configuredDailyIdeaDelivery = record(onboarding.dailyIdeaDelivery);
   const configuredVideoNarration = record(configuredDailyIdeaDelivery.videoNarration);
+  const configuredVisualCharacter = record(configuredDailyIdeaDelivery.visualCharacter);
   const profileQuestions = Object.fromEntries(
     Object.entries(DEFAULT_SERVICE_PROFILE_QUESTIONS).map(([key, fallback]) => [
       key,
@@ -266,6 +275,16 @@ export function readServiceOnboardingSettings(
             ? configuredVideoNarration.voice
             : 'marin',
         speed: configuredVideoNarration.speed === 'STANDARD' ? 'STANDARD' : 'SLOW',
+      },
+      visualCharacter: {
+        enabled: configuredVisualCharacter.enabled === true,
+        profileVersionId:
+          typeof configuredVisualCharacter.profileVersionId === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            configuredVisualCharacter.profileVersionId,
+          )
+            ? configuredVisualCharacter.profileVersionId
+            : null,
       },
     },
   };

@@ -50,6 +50,10 @@ describe('service onboarding settings', () => {
             contentMode: 'IDEA',
             mediaMode: 'IMAGE',
             videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
+            visualCharacter: {
+              enabled: true,
+              profileVersionId: '11111111-1111-4111-8111-111111111111',
+            },
           },
         },
         null,
@@ -64,6 +68,10 @@ describe('service onboarding settings', () => {
         contentMode: 'IDEA',
         mediaMode: 'IMAGE',
         videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
+        visualCharacter: {
+          enabled: true,
+          profileVersionId: '11111111-1111-4111-8111-111111111111',
+        },
       },
     });
   });
@@ -101,6 +109,10 @@ describe('service onboarding settings', () => {
       enabled: false,
       voice: 'marin',
       speed: 'SLOW',
+    });
+    expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.visualCharacter).toEqual({
+      enabled: false,
+      profileVersionId: null,
     });
   });
 

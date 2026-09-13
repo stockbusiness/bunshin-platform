@@ -106,9 +106,11 @@ export interface ServiceSettingsValue {
 export function ServiceSettingsEditor({
   serviceSlug,
   value,
+  visualCharacters,
 }: {
   serviceSlug: string;
   value: ServiceSettingsValue;
+  visualCharacters: Array<{ id: string; name: string; version: number }>;
 }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -561,6 +563,14 @@ export function ServiceSettingsEditor({
                     event.target.value === 'IMAGE'
                       ? event.target.value
                       : 'TEXT_ONLY',
+                  ...(!['IMAGE', 'IMAGE_AND_VIDEO'].includes(event.target.value)
+                    ? {
+                        visualCharacter: {
+                          ...current.visualCharacter,
+                          enabled: false,
+                        },
+                      }
+                    : {}),
                 }))
               }
             >
@@ -573,6 +583,64 @@ export function ServiceSettingsEditor({
           <small>
             画像は完成原稿プラン、画像作成枠、画像Pilotと参加者の同意がすべて有効な場合だけ自動作成します。字幕動画は動画作成枠と動画機能が有効な場合に準備し、完成後にLINEで確認リンクを届けます。送信後も投稿前の確認が必要です。
           </small>
+          {dailyIdeaDelivery.mediaMode === 'IMAGE' ||
+          dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
+            <fieldset>
+              <legend>投稿画像に使うAIキャラクター</legend>
+              {visualCharacters.length > 0 ? (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={dailyIdeaDelivery.visualCharacter.enabled}
+                      onChange={(event) =>
+                        setDailyIdeaDelivery((current) => ({
+                          ...current,
+                          visualCharacter: {
+                            ...current.visualCharacter,
+                            enabled: event.target.checked,
+                            profileVersionId:
+                              current.visualCharacter.profileVersionId ??
+                              visualCharacters[0]?.id ??
+                              null,
+                          },
+                        }))
+                      }
+                    />{' '}
+                    毎日の投稿画像に同じAIキャラクターを登場させる
+                  </label>
+                  {dailyIdeaDelivery.visualCharacter.enabled ? (
+                    <label>
+                      キャラクター
+                      <select
+                        value={dailyIdeaDelivery.visualCharacter.profileVersionId ?? ''}
+                        onChange={(event) =>
+                          setDailyIdeaDelivery((current) => ({
+                            ...current,
+                            visualCharacter: {
+                              enabled: true,
+                              profileVersionId: event.target.value || null,
+                            },
+                          }))
+                        }
+                      >
+                        {visualCharacters.map((character) => (
+                          <option key={character.id} value={character.id}>
+                            {character.name}（第{character.version}版）
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                </>
+              ) : (
+                <p>公開済みのAIキャラクターと基準画像を登録すると、ここで選べるようになります。</p>
+              )}
+              <small>
+                キャラクターの基準画像を、5枚投稿画像の見た目をそろえるために使います。参加者が自分の写真を明示的に選んでいる場合は、その写真を優先します。
+              </small>
+            </fieldset>
+          ) : null}
           {dailyIdeaDelivery.mediaMode === 'IMAGE_AND_VIDEO' ? (
             <fieldset>
               <legend>5枚画像動画の読み上げ</legend>

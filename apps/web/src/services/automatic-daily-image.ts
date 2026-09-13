@@ -10,6 +10,7 @@ import {
 } from '@bunshin/application';
 import { assertOrganizationGenerationQuota } from '../organization-generation-quota';
 import { DailyActionStorage } from '../daily-actions/daily-action-storage';
+import { AiCharacterReferenceStorage } from '../ai-character-reference-storage';
 import { normalizeImageReferenceBytes } from '../social-image-reference';
 import { SupabaseSocialImageStorage } from '../social-image-storage';
 import {
@@ -78,6 +79,7 @@ export async function queueAutomaticDailyImage(input: {
     campaignId?: string | null;
   };
   mediaMode: 'TEXT_ONLY' | 'IMAGE' | 'VIDEO' | 'IMAGE_AND_VIDEO';
+  visualCharacter?: { enabled: boolean; profileVersionId: string | null };
 }): Promise<AutomaticDailyImageResult> {
   if (
     !isAutomaticDailyImageEligible({
@@ -150,11 +152,67 @@ export async function queueAutomaticDailyImage(input: {
     ]);
     if (!membership || !mission) throw new Error('automatic image scope is unavailable');
     await assertOrganizationGenerationQuota({ workspaceId: input.workspaceId, kind: 'IMAGE' });
-    const reference = selectedPhoto?.attachmentStorageKey
+    let reference = selectedPhoto?.attachmentStorageKey
       ? await normalizeImageReferenceBytes(
           await new DailyActionStorage().read(selectedPhoto.attachmentStorageKey),
         )
       : null;
+    if (!reference && input.visualCharacter?.enabled && input.visualCharacter.profileVersionId) {
+      const now = new Date();
+      const version = await db.prisma.aiCharacterProfileVersion.findFirst({
+        where: {
+          id: input.visualCharacter.profileVersionId,
+          workspaceId: input.workspaceId,
+          groupId: input.groupId,
+          status: 'PUBLISHED',
+          publishedAt: { not: null },
+        },
+        select: { characterProfileId: true, licenseVersionId: true },
+      });
+      const [profile, license, characterReference] = version
+        ? await Promise.all([
+            db.prisma.aiCharacterProfile.findFirst({
+              where: {
+                id: version.characterProfileId,
+                workspaceId: input.workspaceId,
+                groupId: input.groupId,
+                scope: 'SERVICE',
+                status: 'ACTIVE',
+              },
+              select: { id: true },
+            }),
+            db.prisma.aiCharacterLicenseVersion.findFirst({
+              where: {
+                id: version.licenseVersionId,
+                workspaceId: input.workspaceId,
+                groupId: input.groupId,
+                characterProfileId: version.characterProfileId,
+                commercialUseAllowed: true,
+                derivativeUseAllowed: true,
+                redistributionAllowed: true,
+                startsAt: { lte: now },
+                OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+              },
+              select: { id: true },
+            }),
+            db.prisma.aiCharacterReferenceAsset.findFirst({
+              where: {
+                workspaceId: input.workspaceId,
+                groupId: input.groupId,
+                characterProfileVersionId: input.visualCharacter.profileVersionId,
+                status: 'READY',
+              },
+              select: { storageKey: true },
+              orderBy: { createdAt: 'asc' },
+            }),
+          ])
+        : [null, null, null];
+      if (!profile || !license || !characterReference)
+        throw new Error('CONFIGURED_VISUAL_CHARACTER_UNAVAILABLE');
+      reference = await normalizeImageReferenceBytes(
+        await new AiCharacterReferenceStorage().download(characterReference.storageKey),
+      );
+    }
 
     const requests = new db.PrismaSocialImageGenerationRequestRepository();
     const slides = editorialSlidesForMission(input.mission);

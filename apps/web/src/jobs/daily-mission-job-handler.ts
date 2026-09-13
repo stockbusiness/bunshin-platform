@@ -82,19 +82,25 @@ export function createDailyMissionJobHandler(): MissionAutomationHandler {
           ...(assistanceLevel ? { assistanceLevel } : {}),
         });
       }
-      if (scope.groupId && dailyIdeas?.enabled)
-        await queueAutomaticDailyImage({
-          environment: job.environment,
-          workspaceId: scope.workspaceId,
-          groupId: scope.groupId,
-          actorUserId: scope.actorUserId,
-          bunshinId: scope.bunshinId,
-          correlationId: job.correlationId,
-          mission,
-          mediaMode: dailyIdeas.mediaMode,
-        });
+      const automaticImage =
+        scope.groupId && dailyIdeas?.enabled
+          ? await queueAutomaticDailyImage({
+              environment: job.environment,
+              workspaceId: scope.workspaceId,
+              groupId: scope.groupId,
+              actorUserId: scope.actorUserId,
+              bunshinId: scope.bunshinId,
+              correlationId: job.correlationId,
+              mission,
+              mediaMode: dailyIdeas.mediaMode,
+            })
+          : null;
       const activityRule = await currentActivityContinuityRule();
-      if (scope.groupId && dailyIdeas?.enabled)
+      const canPrepareVideo =
+        dailyIdeas?.mediaMode !== 'IMAGE_AND_VIDEO' ||
+        automaticImage?.status === 'ALREADY_AVAILABLE' ||
+        (automaticImage?.status === 'SKIPPED' && automaticImage.reason === 'NOT_ELIGIBLE');
+      if (scope.groupId && dailyIdeas?.enabled && canPrepareVideo)
         await queueAutomaticDailyVideo({
           environment: job.environment,
           workspaceId: scope.workspaceId,
@@ -104,6 +110,9 @@ export function createDailyMissionJobHandler(): MissionAutomationHandler {
           correlationId: job.correlationId,
           mission,
           mediaMode: dailyIdeas.mediaMode,
+          ...(automaticImage?.status === 'ALREADY_AVAILABLE'
+            ? { socialImageGenerationRequestId: automaticImage.requestId }
+            : {}),
         });
       const returnReminder = await new db.PrismaLineReturnReminderRepository().shouldUse({
         workspaceId: job.workspaceId,

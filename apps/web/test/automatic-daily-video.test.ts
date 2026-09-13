@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   render: vi.fn(),
   enqueue: vi.fn(),
   policy: vi.fn(),
+  imageRequest: vi.fn(),
 }));
 vi.mock('../src/ai/runtime-provider-configuration', () => ({
   resolveCreatomateRuntimeConfiguration: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('@bunshin/database', () => ({
     dailyMission: { findFirst: m.mission },
     groupMembership: { findFirst: m.membership },
     serviceCommercialSetting: { findFirst: m.contract },
+    socialImageGenerationRequest: { findFirst: m.imageRequest },
   },
   PrismaVideoProjectRepository: class {
     findOwned = m.find;
@@ -40,6 +42,7 @@ vi.mock('@bunshin/database', () => ({
 
 import {
   buildDailyVideoScenes,
+  buildDailyCarouselVideoScenes,
   dailyVideoProjectId,
   queueAutomaticDailyVideo,
 } from '../src/services/automatic-daily-video';
@@ -93,6 +96,22 @@ describe('daily subtitle videos', () => {
     ).toBeNull();
     expect(buildDailyVideoScenes({ caption: '長'.repeat(561) })).toBeNull();
   });
+  it('turns completed carousel pages into ordered 30-second image scenes', () => {
+    const mediaIds = [
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+      '33333333-3333-4333-8333-333333333333',
+      '44444444-4444-4444-8444-444444444444',
+      '55555555-5555-4555-8555-555555555555',
+    ];
+    const scenes = buildDailyCarouselVideoScenes(
+      { slides: mediaIds.map((_, index) => ({ headline: `${index + 1}枚目`, body: '説明' })) },
+      mediaIds,
+    )!;
+    expect(scenes.map((scene) => scene.keywords[0])).toEqual(mediaIds);
+    expect(scenes.every((scene) => scene.visualType === 'GENERATED_IMAGE')).toBe(true);
+    expect(scenes.reduce((sum, scene) => sum + scene.durationMs, 0)).toBe(30_000);
+  });
   it('isolates deterministic project identities by mission, workspace and bunshin', () => {
     const id = dailyVideoProjectId('w', 'b', 'm');
     expect(id).toBe(dailyVideoProjectId('w', 'b', 'm'));
@@ -144,6 +163,49 @@ describe('daily subtitle videos', () => {
       m.render.mock.invocationCallOrder[0]!,
     );
     expect(m.render).toHaveBeenCalledWith(expect.objectContaining({ expectedRevision: 3 }));
+  });
+  it('creates the daily video from the completed image request', async () => {
+    const requestId = '88888888-8888-4888-8888-888888888888';
+    m.find.mockResolvedValue(null);
+    m.imageRequest.mockResolvedValue({
+      id: requestId,
+      media: Array.from({ length: 5 }, (_, index) => ({
+        id: `${index + 1}9999999-9999-4999-8999-999999999999`,
+      })),
+    });
+    m.policy.mockResolvedValue({
+      id: 'policy',
+      version: 1,
+      platform: 'INSTAGRAM',
+      disclosureText: 'AI利用',
+      hashtags: ['#AI'],
+      guidance: '投稿前に確認',
+      outputMetadata: {},
+    });
+    m.create.mockResolvedValue({ status: 'DRAFT', revision: 1 });
+    m.replace.mockResolvedValue({ status: 'WAITING_APPROVAL', revision: 2 });
+    m.approve.mockResolvedValue({ status: 'APPROVED', revision: 3 });
+    expect(
+      await queueAutomaticDailyVideo({
+        ...input,
+        mediaMode: 'IMAGE_AND_VIDEO',
+        socialImageGenerationRequestId: requestId,
+      }),
+    ).toEqual({ status: 'QUEUED' });
+    expect(m.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'PHOTO_SLIDESHOW',
+        socialImageGenerationRequestId: requestId,
+        aiProcessingTypes: [],
+      }),
+    );
+    expect(m.replace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenes: expect.arrayContaining([
+          expect.objectContaining({ visualType: 'GENERATED_IMAGE' }),
+        ]),
+      }),
+    );
   });
   it.each(['TEXT_ONLY', 'IMAGE'] as const)('does not start video for %s', async (mediaMode) => {
     expect(await queueAutomaticDailyVideo({ ...input, mediaMode })).toEqual({ status: 'SKIPPED' });

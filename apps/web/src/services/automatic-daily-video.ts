@@ -65,7 +65,19 @@ export function buildDailyVideoScenes(content: unknown) {
   }));
 }
 
-export function buildDailyCarouselVideoScenes(content: unknown, mediaIds: string[]) {
+function narrationWithinDuration(value: string, durationMs: number) {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  const maxCharacters = Math.floor((durationMs / 1_000) * 3);
+  const characters = [...normalized];
+  if (characters.length <= maxCharacters) return normalized;
+  return `${characters.slice(0, Math.max(1, maxCharacters - 1)).join('')}。`;
+}
+
+export function buildDailyCarouselVideoScenes(
+  content: unknown,
+  mediaIds: string[],
+  narrationEnabled = false,
+) {
   if (mediaIds.length < 2 || mediaIds.length > 7 || new Set(mediaIds).size !== mediaIds.length)
     return null;
   const value =
@@ -85,17 +97,22 @@ export function buildDailyCarouselVideoScenes(content: unknown, mediaIds: string
     );
   });
   const duration = Math.floor(30_000 / mediaIds.length);
-  return mediaIds.map((mediaId, index) => ({
-    sceneNo: index + 1,
-    durationMs: index === mediaIds.length - 1 ? 30_000 - duration * index : duration,
-    narration: pageText[index]!,
-    caption: pageText[index]!,
-    visualType: 'GENERATED_IMAGE' as const,
-    visualPrompt: null,
-    keywords: [mediaId],
-    aiProcessingTypes: [],
-    locked: false,
-  }));
+  return mediaIds.map((mediaId, index) => {
+    const durationMs = index === mediaIds.length - 1 ? 30_000 - duration * index : duration;
+    return {
+      sceneNo: index + 1,
+      durationMs,
+      narration: narrationEnabled
+        ? narrationWithinDuration(pageText[index]!, durationMs)
+        : pageText[index]!,
+      caption: pageText[index]!,
+      visualType: 'GENERATED_IMAGE' as const,
+      visualPrompt: null,
+      keywords: [mediaId],
+      aiProcessingTypes: [],
+      locked: false,
+    };
+  });
 }
 
 export async function queueAutomaticDailyVideo(input: {
@@ -106,6 +123,7 @@ export async function queueAutomaticDailyVideo(input: {
   bunshinId: string;
   correlationId: string;
   mediaMode: ServiceDailyIdeaDeliverySettings['mediaMode'];
+  videoNarration?: ServiceDailyIdeaDeliverySettings['videoNarration'];
   mission: { id: string; assistanceLevel: string; topic: string };
   socialImageGenerationRequestId?: string;
 }) {
@@ -154,10 +172,12 @@ export async function queueAutomaticDailyVideo(input: {
       : null;
     if (input.socialImageGenerationRequestId && !socialImage)
       return { status: 'WAITING_FOR_IMAGES' } as const;
+    const narration = socialImage && input.videoNarration?.enabled ? input.videoNarration : null;
     const scenes = socialImage
       ? buildDailyCarouselVideoScenes(
           mission.content?.contentJson,
           socialImage.media.map((media) => media.id),
+          Boolean(narration),
         )
       : buildDailyVideoScenes(mission.content?.contentJson);
     if (!scenes) return { status: 'SKIPPED' } as const;
@@ -213,7 +233,14 @@ export async function queueAutomaticDailyVideo(input: {
           socialImageGenerationRequestId: socialImage?.id ?? null,
           durationSeconds: 30,
           standardComposition: true,
-          aiProcessingTypes: [],
+          ...(narration
+            ? {
+                narrationEnabled: true,
+                narrationVoice: narration.voice,
+                narrationSpeed: narration.speed,
+              }
+            : { narrationEnabled: false }),
+          aiProcessingTypes: narration ? ['VOICE_SYNTHESIS'] : [],
           disclosureSnapshot: {
             schemaVersion: 1,
             source: 'SERVICE_DAILY_VIDEO',
@@ -225,7 +252,7 @@ export async function queueAutomaticDailyVideo(input: {
             guidance: disclosure.guidance,
             outputMetadata: disclosure.outputMetadata,
             explanation: socialImage
-              ? 'サービスの自動準備設定に基づき、完成した投稿画像を場面順につないだ動画です。投稿前に内容を確認してください。'
+              ? `サービスの自動準備設定に基づき、完成した投稿画像を場面順につないだ${narration ? 'AI音声付き' : ''}動画です。投稿前に内容を確認してください。`
               : 'サービスの自動準備設定に基づく字幕動画です。投稿前に内容を確認してください。',
           },
         });
@@ -240,7 +267,7 @@ export async function queueAutomaticDailyVideo(input: {
         ...scope,
         expectedRevision: project.revision,
         scenes,
-        projectAiProcessingTypes: [],
+        projectAiProcessingTypes: narration ? ['VOICE_SYNTHESIS'] : [],
         standardComposition: true,
         aiVideoSceneCount: 0,
       });
@@ -340,6 +367,7 @@ async function prepareDailyCarouselVideoAfterImage(input: {
     bunshinId: request.bunshinId,
     correlationId: input.correlationId,
     mediaMode: dailyIdeas.mediaMode,
+    videoNarration: dailyIdeas.videoNarration,
     mission,
     socialImageGenerationRequestId: request.id,
   });

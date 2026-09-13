@@ -11,6 +11,11 @@ const m = vi.hoisted(() => ({
   mission: vi.fn(),
   brand: vi.fn(),
   selectedPhoto: vi.fn(),
+  characterVersion: vi.fn(),
+  characterProfile: vi.fn(),
+  characterLicense: vi.fn(),
+  characterReference: vi.fn(),
+  readCharacter: vi.fn(),
   readPhoto: vi.fn(),
   normalizePhoto: vi.fn(),
   storeReference: vi.fn(),
@@ -31,6 +36,11 @@ vi.mock('../src/daily-actions/daily-action-storage', () => ({
     read = m.readPhoto;
   },
 }));
+vi.mock('../src/ai-character-reference-storage', () => ({
+  AiCharacterReferenceStorage: class {
+    download = m.readCharacter;
+  },
+}));
 vi.mock('../src/social-image-reference', () => ({
   normalizeImageReferenceBytes: m.normalizePhoto,
 }));
@@ -45,6 +55,10 @@ vi.mock('@bunshin/database', () => ({
     dailyMission: { findFirst: m.mission },
     serviceBrand: { findFirst: m.brand },
     bunshinMemory: { findFirst: m.selectedPhoto },
+    aiCharacterProfileVersion: { findFirst: m.characterVersion },
+    aiCharacterProfile: { findFirst: m.characterProfile },
+    aiCharacterLicenseVersion: { findFirst: m.characterLicense },
+    aiCharacterReferenceAsset: { findFirst: m.characterReference },
   },
   PrismaSocialImageGenerationAuthorizationRepository: class {},
   PrismaSocialImageGenerationRequestRepository: class {},
@@ -114,7 +128,15 @@ describe('automatic daily image eligibility', () => {
     });
     m.enqueue.mockResolvedValue({ id: 'job' });
 
-    expect(await queueAutomaticDailyImage(automaticInput)).toEqual({
+    expect(
+      await queueAutomaticDailyImage({
+        ...automaticInput,
+        visualCharacter: {
+          enabled: true,
+          profileVersionId: '88888888-8888-4888-8888-888888888888',
+        },
+      }),
+    ).toEqual({
       status: 'QUEUED',
       requestId: '77777777-7777-4777-8777-777777777777',
     });
@@ -130,6 +152,7 @@ describe('automatic daily image eligibility', () => {
       }),
     );
     expect(m.createRequest).toHaveBeenCalledWith(expect.objectContaining({ referenceImage }));
+    expect(m.characterVersion).not.toHaveBeenCalled();
     expect(m.storeReference).toHaveBeenCalledWith({
       workspaceId: automaticInput.workspaceId,
       groupId: automaticInput.groupId,
@@ -157,6 +180,50 @@ describe('automatic daily image eligibility', () => {
       '場面4',
       '場面5',
     ]);
+  });
+
+  it('uses an active service character when the participant has not selected a photo', async () => {
+    const profileVersionId = '88888888-8888-4888-8888-888888888888';
+    const referenceImage = { sha256: 'b'.repeat(64), rightsConfirmed: true as const };
+    m.reserve.mockResolvedValue({ status: 'RESERVED', id: 'reservation' });
+    m.membership.mockResolvedValue({ id: '66666666-6666-4666-8666-666666666666' });
+    m.mission.mockResolvedValue({ campaignId: null, contentLinkUsage: null });
+    m.brand.mockResolvedValue({ primaryColor: '#123456' });
+    m.selectedPhoto.mockResolvedValue(null);
+    m.characterVersion.mockResolvedValue({
+      characterProfileId: '99999999-9999-4999-8999-999999999999',
+      licenseVersionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    });
+    m.characterProfile.mockResolvedValue({ id: '99999999-9999-4999-8999-999999999999' });
+    m.characterLicense.mockResolvedValue({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' });
+    m.characterReference.mockResolvedValue({ storageKey: 'service/character/reference.png' });
+    m.readCharacter.mockResolvedValue(new Uint8Array([7, 8, 9]));
+    m.normalizePhoto.mockResolvedValue({ bytes: new Uint8Array([10, 11]), referenceImage });
+    m.createRequest.mockResolvedValue({
+      id: '77777777-7777-4777-8777-777777777777',
+      status: 'DRAFT',
+      revision: 1,
+      referenceImage,
+    });
+    m.transitionRequest.mockResolvedValue({
+      id: '77777777-7777-4777-8777-777777777777',
+      status: 'QUEUED',
+      revision: 2,
+      referenceImage,
+    });
+    m.enqueue.mockResolvedValue({ id: 'job' });
+
+    expect(
+      await queueAutomaticDailyImage({
+        ...automaticInput,
+        visualCharacter: { enabled: true, profileVersionId },
+      }),
+    ).toEqual({ status: 'QUEUED', requestId: '77777777-7777-4777-8777-777777777777' });
+    expect(m.readCharacter).toHaveBeenCalledWith('service/character/reference.png');
+    expect(m.createRequest).toHaveBeenCalledWith(expect.objectContaining({ referenceImage }));
+    expect(m.storeReference).toHaveBeenCalledWith(
+      expect.objectContaining({ bytes: new Uint8Array([10, 11]) }),
+    );
   });
 
   it('allows only opted-in, ready-to-use image Missions in production', () => {

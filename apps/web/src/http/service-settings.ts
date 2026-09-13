@@ -66,6 +66,21 @@ const schema = z
         lockCadence: z.boolean(),
         contentMode: z.enum(['IDEA', 'PROMPT', 'READY_TO_USE']),
         mediaMode: z.enum(['TEXT_ONLY', 'IMAGE', 'VIDEO', 'IMAGE_AND_VIDEO']),
+        videoNarration: z
+          .object({
+            enabled: z.boolean(),
+            voice: z.enum(['marin', 'cedar', 'coral']),
+            speed: z.enum(['SLOW', 'STANDARD']),
+          })
+          .strict()
+          .default({ enabled: false, voice: 'marin', speed: 'SLOW' }),
+        visualCharacter: z
+          .object({
+            enabled: z.boolean(),
+            profileVersionId: z.uuid().nullable(),
+          })
+          .strict()
+          .default({ enabled: false, profileVersionId: null }),
       })
       .strict()
       .default({
@@ -75,11 +90,33 @@ const schema = z
         lockCadence: false,
         contentMode: 'READY_TO_USE',
         mediaMode: 'TEXT_ONLY',
+        videoNarration: { enabled: false, voice: 'marin', speed: 'SLOW' },
+        visualCharacter: { enabled: false, profileVersionId: null },
       }),
     reason: z.string().min(1).max(1000),
   })
   .strict()
   .superRefine((value, context) => {
+    if (
+      value.dailyIdeaDelivery.visualCharacter.enabled &&
+      !value.dailyIdeaDelivery.visualCharacter.profileVersionId
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dailyIdeaDelivery', 'visualCharacter', 'profileVersionId'],
+        message: '使用するAIキャラクターを選んでください。',
+      });
+    }
+    if (
+      value.dailyIdeaDelivery.visualCharacter.enabled &&
+      !['IMAGE', 'IMAGE_AND_VIDEO'].includes(value.dailyIdeaDelivery.mediaMode)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dailyIdeaDelivery', 'visualCharacter', 'enabled'],
+        message: 'AIキャラクターを使う場合は、画像を準備する設定を選んでください。',
+      });
+    }
     if (!value.announcementEnabled) return;
     if (!value.announcementTitle.trim()) {
       context.addIssue({

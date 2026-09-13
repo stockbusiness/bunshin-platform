@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
 export function VideoProjectCreator({
@@ -23,9 +23,56 @@ export function VideoProjectCreator({
   const router = useRouter();
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedBunshinId, setSelectedBunshinId] = useState(bunshins[0]?.id ?? '');
   const [compositionMode, setCompositionMode] = useState<'STANDARD' | 'AI_SCENES'>('STANDARD');
+  const [narrationEnabled, setNarrationEnabled] = useState(false);
+  const [narrationVoice, setNarrationVoice] = useState<'marin' | 'cedar' | 'coral'>('marin');
+  const [previewing, setPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
+
+  async function previewNarration() {
+    if (!selectedBunshinId) return;
+    setPreviewing(true);
+    setMessage('声の見本を作っています…');
+    try {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/groups/${groupId}/video-narration-preview`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            groupMembershipId,
+            bunshinId: selectedBunshinId,
+            voice: narrationVoice,
+            previewRequestId: crypto.randomUUID(),
+          }),
+        },
+      );
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: { message?: string } };
+        throw new Error(result.error?.message ?? '声の見本を作れませんでした。');
+      }
+      const nextUrl = URL.createObjectURL(await response.blob());
+      setPreviewUrl((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return nextUrl;
+      });
+      setMessage('再生ボタンで声を確認できます。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '声の見本を作れませんでした。');
+    } finally {
+      setPreviewing(false);
+    }
+  }
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +89,7 @@ export function VideoProjectCreator({
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             groupMembershipId,
-            bunshinId: values.get('bunshinId'),
+            bunshinId: selectedBunshinId,
             campaignId: typeof campaignId === 'string' && campaignId ? campaignId : null,
             characterProfileVersionId: values.get('characterProfileVersionId') || null,
             title: values.get('title'),
@@ -51,7 +98,8 @@ export function VideoProjectCreator({
             durationSeconds,
             compositionMode,
             photoAssetIds: compositionMode === 'STANDARD' ? selectedPhotos : [],
-            narrationEnabled: values.get('narrationEnabled') === 'on',
+            narrationEnabled,
+            narrationVoice,
           }),
         },
       );
@@ -86,7 +134,13 @@ export function VideoProjectCreator({
         </label>
         <label className="field">
           <span className="field__label">話す分身</span>
-          <select className="field__control" name="bunshinId" required>
+          <select
+            className="field__control"
+            name="bunshinId"
+            required
+            value={selectedBunshinId}
+            onChange={(event) => setSelectedBunshinId(event.target.value)}
+          >
             {bunshins.map((bunshin) => (
               <option key={bunshin.id} value={bunshin.id}>
                 {bunshin.name}
@@ -182,12 +236,46 @@ export function VideoProjectCreator({
           </fieldset>
         ) : null}
         <label className="field">
-          <input type="checkbox" name="narrationEnabled" />
+          <input
+            type="checkbox"
+            name="narrationEnabled"
+            checked={narrationEnabled}
+            onChange={(event) => setNarrationEnabled(event.target.checked)}
+          />
           AIナレーションを付ける
           <small>
             確認した台本をOpenAIへ送り、AI音声を作ります。動画内にも「AI音声」と表示します。音声生成もAI利用回数に含まれます。
           </small>
         </label>
+        {narrationEnabled ? (
+          <div className="field">
+            <label htmlFor="narrationVoice" className="field__label">
+              読み上げる声
+            </label>
+            <select
+              id="narrationVoice"
+              className="field__control"
+              value={narrationVoice}
+              onChange={(event) =>
+                setNarrationVoice(event.target.value as 'marin' | 'cedar' | 'coral')
+              }
+            >
+              <option value="marin">やさしく落ち着いた声</option>
+              <option value="cedar">はっきり信頼感のある声</option>
+              <option value="coral">明るく親しみやすい声</option>
+            </select>
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={previewing || bunshins.length === 0}
+              onClick={() => void previewNarration()}
+            >
+              {previewing ? '見本を作っています…' : 'この声を試し聞きする'}
+            </button>
+            {previewUrl ? <audio controls autoPlay src={previewUrl} /> : null}
+            <small>試し聞きもAI利用回数に含まれます。</small>
+          </div>
+        ) : null}
         <label className="field">
           <span className="field__label">紹介する企画（任意）</span>
           <select className="field__control" name="campaignId" defaultValue="">

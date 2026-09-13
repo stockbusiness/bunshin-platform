@@ -1,13 +1,16 @@
 import 'server-only';
+import { DEFAULT_VIDEO_NARRATION_VOICE, type VideoNarrationVoice } from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
 
 export const NARRATION_MODEL = 'gpt-4o-mini-tts';
-export const NARRATION_VOICE = 'marin';
+export const NARRATION_VOICE = DEFAULT_VIDEO_NARRATION_VOICE;
 export const NARRATION_VERSION = 'video-narration-natural-ja-v2';
 export const NARRATION_INSTRUCTIONS =
   '自然で聞き取りやすい日本語で話してください。落ち着いた温かい声で、親しい案内役のように話します。文節の区切りに短い間を取り、語尾を急がず、数字や英語も明瞭に読みます。広告のような大げさな調子、過度な感情、不自然な抑揚は避けてください。';
 export const NARRATION_MICROS_PER_CHARACTER = 15;
 const bytesPerMs = 48; // 24 kHz, mono, signed 16-bit PCM.
+const maxPreviewBytes = 2 * 1024 * 1024;
+export const NARRATION_PREVIEW_TEXT = 'こんにちは。今日も無理なく、一歩ずつ進めていきましょう。';
 
 export class OpenAIVideoNarrationError extends Error {
   constructor(
@@ -83,7 +86,12 @@ export class OpenAIVideoNarration {
     private readonly request: typeof fetch = fetch,
   ) {}
 
-  async speak(text: string, durationMs: number) {
+  private async requestSpeech(input: {
+    text: string;
+    voice: VideoNarrationVoice;
+    responseFormat: 'pcm' | 'mp3';
+    maxBytes: number;
+  }) {
     let response: Response;
     try {
       response = await this.request('https://api.openai.com/v1/audio/speech', {
@@ -92,10 +100,10 @@ export class OpenAIVideoNarration {
         headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
         body: JSON.stringify({
           model: NARRATION_MODEL,
-          voice: NARRATION_VOICE,
-          input: text,
+          voice: input.voice,
+          input: input.text,
           instructions: NARRATION_INSTRUCTIONS,
-          response_format: 'pcm',
+          response_format: input.responseFormat,
           speed: 0.96,
         }),
       });
@@ -120,7 +128,7 @@ export class OpenAIVideoNarration {
         const chunk = await reader.read();
         if (chunk.done) break;
         size += chunk.value.byteLength;
-        if (size > durationMs * bytesPerMs)
+        if (size > input.maxBytes)
           throw new ApplicationError(
             'VALIDATION_ERROR',
             '音声が場面の時間を超えました。企画を作り直してください。',
@@ -131,5 +139,23 @@ export class OpenAIVideoNarration {
       await reader.cancel();
     }
     return Buffer.concat(chunks);
+  }
+
+  async speak(text: string, durationMs: number, voice: VideoNarrationVoice = NARRATION_VOICE) {
+    return this.requestSpeech({
+      text,
+      voice,
+      responseFormat: 'pcm',
+      maxBytes: durationMs * bytesPerMs,
+    });
+  }
+
+  async preview(voice: VideoNarrationVoice) {
+    return this.requestSpeech({
+      text: NARRATION_PREVIEW_TEXT,
+      voice,
+      responseFormat: 'mp3',
+      maxBytes: maxPreviewBytes,
+    });
   }
 }

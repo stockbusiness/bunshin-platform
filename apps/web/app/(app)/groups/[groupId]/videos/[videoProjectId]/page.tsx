@@ -25,6 +25,12 @@ const visualLabel: Record<string, string> = {
   AI_VIDEO: 'AIで作る動画',
 };
 
+const narrationVoiceLabel: Record<string, string> = {
+  marin: 'やさしく落ち着いた声',
+  cedar: 'はっきり信頼感のある声',
+  coral: '明るく親しみやすい声',
+};
+
 function disclosureGuide(value: Record<string, unknown>) {
   return {
     text: typeof value.disclosureText === 'string' ? value.disclosureText : null,
@@ -315,6 +321,13 @@ export default async function VideoProjectPage({
                 ? '下の順番、字幕、読み上げる台本を確認してください。AI音声で読み上げます。'
                 : '下の順番と字幕を確認してください。音声は付けません。'}
             </p>
+            {project.narrationEnabled ? (
+              <p>
+                <strong>選んだ声：</strong>
+                {narrationVoiceLabel[project.narrationVoice ?? 'marin'] ??
+                  narrationVoiceLabel.marin}
+              </p>
+            ) : null}
             {['DRAFT', 'PLANNING', 'WAITING_APPROVAL'].includes(project.status) ? (
               <p>この画面では動画本体はまだ作りません。</p>
             ) : null}

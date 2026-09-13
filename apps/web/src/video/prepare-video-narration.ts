@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { VideoRenderJobHandlerError, type VideoProjectRecord } from '@bunshin/application';
+import { DEFAULT_VIDEO_NARRATION_VOICE } from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
 import { resolveOpenAiRuntimeConfiguration } from '../ai/runtime-provider-configuration';
 import { recordAiUsageSafely } from '../observability/ai-usage';
@@ -10,7 +11,6 @@ import {
   validateNarrationScenes,
   narrationCharacters,
   NARRATION_MODEL,
-  NARRATION_VOICE,
   NARRATION_VERSION,
   NARRATION_MICROS_PER_CHARACTER,
   OpenAIVideoNarration,
@@ -25,6 +25,7 @@ export async function prepareVideoNarration(
   renderId: string,
 ): Promise<string | undefined> {
   if (!project.narrationEnabled) return undefined;
+  const narrationVoice = project.narrationVoice ?? DEFAULT_VIDEO_NARRATION_VOICE;
   validateNarrationScenes(project.scenes);
   const db = await import('@bunshin/database');
   const scope = {
@@ -53,6 +54,7 @@ export async function prepareVideoNarration(
     .update(
       JSON.stringify([
         NARRATION_VERSION,
+        narrationVoice,
         project.scenes.map((scene) => [scene.id, scene.narration.trim(), scene.durationMs]),
       ]),
     )
@@ -102,7 +104,7 @@ export async function prepareVideoNarration(
             status: 'PROCESSING',
             textHash,
             model: NARRATION_MODEL,
-            voice: NARRATION_VOICE,
+            voice: narrationVoice,
             promptVersion: NARRATION_VERSION,
             attemptCount,
             expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60_000),
@@ -136,7 +138,7 @@ export async function prepareVideoNarration(
               estimatedCostUsdMicros: totalAttemptedCharacters * NARRATION_MICROS_PER_CHARACTER,
             },
           });
-          return speech.speak(text, durationMs);
+          return speech.speak(text, durationMs, narrationVoice);
         });
         await assertActive();
         await storage.store(key, wav);

@@ -40,16 +40,16 @@ describe('OpenAI video narration', () => {
     expect(NARRATION_MICROS_PER_CHARACTER).toBe(15);
   });
 
-  it('requests raw PCM without exposing the API key in the body', async () => {
+  it('requests raw PCM with the selected voice without exposing the API key in the body', async () => {
     const request = vi.fn().mockResolvedValue(new Response(Uint8Array.from([1, 2])));
     const speech = new OpenAIVideoNarration('secret-key', request);
-    await expect(speech.speak('案内', 1_000)).resolves.toEqual(Buffer.from([1, 2]));
+    await expect(speech.speak('案内', 1_000, 'cedar')).resolves.toEqual(Buffer.from([1, 2]));
     const init = request.mock.calls[0]![1] as RequestInit;
     expect(init.headers).toMatchObject({ authorization: 'Bearer secret-key' });
     expect(init.body).toBe(
       JSON.stringify({
         model: 'gpt-4o-mini-tts',
-        voice: 'marin',
+        voice: 'cedar',
         input: '案内',
         instructions: NARRATION_INSTRUCTIONS,
         response_format: 'pcm',
@@ -57,6 +57,17 @@ describe('OpenAI video narration', () => {
       }),
     );
     expect(init.body).not.toContain('secret-key');
+  });
+
+  it('returns an MP3 preview using the same speech instructions', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(Uint8Array.from([3, 4])));
+    const speech = new OpenAIVideoNarration('secret-key', request);
+    await expect(speech.preview('coral')).resolves.toEqual(Buffer.from([3, 4]));
+    expect(JSON.parse(String(request.mock.calls[0]![1]?.body))).toMatchObject({
+      voice: 'coral',
+      response_format: 'mp3',
+      instructions: NARRATION_INSTRUCTIONS,
+    });
   });
 
   it.each([

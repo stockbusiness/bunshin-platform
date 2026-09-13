@@ -60,6 +60,33 @@ describe('public service context', () => {
     });
   });
 
+  it('applies public LINE-only registration to an existing free business service', async () => {
+    state.findPublicBySlug.mockResolvedValue({
+      ...configuration,
+      registration: {
+        ...configuration.registration,
+        mode: 'CLOSED',
+        emailEnabled: true,
+        lineEnabled: false,
+        inviteCodeEnabled: true,
+        referralEnabled: true,
+        onboardingConfig: { businessProfileEnabled: true },
+      },
+    });
+
+    await expect(resolvePublicServiceContext('side-job-support')).resolves.toMatchObject({
+      configuration: {
+        registration: {
+          mode: 'PUBLIC',
+          emailEnabled: false,
+          lineEnabled: true,
+          inviteCodeEnabled: false,
+          referralEnabled: false,
+        },
+      },
+    });
+  });
+
   it.each(['Bad-Slug', '../admin', 'service?next=evil', ''])(
     'rejects an invalid slug: %s',
     async (slug) => {

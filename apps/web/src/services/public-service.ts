@@ -1,6 +1,8 @@
 import 'server-only';
 import { ServiceFoundationService, type ServiceFoundationRecord } from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
+import { enforceBusinessFreeRegistrationSettings } from './business-daily-service-settings';
+import { readServiceOnboardingSettings } from './service-onboarding-settings';
 
 const SERVICE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -20,13 +22,43 @@ export interface ManagedServiceContext extends PublicServiceContext {
   serviceRole: ServiceContentRole;
 }
 
+export function effectiveServiceConfiguration(
+  configuration: ServiceFoundationRecord,
+): ServiceFoundationRecord {
+  const onboarding = readServiceOnboardingSettings(
+    configuration.registration.onboardingConfig,
+    configuration.registration.surveyConfig,
+  );
+  if (!onboarding.businessProfileEnabled) return configuration;
+  const registration = enforceBusinessFreeRegistrationSettings({
+    businessProfileEnabled: true,
+    registrationMode: configuration.registration.mode,
+    emailEnabled: configuration.registration.emailEnabled,
+    lineEnabled: configuration.registration.lineEnabled,
+    inviteCodeEnabled: configuration.registration.inviteCodeEnabled,
+    referralEnabled: configuration.registration.referralEnabled,
+  });
+  return {
+    ...configuration,
+    registration: {
+      ...configuration.registration,
+      mode: registration.registrationMode,
+      emailEnabled: registration.emailEnabled,
+      lineEnabled: registration.lineEnabled,
+      inviteCodeEnabled: registration.inviteCodeEnabled,
+      referralEnabled: registration.referralEnabled,
+    },
+  };
+}
+
 export async function resolvePublicServiceContext(slug: string): Promise<PublicServiceContext> {
   if (slug.length > 80 || !SERVICE_SLUG.test(slug))
     throw new ApplicationError('NOT_FOUND', 'service not found');
   const db = await import('@bunshin/database');
-  const configuration = await new ServiceFoundationService(
+  const storedConfiguration = await new ServiceFoundationService(
     new db.PrismaServiceFoundationRepository(),
   ).findPublicBySlug({ slug });
+  const configuration = effectiveServiceConfiguration(storedConfiguration);
   return {
     workspaceId: configuration.workspaceId,
     serviceId: configuration.groupId,
@@ -77,9 +109,10 @@ export async function resolveManagedServiceContext(
   const serviceRole = target.group.memberships[0]?.serviceRole;
   if (!serviceRole || !(allowedRoles as readonly string[]).includes(serviceRole))
     throw new Error('SERVICE_NOT_FOUND');
-  const configuration = await new ServiceFoundationService(
+  const storedConfiguration = await new ServiceFoundationService(
     new db.PrismaServiceFoundationRepository(),
   ).findByGroup({ ...target, actorUserId });
+  const configuration = effectiveServiceConfiguration(storedConfiguration);
   return {
     workspaceId: configuration.workspaceId,
     serviceId: configuration.groupId,

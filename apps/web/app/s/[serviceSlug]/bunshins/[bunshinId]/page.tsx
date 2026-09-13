@@ -38,6 +38,7 @@ import { localDateInTimezone } from '../../../../../src/activity-progress';
 import { resolveDeliveryScheduleStatus } from '../../../../../src/services/delivery-schedule-status';
 import { currentLineEnvironment } from '../../../../../src/line/secure-configuration';
 import { missionDecisionOrPending } from '../../../../../src/mission-decision-fallback';
+import { readBusinessOutcomes } from '../../../../../src/services/business-outcomes';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,6 +210,9 @@ export default async function ServiceBunshinDetailPage({
       platform: socialProfiles.find(({ id }) => id === mission.socialProfileId)?.platform ?? null,
       postedAt: missionStates[index]!.post?.postedAt.toISOString() ?? null,
       feedback: missionStates[index]!.feedback?.rating ?? null,
+      ...(isBusinessDailyService
+        ? { businessOutcomes: readBusinessOutcomes(missionStates[index]!.post?.manualMetrics) }
+        : {}),
       copyAuthorization: missionStates[index]!.copyAuthorization,
       trendContext: mission.trendContext
         ? {
@@ -467,6 +471,7 @@ export default async function ServiceBunshinDetailPage({
             pointWorkspaceId={service.workspaceId}
             serviceSlug={service.configuration.slug}
             rewardsPilotActive={rewardsPilotActive}
+            businessFree={isBusinessDailyService}
             {...(deliverySchedule.state === 'PREPARING' && generationProfile
               ? {
                   generation: {

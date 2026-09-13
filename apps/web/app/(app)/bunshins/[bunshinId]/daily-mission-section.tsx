@@ -30,6 +30,13 @@ export type DailyMissionView = {
   platform: 'INSTAGRAM' | 'TIKTOK' | 'X' | 'THREADS' | 'YOUTUBE_SHORTS' | 'OTHER' | null;
   postedAt: string | null;
   feedback: 'GOOD' | 'NEUTRAL' | 'BAD' | null;
+  businessOutcomes?: {
+    inquiries: number;
+    reservations: number;
+    visits: number;
+    orders: number;
+    other: number;
+  };
   trendContext: {
     whyNow: string;
     fitReason: string;

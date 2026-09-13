@@ -3,6 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClientRequestId } from '../../../../ui/client-request-id';
+import {
+  emptyBusinessOutcomes,
+  type BusinessOutcomes,
+} from '../../../../../src/services/business-outcomes';
 import { RewardsActionFeedback, type RewardsAction } from '../../../../ui/rewards-action-feedback';
 import {
   MissionContent,
@@ -27,6 +31,7 @@ export function ServiceDailyMissionSection({
   generation,
   videos = {},
   imageCreationBaseHref,
+  businessFree = false,
 }: {
   endpoint: string;
   missions: DailyMissionView[];
@@ -38,6 +43,7 @@ export function ServiceDailyMissionSection({
   generation?: { missionDate: string; timezone: string; socialProfileId: string };
   videos?: Record<string, { href: string; status: string }>;
   imageCreationBaseHref?: string;
+  businessFree?: boolean;
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -52,6 +58,11 @@ export function ServiceDailyMissionSection({
     missionId: string;
     instruction?: string;
   } | null>(null);
+  const [businessOutcomes, setBusinessOutcomes] = useState<Record<string, BusinessOutcomes>>(() =>
+    Object.fromEntries(
+      missions.map((mission) => [mission.id, mission.businessOutcomes ?? emptyBusinessOutcomes()]),
+    ),
+  );
 
   const key = () => createClientRequestId();
 
@@ -226,6 +237,13 @@ export function ServiceDailyMissionSection({
 
   async function feedback(id: string, rating: 'GOOD' | 'NEUTRAL' | 'BAD') {
     if (await record(id, 'feedback', { rating, idempotencyKey: key() })) router.refresh();
+  }
+
+  async function saveBusinessOutcomes(id: string) {
+    if (await record(id, 'business-outcome', businessOutcomes[id] ?? emptyBusinessOutcomes())) {
+      setMessage('お客様の反応を保存しました。名前や詳しい内容の入力は必要ありません。');
+      router.refresh();
+    }
   }
 
   function requestVariant(missionId: string, instruction?: string) {
@@ -741,6 +759,57 @@ export function ServiceDailyMissionSection({
                               {label}
                             </button>
                           ))}
+                          {businessFree ? (
+                            <section className="mission-business-outcomes">
+                              <h4>この投稿から、お客様の反応はありましたか？</h4>
+                              <p>なければ0のままで大丈夫です。お客様の名前は入力しません。</p>
+                              {(
+                                [
+                                  ['inquiries', '問い合わせ'],
+                                  ['reservations', '予約'],
+                                  ['visits', '来店'],
+                                  ['orders', '購入・申込'],
+                                  ['other', 'その他の反応'],
+                                ] as const
+                              ).map(([key, label]) => (
+                                <label key={key}>
+                                  {label}の件数
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    max={999}
+                                    value={
+                                      (businessOutcomes[mission.id] ?? emptyBusinessOutcomes())[key]
+                                    }
+                                    onChange={(event) => {
+                                      const count = Math.max(
+                                        0,
+                                        Math.min(
+                                          999,
+                                          Number.parseInt(event.target.value || '0', 10) || 0,
+                                        ),
+                                      );
+                                      setBusinessOutcomes((current) => ({
+                                        ...current,
+                                        [mission.id]: {
+                                          ...(current[mission.id] ?? emptyBusinessOutcomes()),
+                                          [key]: count,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </label>
+                              ))}
+                              <button
+                                type="button"
+                                disabled={pendingAction !== null}
+                                onClick={() => void saveBusinessOutcomes(mission.id)}
+                              >
+                                お客様の反応を保存する
+                              </button>
+                            </section>
+                          ) : null}
                         </div>
                       )}
                     </div>

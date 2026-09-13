@@ -92,11 +92,7 @@ export interface SocialImageGeneratedMediaRecord {
 }
 
 export type SocialImageReviewReason =
-  | 'TEXT_HARD_TO_READ'
-  | 'CONTENT_MISMATCH'
-  | 'PHOTO_UNNATURAL'
-  | 'DESIGN_UNAPPEALING'
-  | 'OTHER';
+  'TEXT_HARD_TO_READ' | 'CONTENT_MISMATCH' | 'PHOTO_UNNATURAL' | 'DESIGN_UNAPPEALING' | 'OTHER';
 
 export interface SocialImageGenerationAuthorizationPort {
   authorize(input: {
@@ -415,10 +411,7 @@ export class DecideSocialImageMedia {
       requestId: scope.requestId,
       mediaId: scope.mediaId,
       status: input.decision,
-      reviewReason:
-        input.decision === 'REJECTED'
-          ? input.reviewReason
-          : null,
+      reviewReason: input.decision === 'REJECTED' ? input.reviewReason : null,
       reviewNote:
         input.decision === 'REJECTED' && input.reviewNote
           ? text(input.reviewNote, 'reviewNote', 500)

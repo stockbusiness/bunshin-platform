@@ -45,7 +45,13 @@ export default async function ServiceImageOperationsPage({
         errorCode: true,
         createdAt: true,
         media: {
-          select: { status: true, pageIndex: true, reviewReason: true, reviewNote: true, updatedAt: true },
+          select: {
+            status: true,
+            pageIndex: true,
+            reviewReason: true,
+            reviewNote: true,
+            updatedAt: true,
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -77,7 +83,10 @@ export default async function ServiceImageOperationsPage({
   const feedback = requests.flatMap((request) =>
     request.media
       .filter((media) => media.pageIndex === 0 && media.status === 'REJECTED' && media.reviewReason)
-      .map((media) => ({ ...media, memberName: memberNames.get(request.groupMembershipId) ?? '参加者' })),
+      .map((media) => ({
+        ...media,
+        memberName: memberNames.get(request.groupMembershipId) ?? '参加者',
+      })),
   );
 
   return (
@@ -108,7 +117,10 @@ export default async function ServiceImageOperationsPage({
           ) : (
             <ul className="settings-status-list">
               {feedback.slice(0, 30).map((item, index) => (
-                <li className="settings-status-item" key={`${item.updatedAt.toISOString()}-${index}`}>
+                <li
+                  className="settings-status-item"
+                  key={`${item.updatedAt.toISOString()}-${index}`}
+                >
                   <strong>{item.memberName}</strong>
                   <span>{reviewReasonLabel[item.reviewReason!] ?? item.reviewReason}</span>
                   {item.reviewNote ? <span>補足：{item.reviewNote}</span> : null}

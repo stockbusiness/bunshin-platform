@@ -95,7 +95,9 @@ export default async function VideoAccessPage({
                         defaultValue={scope.project.reviewReason ?? ''}
                         required
                       >
-                        <option value="" disabled>選んでください</option>
+                        <option value="" disabled>
+                          選んでください
+                        </option>
                         <option value="NARRATION_HARD_TO_HEAR">ナレーションが聞き取りにくい</option>
                         <option value="AI_VOICE_UNNATURAL">声が不自然</option>
                         <option value="CONTENT_MISMATCH">内容が希望と違う</option>

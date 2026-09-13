@@ -86,7 +86,13 @@ const decisionSchema = z
     mediaId: uuid,
     decision: z.enum(['ADOPTED', 'REJECTED']),
     reviewReason: z
-      .enum(['TEXT_HARD_TO_READ', 'CONTENT_MISMATCH', 'PHOTO_UNNATURAL', 'DESIGN_UNAPPEALING', 'OTHER'])
+      .enum([
+        'TEXT_HARD_TO_READ',
+        'CONTENT_MISMATCH',
+        'PHOTO_UNNATURAL',
+        'DESIGN_UNAPPEALING',
+        'OTHER',
+      ])
       .nullable()
       .default(null),
     reviewNote: z.string().trim().max(500).nullable().default(null),

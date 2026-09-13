@@ -653,22 +653,22 @@ export function SocialImageWorkspace({
                   />
                 </label>
                 <div className="social-image-actions">
-                <button
-                  className="button"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void decide('ADOPTED')}
-                >
-                  この画像を使う
-                </button>
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void decide('REJECTED')}
-                >
-                  理由を送って今回は使わない
-                </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void decide('ADOPTED')}
+                  >
+                    この画像を使う
+                  </button>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void decide('REJECTED')}
+                  >
+                    理由を送って今回は使わない
+                  </button>
                 </div>
               </div>
             )}

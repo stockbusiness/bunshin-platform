@@ -794,6 +794,7 @@ enum VideoAssetKind {
   IMAGE
   VIDEO
   LOGO
+  AUDIO
 }
 
 enum VideoAssetStatus {

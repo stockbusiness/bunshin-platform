@@ -18,7 +18,7 @@ export default async function ServiceSettingsPage({
   if (!service) notFound();
   const value = service.configuration;
   const db = await import('@bunshin/database');
-  const [characterProfiles, characterVersions, characterReferences, characterLicenses] =
+  const [characterProfiles, characterVersions, characterReferences, characterLicenses, audioTracks] =
     await Promise.all([
       db.prisma.aiCharacterProfile.findMany({
         where: {
@@ -57,6 +57,20 @@ export default async function ServiceSettingsPage({
         },
         select: { id: true },
       }),
+      db.prisma.videoAsset.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          ownerUserId: actor.userId,
+          kind: 'AUDIO',
+          status: 'READY',
+          deletedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { id: true, originalFilename: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
     ]);
   const referenceVersionIds = new Set(
     characterReferences.map((reference) => reference.characterProfileVersionId),
@@ -92,6 +106,7 @@ export default async function ServiceSettingsPage({
             serviceSlug={value.slug}
             value={value}
             visualCharacters={visualCharacters}
+            audioTracks={audioTracks}
           />
         </section>
         <a href={`/s/${value.slug}/home`}>サービスホームへ戻る</a>

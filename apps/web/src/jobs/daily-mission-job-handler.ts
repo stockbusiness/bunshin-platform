@@ -112,6 +112,7 @@ export function createDailyMissionJobHandler(): MissionAutomationHandler {
           mission,
           mediaMode: dailyIdeas.mediaMode,
           videoStyle: dailyIdeas.videoStyle,
+          videoBgm: dailyIdeas.videoBgm,
           videoNarration: dailyIdeas.videoNarration,
           ...(automaticImage?.status === 'ALREADY_AVAILABLE'
             ? { socialImageGenerationRequestId: automaticImage.requestId }

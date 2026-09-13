@@ -15,6 +15,11 @@ export interface ServiceDailyIdeaDeliverySettings {
   contentMode: 'IDEA' | 'PROMPT' | 'READY_TO_USE';
   mediaMode: 'TEXT_ONLY' | 'IMAGE' | 'VIDEO' | 'IMAGE_AND_VIDEO';
   videoStyle: 'STANDARD' | 'CALM' | 'MINIMAL';
+  videoBgm: {
+    enabled: boolean;
+    assetId: string | null;
+    volumePercent: number;
+  };
   videoNarration: {
     enabled: boolean;
     voice: 'marin' | 'cedar' | 'coral';
@@ -62,6 +67,7 @@ export const DEFAULT_SERVICE_DAILY_IDEA_DELIVERY: ServiceDailyIdeaDeliverySettin
   contentMode: 'READY_TO_USE',
   mediaMode: 'TEXT_ONLY',
   videoStyle: 'STANDARD',
+  videoBgm: { enabled: false, assetId: null, volumePercent: 12 },
   videoNarration: {
     enabled: false,
     voice: 'marin',
@@ -233,6 +239,7 @@ export function readServiceOnboardingSettings(
   const configuredProfileQuestions = record(onboarding.profileQuestions);
   const configuredDailyIdeaDelivery = record(onboarding.dailyIdeaDelivery);
   const configuredVideoNarration = record(configuredDailyIdeaDelivery.videoNarration);
+  const configuredVideoBgm = record(configuredDailyIdeaDelivery.videoBgm);
   const configuredVisualCharacter = record(configuredDailyIdeaDelivery.visualCharacter);
   const profileQuestions = Object.fromEntries(
     Object.entries(DEFAULT_SERVICE_PROFILE_QUESTIONS).map(([key, fallback]) => [
@@ -275,6 +282,23 @@ export function readServiceOnboardingSettings(
         configuredDailyIdeaDelivery.videoStyle === 'MINIMAL'
           ? configuredDailyIdeaDelivery.videoStyle
           : 'STANDARD',
+      videoBgm: {
+        enabled: configuredVideoBgm.enabled === true,
+        assetId:
+          typeof configuredVideoBgm.assetId === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            configuredVideoBgm.assetId,
+          )
+            ? configuredVideoBgm.assetId
+            : null,
+        volumePercent:
+          typeof configuredVideoBgm.volumePercent === 'number' &&
+          Number.isInteger(configuredVideoBgm.volumePercent) &&
+          configuredVideoBgm.volumePercent >= 5 &&
+          configuredVideoBgm.volumePercent <= 30
+            ? configuredVideoBgm.volumePercent
+            : 12,
+      },
       videoNarration: {
         enabled: configuredVideoNarration.enabled === true,
         voice:

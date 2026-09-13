@@ -99,6 +99,48 @@ describe('Creatomate video render adapter', () => {
     expect(dailyVideoStyleFromSnapshot({ videoStyle: 'CALM' })).toBe('CALM');
   });
 
+  it('loops rights-confirmed background music at the configured quiet volume', () => {
+    const value = project();
+    const script = buildCreatomateRenderScript(
+      value,
+      [],
+      [],
+      undefined,
+      [],
+      'https://storage.example/bgm.mp3?token=short',
+      12,
+    );
+    expect(script.elements).toContainEqual(
+      expect.objectContaining({
+        type: 'audio',
+        track: 6,
+        source: 'https://storage.example/bgm.mp3?token=short',
+        duration: 30,
+        loop: true,
+        volume: '12%',
+        audio_fade_in: 1,
+        audio_fade_out: 2,
+      }),
+    );
+  });
+
+  it('rejects incomplete or unsafe background-music settings', () => {
+    expect(() =>
+      buildCreatomateRenderScript(project(), [], [], undefined, [], 'https://example.com/a.mp3'),
+    ).toThrow(VideoRenderProviderError);
+    expect(() =>
+      buildCreatomateRenderScript(
+        project(),
+        [],
+        [],
+        undefined,
+        [],
+        'https://example.com/a.mp3',
+        90,
+      ),
+    ).toThrow(VideoRenderProviderError);
+  });
+
   it.each([
     ['CALM', expect.arrayContaining([expect.objectContaining({ start_scale: '102%' })])],
     ['MINIMAL', []],

@@ -137,6 +137,37 @@ describe('video asset upload core', () => {
     );
   });
 
+  it('accepts an inspected rights-confirmed MP3 as an audio asset', async () => {
+    const { assets, storage } = dependencies();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(assets.findOwned).mockResolvedValueOnce({
+      ...pending,
+      kind: 'AUDIO',
+      originalFilename: 'service-bgm.mp3',
+      declaredMimeType: 'audio/mpeg',
+      declaredSizeBytes: 2_000,
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(storage.inspectUploadedObject).mockResolvedValueOnce({
+      mimeType: 'audio/mpeg',
+      sizeBytes: 1_900,
+      width: null,
+      height: null,
+      durationMs: null,
+      signatureVerified: true,
+    });
+    await new CompleteVideoAssetUpload(assets, storage).execute({
+      workspaceId: ids.workspaceId,
+      groupId: ids.groupId,
+      actorUserId: ids.actorUserId,
+      assetId: ids.assetId,
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(assets.markReady).toHaveBeenCalledWith(
+      expect.objectContaining({ verifiedMimeType: 'audio/mpeg', width: null, height: null }),
+    );
+  });
+
   it('rejects spoofed or invalid uploaded bytes', async () => {
     const { assets, storage } = dependencies();
     // eslint-disable-next-line @typescript-eslint/unbound-method

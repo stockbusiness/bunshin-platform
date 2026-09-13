@@ -77,11 +77,21 @@ export function buildCreatomateRenderScript(
   photoSceneSources: Array<{ videoSceneId: string; url: string }> = [],
   narrationUrl?: string,
   generatedImageSceneSources: Array<{ videoSceneId: string; url: string }> = [],
+  backgroundAudioUrl?: string,
+  backgroundAudioVolumePercent?: number,
 ) {
   assertSupportedVideoComposition(project);
   if (project.aiProcessingTypes.includes('VOICE_SYNTHESIS') && !project.narrationEnabled)
     throw new VideoRenderProviderError('INVALID_REQUEST', false);
   if (Boolean(project.narrationEnabled) !== Boolean(narrationUrl))
+    throw new VideoRenderProviderError('INVALID_REQUEST', false);
+  if (
+    Boolean(backgroundAudioUrl) !== Boolean(backgroundAudioVolumePercent) ||
+    (backgroundAudioVolumePercent !== undefined &&
+      (!Number.isInteger(backgroundAudioVolumePercent) ||
+        backgroundAudioVolumePercent < 5 ||
+        backgroundAudioVolumePercent > 30))
+  )
     throw new VideoRenderProviderError('INVALID_REQUEST', false);
   const photos = new Map(photoSceneSources.map((source) => [source.videoSceneId, source.url]));
   const generatedImages = new Map(
@@ -244,6 +254,21 @@ export function buildCreatomateRenderScript(
             },
           ]
         : []),
+      ...(backgroundAudioUrl
+        ? [
+            {
+              type: 'audio',
+              track: 6,
+              time: 0,
+              duration: project.durationSeconds,
+              source: backgroundAudioUrl,
+              loop: true,
+              volume: `${backgroundAudioVolumePercent}%`,
+              audio_fade_in: 1,
+              audio_fade_out: 2,
+            },
+          ]
+        : []),
     ],
   };
 }
@@ -316,6 +341,8 @@ export class CreatomateVideoRenderAdapter implements VideoRenderProviderPort {
           input.photoSceneSources,
           input.narrationUrl,
           input.generatedImageSceneSources,
+          input.backgroundAudioUrl,
+          input.backgroundAudioVolumePercent,
         ),
         metadata: input.renderId,
         webhook_url: input.webhookUrl,

@@ -232,6 +232,7 @@ export interface VideoRenderExecutionContext {
   aiSceneSources: Array<{ videoSceneId: string; storageKey: string }>;
   photoSceneSources?: Array<{ videoSceneId: string; storageKey: string }>;
   generatedImageSceneSources?: Array<{ videoSceneId: string; storageKey: string }>;
+  backgroundAudioSource?: { storageKey: string; volumePercent: number };
 }
 
 export interface VideoSceneRenderSourcePort {
@@ -246,6 +247,8 @@ export interface VideoRenderProviderPort {
     photoSceneSources?: Array<{ videoSceneId: string; url: string }>;
     generatedImageSceneSources?: Array<{ videoSceneId: string; url: string }>;
     narrationUrl?: string;
+    backgroundAudioUrl?: string;
+    backgroundAudioVolumePercent?: number;
     webhookUrl: string;
   }): Promise<{ externalJobId: string }>;
   inspect(input: {
@@ -720,6 +723,7 @@ export class ExecuteVideoRenderStep {
     private readonly sceneSources: VideoSceneRenderSourcePort,
     private readonly photoSources?: VideoSceneRenderSourcePort,
     private readonly generatedImageSources?: VideoSceneRenderSourcePort,
+    private readonly backgroundAudioSources?: VideoSceneRenderSourcePort,
   ) {}
 
   async execute(input: {
@@ -768,12 +772,23 @@ export class ExecuteVideoRenderStep {
           };
         }),
       );
+      const backgroundAudioUrl = value.backgroundAudioSource
+        ? await this.backgroundAudioSources?.createUrl(value.backgroundAudioSource.storageKey)
+        : undefined;
+      if (value.backgroundAudioSource && !backgroundAudioUrl)
+        throw new ApplicationError('CONFIGURATION_ERROR', 'background audio source unavailable');
       const submitted = await this.provider.submit({
         renderId: render.id,
         project: value.project,
         aiSceneSources,
         photoSceneSources,
         generatedImageSceneSources,
+        ...(backgroundAudioUrl
+          ? {
+              backgroundAudioUrl,
+              backgroundAudioVolumePercent: value.backgroundAudioSource!.volumePercent,
+            }
+          : {}),
         webhookUrl,
       });
       const updated = await this.repository.markSubmitted({

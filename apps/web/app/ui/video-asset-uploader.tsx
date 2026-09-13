@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from 'react';
 
 type Asset = {
   id: string;
-  kind: 'IMAGE' | 'VIDEO' | 'LOGO';
+  kind: 'IMAGE' | 'VIDEO' | 'LOGO' | 'AUDIO';
   originalFilename: string;
   sizeBytes: number | null;
   width: number | null;
@@ -13,7 +13,7 @@ type Asset = {
   createdAt: string;
 };
 
-const kindLabel = { IMAGE: '写真・画像', VIDEO: '動画', LOGO: 'ロゴ' } as const;
+const kindLabel = { IMAGE: '写真・画像', VIDEO: '動画', LOGO: 'ロゴ', AUDIO: 'BGM' } as const;
 
 export function VideoAssetUploader({
   workspaceId,
@@ -42,7 +42,7 @@ export function VideoAssetUploader({
       setMessage('アップロードするファイルを選んでください。');
       return;
     }
-    if (kind !== 'IMAGE' && kind !== 'VIDEO' && kind !== 'LOGO') return;
+    if (kind !== 'IMAGE' && kind !== 'VIDEO' && kind !== 'LOGO' && kind !== 'AUDIO') return;
     setUploading(true);
     setMessage('安全にアップロードする準備をしています…');
     try {
@@ -106,7 +106,7 @@ export function VideoAssetUploader({
     <>
       <section className="settings-card">
         <h2>新しい素材を追加</h2>
-        <p>自分で撮った写真や動画、使用許可のあるロゴを追加できます。</p>
+        <p>自分で撮った写真や動画、使用許可のあるロゴ・BGMを追加できます。</p>
         <form ref={formRef} className="form-stack" onSubmit={(event) => void upload(event)}>
           <label className="field">
             <span className="field__label">素材の種類</span>
@@ -114,6 +114,7 @@ export function VideoAssetUploader({
               <option value="IMAGE">写真・画像</option>
               <option value="VIDEO">動画</option>
               <option value="LOGO">ロゴ</option>
+              <option value="AUDIO">BGM</option>
             </select>
           </label>
           <label className="field">
@@ -123,10 +124,10 @@ export function VideoAssetUploader({
               name="file"
               type="file"
               required
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/x-wav"
             />
           </label>
-          <p>画像・ロゴは20MBまで、動画は200MBまで・2分以内です。</p>
+          <p>画像・ロゴ・BGMは20MBまで、動画は200MBまで・2分以内です。</p>
           <label className="field">
             <span className="field__label">使い方のメモ（任意）</span>
             <textarea

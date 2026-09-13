@@ -51,6 +51,11 @@ describe('service onboarding settings', () => {
             mediaMode: 'IMAGE',
             videoStyle: 'CALM',
             videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
+            videoBgm: {
+              enabled: true,
+              assetId: '22222222-2222-4222-8222-222222222222',
+              volumePercent: 20,
+            },
             visualCharacter: {
               enabled: true,
               profileVersionId: '11111111-1111-4111-8111-111111111111',
@@ -70,6 +75,11 @@ describe('service onboarding settings', () => {
         mediaMode: 'IMAGE',
         videoStyle: 'CALM',
         videoNarration: { enabled: true, voice: 'coral', speed: 'STANDARD' },
+        videoBgm: {
+          enabled: true,
+          assetId: '22222222-2222-4222-8222-222222222222',
+          volumePercent: 20,
+        },
         visualCharacter: {
           enabled: true,
           profileVersionId: '11111111-1111-4111-8111-111111111111',
@@ -116,6 +126,11 @@ describe('service onboarding settings', () => {
       enabled: false,
       voice: 'marin',
       speed: 'SLOW',
+    });
+    expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.videoBgm).toEqual({
+      enabled: false,
+      assetId: null,
+      volumePercent: 12,
     });
     expect(readServiceOnboardingSettings({}, null).dailyIdeaDelivery.visualCharacter).toEqual({
       enabled: false,

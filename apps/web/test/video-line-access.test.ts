@@ -14,7 +14,10 @@ const m = vi.hoisted(() => ({
   download: vi.fn(),
   review: vi.fn(),
   source: vi.fn(),
+  mission: vi.fn(),
   authorizeCopy: vi.fn(),
+  recordPost: vi.fn(),
+  referral: vi.fn(),
 }));
 vi.mock('@bunshin/config', () => ({
   getServerEnvironment: () => ({ APP_URL: 'https://example.com' }),
@@ -45,6 +48,7 @@ vi.mock('@bunshin/database', () => ({
   prisma: {
     videoProject: { findFirst: m.project, updateMany: m.review },
     socialImageGenerationRequest: { findFirst: m.source },
+    dailyMission: { findFirst: m.mission },
     groupLineConnection: { findFirst: m.connection },
     videoLineAccess: {
       findUnique: m.find,
@@ -57,12 +61,24 @@ vi.mock('@bunshin/database', () => ({
   PrismaDailyMissionRepository: class {
     authorizeCopy = m.authorizeCopy;
   },
+  PrismaBunshinCapabilityAssignmentRepository: class {
+    find() {
+      return Promise.resolve({ status: 'ACTIVE' });
+    }
+  },
+  PrismaMissionOutcomeRepository: class {
+    recordPost = m.recordPost;
+  },
+  PrismaServiceReferralRewardRepository: class {
+    completeMilestone = m.referral;
+  },
 }));
 import {
   authorizeVideoPostCopy,
   authorizedVideoView,
   downloadVideoView,
   finishVideoLineAccess,
+  recordVideoPostCompletion,
   recordVideoReviewDecision,
   startVideoLineAccess,
 } from '../src/http/video-line-access';
@@ -78,6 +94,7 @@ const project = {
   title: 'Private video',
   disclosureSnapshot: { postCopy: '投稿文です。' },
   socialImageGenerationRequestId: 'image-request',
+  reviewDecision: 'ADOPTED',
   renderAttempts: [{ id: 'render', outputStorageKey: 'workspace/owner/render.mp4' }],
 };
 const connection = {
@@ -112,7 +129,16 @@ beforeEach(() => {
   m.download.mockResolvedValue('https://storage.example/signed-video');
   m.review.mockResolvedValue({ count: 1 });
   m.source.mockResolvedValue({ bunshinId: 'bunshin', dailyMissionId: 'mission' });
+  m.mission.mockResolvedValue({
+    socialProfile: { platform: 'INSTAGRAM' },
+    postRecord: null,
+  });
   m.authorizeCopy.mockResolvedValue({ allowed: true, reason: null, reviewNote: null });
+  m.recordPost.mockResolvedValue({
+    post: { id: 'post' },
+    activity: { id: 'activity', type: 'POSTED' },
+  });
+  m.referral.mockResolvedValue([]);
 });
 describe('LINE video viewing without changing app login', () => {
   it('redirects the already-sent legacy URL before the authenticated layout, preserving management access', async () => {
@@ -190,6 +216,50 @@ describe('LINE video viewing without changing app login', () => {
         actorUserId: 'owner',
       }),
     );
+  });
+  it('records posting from an adopted video through the mission outcome and referral flow', async () => {
+    m.actor.mockResolvedValue({ userId: 'owner' });
+    const response = await recordVideoPostCompletion(
+      new Request(`https://example.com/video-access/${id}/posted`, {
+        method: 'POST',
+        headers: { origin: 'https://example.com' },
+      }),
+      id,
+    );
+    expect(response.headers.get('location')).toBe(
+      `https://example.com/video-access/${id}?posted=1`,
+    );
+    expect(m.recordPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'workspace',
+        bunshinId: 'bunshin',
+        dailyMissionId: 'mission',
+        actorUserId: 'owner',
+        platform: 'INSTAGRAM',
+        idempotencyKey: `video-post:${id}`,
+      }),
+    );
+    expect(m.referral).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'workspace',
+        groupId: 'group',
+        referredUserId: 'owner',
+        milestone: 'FIRST_POST_REPORTED',
+      }),
+    );
+  });
+  it('does not record posting before the video is adopted', async () => {
+    m.actor.mockResolvedValue({ userId: 'owner' });
+    m.project.mockResolvedValue({ ...project, reviewDecision: null });
+    const response = await recordVideoPostCompletion(
+      new Request(`https://example.com/video-access/${id}/posted`, {
+        method: 'POST',
+        headers: { origin: 'https://example.com' },
+      }),
+      id,
+    );
+    expect(response.headers.get('location')).toContain('result=post-failed');
+    expect(m.recordPost).not.toHaveBeenCalled();
   });
   it('creates a project-scoped, short-lived HttpOnly cookie only after matching the verified recipient', async () => {
     const response = await callback();

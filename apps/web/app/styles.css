@@ -161,6 +161,59 @@
   gap: 0.75rem;
 }
 
+.saved-photo-picker {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0;
+  border: 0;
+}
+
+.saved-photo-picker legend {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.saved-photo-picker__none,
+.saved-photo-picker__item {
+  cursor: pointer;
+}
+
+.saved-photo-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.saved-photo-picker__item {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 2px solid #d9dce5;
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
+.saved-photo-picker__item:has(input:checked) {
+  border-color: #1687e8;
+  background: #eef7ff;
+}
+
+.saved-photo-picker__item img {
+  width: 100%;
+  height: 8rem;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.saved-photo-picker__item span {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .social-image-save-guide {
   margin: 1rem 0;
   padding: 1rem 1.25rem;
@@ -206,6 +259,10 @@
 @media (max-width: 40rem) {
   .social-image-actions {
     grid-template-columns: 1fr;
+  }
+
+  .saved-photo-picker__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .social-image-revision__choices {

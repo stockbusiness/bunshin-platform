@@ -18,6 +18,15 @@ type Mission = {
   request: { id: string; status: string } | null;
 };
 
+type SavedPhoto = {
+  id: string;
+  bunshinId: string;
+  label: string;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+};
+
 type RequestView = {
   id: string;
   status: string;
@@ -67,6 +76,7 @@ export function SocialImageWorkspace({
   pointCost,
   initialAvailablePoints,
   missions,
+  savedPhotos,
   initialMissionId,
 }: {
   workspaceId: string;
@@ -78,6 +88,7 @@ export function SocialImageWorkspace({
   pointCost: number | null;
   initialAvailablePoints: number;
   missions: Mission[];
+  savedPhotos: SavedPhoto[];
   initialMissionId?: string | undefined;
 }) {
   const [selectedId, setSelectedId] = useState(
@@ -94,6 +105,7 @@ export function SocialImageWorkspace({
   const [busy, setBusy] = useState(false);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceConsent, setReferenceConsent] = useState(false);
+  const [selectedPhotoId, setSelectedPhotoId] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
   const [editingPage, setEditingPage] = useState<number | null>(null);
@@ -114,6 +126,10 @@ export function SocialImageWorkspace({
     pointCost,
     availablePoints,
   });
+  const availableSavedPhotos = useMemo(
+    () => savedPhotos.filter((photo) => photo.bunshinId === selected?.bunshinId),
+    [savedPhotos, selected?.bunshinId],
+  );
 
   const endpoint = selected
     ? `/api/workspaces/${workspaceId}/groups/${groupId}/bunshins/${selected.bunshinId}/daily-missions/${selected.id}/images`
@@ -126,6 +142,7 @@ export function SocialImageWorkspace({
     setVideoMessage(null);
     setReferenceFile(null);
     setReferenceConsent(false);
+    setSelectedPhotoId('');
     setEditingPage(null);
     setReviewReason('');
     setReviewNote('');
@@ -250,6 +267,7 @@ export function SocialImageWorkspace({
           ...(referenceBase64
             ? { referenceImage: { base64: referenceBase64, rightsConfirmed: true } }
             : {}),
+          ...(selectedPhotoId ? { savedPhotoId: selectedPhotoId } : {}),
           campaignId: selected.campaignId,
           productPackVersionId: selected.productPackVersionId,
           idempotencyKey: crypto.randomUUID(),
@@ -405,9 +423,57 @@ export function SocialImageWorkspace({
         <details className="social-image-options">
           <summary>商品や本人の写真を使いたい方</summary>
           {selected ? <p>{selected.angle}</p> : null}
-          <label htmlFor="image-reference">参考にする写真（なくても作れます）</label>
+          {availableSavedPhotos.length ? (
+            <fieldset className="saved-photo-picker">
+              <legend>保存した写真から選ぶ</legend>
+              <label className="saved-photo-picker__none">
+                <input
+                  type="radio"
+                  name="savedPhoto"
+                  value=""
+                  checked={!selectedPhotoId}
+                  disabled={busy}
+                  onChange={() => setSelectedPhotoId('')}
+                />
+                保存写真を使わない
+              </label>
+              <div className="saved-photo-picker__grid">
+                {availableSavedPhotos.map((photo) => (
+                  <label className="saved-photo-picker__item" key={photo.id}>
+                    <input
+                      type="radio"
+                      name="savedPhoto"
+                      value={photo.id}
+                      checked={selectedPhotoId === photo.id}
+                      disabled={busy}
+                      onChange={() => {
+                        setSelectedPhotoId(photo.id);
+                        setReferenceFile(null);
+                        setReferenceConsent(false);
+                      }}
+                    />
+                    <Image
+                      src={`/api/workspaces/${workspaceId}/groups/${groupId}/bunshins/${photo.bunshinId}/saved-photos/${photo.id}`}
+                      alt={photo.label || '保存した写真'}
+                      width={photo.width ?? 320}
+                      height={photo.height ?? 240}
+                      unoptimized
+                    />
+                    <span>
+                      {photo.label || new Date(photo.createdAt).toLocaleDateString('ja-JP')}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            <p>
+              保存した写真はまだありません。「今日やること」で写真を登録すると、次回から選べます。
+            </p>
+          )}
+          <label htmlFor="image-reference">新しい写真を選ぶ（なくても作れます）</label>
           <input
-            key={selectedId}
+            key={`${selectedId}-${selectedPhotoId}`}
             id="image-reference"
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -415,6 +481,7 @@ export function SocialImageWorkspace({
             onChange={(event) => {
               setReferenceFile(event.target.files?.[0] ?? null);
               setReferenceConsent(false);
+              if (event.target.files?.[0]) setSelectedPhotoId('');
             }}
           />
           <p>

@@ -5,7 +5,10 @@ import { ApplicationError, toApiError } from '@bunshin/shared';
 import { z } from 'zod';
 import { currentUserProvider } from '../auth/current-user';
 import { requireSameOrigin } from '../auth/request-security';
-import { enforceBusinessDailyServiceSettings } from '../services/business-daily-service-settings';
+import {
+  enforceBusinessDailyServiceSettings,
+  enforceBusinessFreeRegistrationSettings,
+} from '../services/business-daily-service-settings';
 import { resolveManagedServiceContext } from '../services/public-service';
 
 const optionalUrl = z
@@ -186,7 +189,9 @@ export async function updateServiceSettingsResponse(request: Request, serviceSlu
       resolveManagedServiceContext(serviceSlug, actor.userId),
       schema.parseAsync(request.json()),
     ]);
-    const value = enforceBusinessDailyServiceSettings(parsedValue);
+    const value = enforceBusinessFreeRegistrationSettings(
+      enforceBusinessDailyServiceSettings(parsedValue),
+    );
     const current = service.configuration;
     const db = await import('@bunshin/database');
     if (value.dailyIdeaDelivery.videoBgm.enabled) {

@@ -9,6 +9,29 @@ export type BusinessDailyServiceSettings = {
   dailyIdeaDelivery: ServiceDailyIdeaDeliverySettings;
 };
 
+export type BusinessFreeRegistrationSettings = {
+  businessProfileEnabled: boolean;
+  registrationMode: 'PUBLIC' | 'INVITATION_ONLY' | 'APPROVAL_REQUIRED' | 'CLOSED';
+  emailEnabled: boolean;
+  lineEnabled: boolean;
+  inviteCodeEnabled: boolean;
+  referralEnabled: boolean;
+};
+
+export function enforceBusinessFreeRegistrationSettings<T extends BusinessFreeRegistrationSettings>(
+  value: T,
+): T {
+  if (!value.businessProfileEnabled) return value;
+  return {
+    ...value,
+    registrationMode: 'PUBLIC',
+    emailEnabled: false,
+    lineEnabled: true,
+    inviteCodeEnabled: false,
+    referralEnabled: false,
+  };
+}
+
 export function enforceBusinessDailyDeliverySettings(
   businessProfileEnabled: boolean,
   value: ServiceDailyIdeaDeliverySettings,

@@ -65,7 +65,15 @@ export default async function OrganizationsAdminPage({
       name: true,
       status: true,
       createdAt: true,
-      _count: { select: { groups: true } },
+      groups: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          serviceConfiguration: { select: { slug: true, displayName: true } },
+        },
+        orderBy: { name: 'asc' },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -75,8 +83,10 @@ export default async function OrganizationsAdminPage({
     <main className="app-page">
       <header className="app-page__heading">
         <p className="eyebrow">システム管理者</p>
-        <h1>運営団体</h1>
-        <p>サービスやグループを運営するための団体を作成します。</p>
+        <h1>運営団体とプロジェクトの構造</h1>
+        <p>
+          ワタシワークス全体はシステムだけを管理し、各プロジェクトは必ず運営団体の中に置きます。
+        </p>
       </header>
       {query.error === 'invalid' ? (
         <p className="notice notice--danger">団体名を1〜120文字で入力してください。</p>
@@ -84,12 +94,16 @@ export default async function OrganizationsAdminPage({
       <section className="settings-card">
         <h2>最初の設定の順番</h2>
         <ol>
-          <li>この画面で、運営する会社・団体・プロジェクトの名前を登録します。</li>
+          <li>この画面で、運営する会社・団体の名前を登録します。</li>
           <li>
             作成後の「団体情報・運営者を設定する」で、担当者・連絡先を登録し、運営者を招待します。
           </li>
-          <li>運営者がグループを作成し、参加者、使える機能、公式情報、専用LINEを設定します。</li>
-          <li>独立したブランドで提供する場合は、最後に「サービス管理」でサービスを作成します。</li>
+          <li>
+            運営団体の中にプロジェクトを作成し、参加者、使える機能、公式情報、LINEを設定します。
+          </li>
+          <li>
+            公開名・専用URL・ブランドが必要な場合は、最後にプロジェクトの「公開設定」を行います。
+          </li>
         </ol>
       </section>
       <section className="settings-card">
@@ -105,7 +119,7 @@ export default async function OrganizationsAdminPage({
               name="name"
               required
               maxLength={120}
-              placeholder="例：千ノ国プロジェクト"
+              placeholder="例：運営団体ワタシワークス"
             />
           </label>
           <button className="button" type="submit">
@@ -118,21 +132,71 @@ export default async function OrganizationsAdminPage({
         {organizations.length === 0 ? (
           <p>まだ運営団体はありません。</p>
         ) : (
-          <ul>
+          <div className="settings-stack">
             {organizations.map((organization) => (
-              <li key={organization.id}>
-                <strong>{organization.name}</strong> — 状態：{organization.status}／グループ：
-                {organization._count.groups}件 ／{' '}
-                <Link href={`/organizations/${organization.id}/manage`}>
-                  団体情報・運営者を設定する
-                </Link>{' '}
-                ／{' '}
-                <Link href={`/admin/organizations/${organization.id}/limits`}>
-                  契約・利用上限を設定する
-                </Link>
-              </li>
+              <section key={organization.id} className="service-template-preview">
+                <div className="management-section__heading">
+                  <div>
+                    <p className="management-section__eyebrow">運営団体</p>
+                    <h3>{organization.name}</h3>
+                  </div>
+                  <span>{organization.groups.length}プロジェクト</span>
+                </div>
+                <p>状態：{organization.status}</p>
+                <div className="button-row">
+                  <Link
+                    className="button button--secondary"
+                    href={`/organizations/${organization.id}/manage`}
+                  >
+                    団体情報・運営者
+                  </Link>
+                  <Link
+                    className="button button--secondary"
+                    href={`/admin/organizations/${organization.id}/limits`}
+                  >
+                    契約・利用上限
+                  </Link>
+                  <Link className="button" href={`/admin/groups?workspaceId=${organization.id}`}>
+                    この団体にプロジェクトを作る
+                  </Link>
+                </div>
+                <h4>所属するプロジェクト</h4>
+                {organization.groups.length === 0 ? (
+                  <p>まだプロジェクトはありません。</p>
+                ) : (
+                  <ul className="organization-group-list">
+                    {organization.groups.map((project) => (
+                      <li key={project.id}>
+                        <div>
+                          <strong>
+                            {project.serviceConfiguration?.displayName ?? project.name}
+                          </strong>
+                          <span>状態：{project.status}</span>
+                        </div>
+                        <div className="button-row">
+                          {project.serviceConfiguration ? (
+                            <Link
+                              className="button button--secondary"
+                              href={`/admin/services?workspaceId=${organization.id}`}
+                            >
+                              公開設定を確認
+                            </Link>
+                          ) : (
+                            <Link
+                              className="button button--secondary"
+                              href={`/admin/services?workspaceId=${organization.id}&groupId=${project.id}`}
+                            >
+                              公開設定を追加
+                            </Link>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </section>
     </main>

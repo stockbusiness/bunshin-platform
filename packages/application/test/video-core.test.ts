@@ -96,6 +96,29 @@ describe('Video Core', () => {
         disclosureSnapshot: {},
       }),
     ).resolves.toMatchObject({ id: ids.videoProjectId, groupId: ids.groupId });
+    // Repository methods are Vitest mocks in this test.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(value.create).toHaveBeenCalledWith(expect.objectContaining({ narrationVoice: 'marin' }));
+  });
+
+  it('keeps the narration voice selected before rendering', async () => {
+    const value = repository();
+    await new CreateVideoProject(value).execute({
+      ...ids,
+      campaignId: null,
+      characterProfileVersionId: null,
+      title: '声を選べる動画',
+      platform: 'INSTAGRAM',
+      type: 'EXPLAINER',
+      durationSeconds: 30,
+      narrationEnabled: true,
+      narrationVoice: 'coral',
+      standardComposition: true,
+      aiProcessingTypes: [],
+      disclosureSnapshot: {},
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(value.create).toHaveBeenCalledWith(expect.objectContaining({ narrationVoice: 'coral' }));
   });
 
   it('requires one to five unique photos for a photo slideshow', async () => {

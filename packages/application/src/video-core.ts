@@ -24,6 +24,9 @@ export type VideoAiProcessingType =
   | 'VIDEO_GENERATION'
   | 'AUTOMATIC_ASSET_SELECTION';
 export type VideoDurationSeconds = 25 | 30 | 60;
+export const VIDEO_NARRATION_VOICES = ['marin', 'cedar', 'coral'] as const;
+export type VideoNarrationVoice = (typeof VIDEO_NARRATION_VOICES)[number];
+export const DEFAULT_VIDEO_NARRATION_VOICE: VideoNarrationVoice = 'marin';
 export type VideoReviewDecision = 'ADOPTED' | 'REJECTED';
 export type VideoReviewReason =
   | 'NARRATION_HARD_TO_HEAR'
@@ -53,6 +56,7 @@ export interface VideoSceneRecord {
 export interface VideoProjectRecord {
   photoAssetIds?: string[];
   narrationEnabled?: boolean;
+  narrationVoice?: VideoNarrationVoice;
   socialImageGenerationRequestId?: string | null;
   reviewDecision?: VideoReviewDecision | null;
   reviewReason?: string | null;
@@ -87,6 +91,7 @@ export interface VideoProjectRepository {
   create(input: {
     photoAssetIds?: string[];
     narrationEnabled?: boolean;
+    narrationVoice?: VideoNarrationVoice;
     socialImageGenerationRequestId?: string | null;
     id?: string;
     workspaceId: string;
@@ -369,6 +374,9 @@ export class CreateVideoProject {
     if (![25, 30, 60].includes(input.durationSeconds))
       throw new ApplicationError('VALIDATION_ERROR', 'invalid durationSeconds');
     const photoAssetIds = (input.photoAssetIds ?? []).map((value) => id(value, 'photoAssetId'));
+    const narrationVoice = input.narrationVoice ?? DEFAULT_VIDEO_NARRATION_VOICE;
+    if (!VIDEO_NARRATION_VOICES.includes(narrationVoice))
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid narrationVoice');
     if (
       photoAssetIds.length > 5 ||
       new Set(photoAssetIds).size !== photoAssetIds.length ||
@@ -384,6 +392,7 @@ export class CreateVideoProject {
     const value = await this.repository.create({
       ...input,
       photoAssetIds,
+      narrationVoice,
       socialImageGenerationRequestId: input.socialImageGenerationRequestId
         ? id(input.socialImageGenerationRequestId, 'socialImageGenerationRequestId')
         : null,

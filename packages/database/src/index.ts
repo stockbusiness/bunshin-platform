@@ -16089,13 +16089,17 @@ export class PrismaVideoProjectRepository
                 status: 'COMPLETED',
                 revision: { increment: 1 },
                 reviewDecision: 'ADOPTED',
+                reviewReason: null,
+                reviewNote: null,
                 reviewedAt: now,
               }
             : {
                 status: 'WAITING_APPROVAL',
                 revision: { increment: 1 },
                 reviewDecision: null,
-                reviewedAt: null,
+                reviewReason: input.reviewReason,
+                reviewNote: input.reviewNote,
+                reviewedAt: now,
               },
       });
       if (changed.count !== 1) return null;
@@ -18041,7 +18045,7 @@ export class PrismaSocialImageGenerationRequestRepository implements SocialImage
         workspaceId: request.workspaceId,
         groupId: request.groupId,
         ownerUserId: request.ownerUserId,
-        status: { in: ['READY', 'ADOPTED'] },
+        status: { in: ['READY', 'ADOPTED', 'REJECTED'] },
       },
       orderBy: [{ pageIndex: 'asc' }, { createdAt: 'desc' }],
     });
@@ -18079,7 +18083,7 @@ export class PrismaSocialImageGenerationRequestRepository implements SocialImage
           workspaceId: request.workspaceId,
           groupId: request.groupId,
           ownerUserId: request.ownerUserId,
-          status: { in: ['READY', 'ADOPTED'] },
+          status: { in: ['READY', 'ADOPTED', 'REJECTED'] },
         },
       });
       if (!target) return null;
@@ -18091,11 +18095,11 @@ export class PrismaSocialImageGenerationRequestRepository implements SocialImage
             status: 'ADOPTED',
             id: { not: target.id },
           },
-          data: { status: 'READY' },
+          data: { status: 'READY', reviewReason: null, reviewNote: null },
         });
         const adopted = await tx.socialImageGeneratedMedia.update({
           where: { id: target.id },
-          data: { status: 'ADOPTED' },
+          data: { status: 'ADOPTED', reviewReason: null, reviewNote: null },
         });
         return {
           ...adopted,
@@ -18109,9 +18113,13 @@ export class PrismaSocialImageGenerationRequestRepository implements SocialImage
           workspaceId: request.workspaceId,
           groupId: request.groupId,
           ownerUserId: request.ownerUserId,
-          status: { in: ['READY', 'ADOPTED'] },
+          status: { in: ['READY', 'ADOPTED', 'REJECTED'] },
         },
-        data: { status: input.status },
+        data: {
+          status: input.status,
+          reviewReason: input.reviewReason,
+          reviewNote: input.reviewNote,
+        },
       });
       return {
         ...target,

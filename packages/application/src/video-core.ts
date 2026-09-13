@@ -25,6 +25,13 @@ export type VideoAiProcessingType =
   | 'AUTOMATIC_ASSET_SELECTION';
 export type VideoDurationSeconds = 25 | 30 | 60;
 export type VideoReviewDecision = 'ADOPTED' | 'REJECTED';
+export type VideoReviewReason =
+  | 'NARRATION_HARD_TO_HEAR'
+  | 'AI_VOICE_UNNATURAL'
+  | 'CONTENT_MISMATCH'
+  | 'VISUAL_UNNATURAL'
+  | 'TOO_LONG'
+  | 'OTHER';
 
 export interface VideoSceneRecord {
   id: string;
@@ -48,6 +55,8 @@ export interface VideoProjectRecord {
   narrationEnabled?: boolean;
   socialImageGenerationRequestId?: string | null;
   reviewDecision?: VideoReviewDecision | null;
+  reviewReason?: string | null;
+  reviewNote?: string | null;
   reviewedAt?: Date | null;
   id: string;
   workspaceId: string;
@@ -133,6 +142,8 @@ export interface VideoProjectReviewRepository {
     videoProjectId: string;
     expectedRevision: number;
     action: VideoProjectReviewAction;
+    reviewReason: VideoReviewReason | null;
+    reviewNote: string | null;
   }): Promise<VideoProjectRecord | null>;
 }
 
@@ -597,6 +608,24 @@ export class ReviewFinishedVideo {
       throw new ApplicationError('VALIDATION_ERROR', 'invalid expectedRevision');
     if (!['ADOPT', 'REVISE'].includes(input.action))
       throw new ApplicationError('VALIDATION_ERROR', 'invalid review action');
+    const allowedReasons = new Set<VideoReviewReason>([
+      'NARRATION_HARD_TO_HEAR',
+      'AI_VOICE_UNNATURAL',
+      'CONTENT_MISMATCH',
+      'VISUAL_UNNATURAL',
+      'TOO_LONG',
+      'OTHER',
+    ]);
+    if (
+      input.action === 'REVISE' &&
+      (!input.reviewReason || !allowedReasons.has(input.reviewReason))
+    )
+      throw new ApplicationError('VALIDATION_ERROR', 'invalid reviewReason');
+    const reviewReason = input.action === 'REVISE' ? input.reviewReason : null;
+    const reviewNote =
+      input.action === 'REVISE' && input.reviewNote
+        ? text(input.reviewNote, 'reviewNote', 500)
+        : null;
     const value = await this.repository.review({
       workspaceId: id(input.workspaceId, 'workspaceId'),
       groupId: id(input.groupId, 'groupId'),
@@ -604,6 +633,8 @@ export class ReviewFinishedVideo {
       videoProjectId: id(input.videoProjectId, 'videoProjectId'),
       expectedRevision: input.expectedRevision,
       action: input.action,
+      reviewReason,
+      reviewNote,
     });
     if (!value) throw new ApplicationError('CONFLICT', 'video review conflict');
     return value;

@@ -264,8 +264,13 @@ describe('Social image generation core', () => {
         requestId: ids.requestId,
         mediaId: media.id,
         decision: 'ADOPTED',
+        reviewReason: null,
+        reviewNote: null,
       }),
     ).resolves.toMatchObject({ status: 'ADOPTED' });
+    expect(requests.setMediaStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'ADOPTED', reviewReason: null, reviewNote: null }),
+    );
   });
 
   it('replaces only the requested page with optimistic revision control', async () => {

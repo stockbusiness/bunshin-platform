@@ -3995,6 +3995,8 @@ model VideoProject {
   narrationEnabled Boolean @default(false) @map("narration_enabled")
   socialImageGenerationRequestId String? @unique @map("social_image_generation_request_id") @db.Uuid
   reviewDecision String? @map("review_decision") @db.VarChar(16)
+  reviewReason String? @map("review_reason") @db.VarChar(80)
+  reviewNote String? @map("review_note") @db.VarChar(500)
   reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
   id                         String                 @id @default(uuid()) @db.Uuid
   workspaceId                String                 @map("workspace_id") @db.Uuid
@@ -4377,6 +4379,8 @@ model SocialImageGeneratedMedia {
   requestId           String                          @map("request_id") @db.Uuid
   pageIndex           Int                             @default(0) @map("page_index")
   status              SocialImageGeneratedMediaStatus @default(READY)
+  reviewReason        String?                         @map("review_reason") @db.VarChar(80)
+  reviewNote          String?                         @map("review_note") @db.VarChar(500)
   sourceStorageKey    String?                         @map("source_storage_key") @db.VarChar(512)
   completedStorageKey String                          @unique @map("completed_storage_key") @db.VarChar(512)
   thumbnailStorageKey String                          @unique @map("thumbnail_storage_key") @db.VarChar(512)

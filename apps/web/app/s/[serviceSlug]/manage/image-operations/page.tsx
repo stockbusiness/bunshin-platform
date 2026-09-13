@@ -14,6 +14,13 @@ const statusLabel: Record<string, string> = {
   FAILED: '失敗',
   CANCELLED: '中止',
 };
+const reviewReasonLabel: Record<string, string> = {
+  TEXT_HARD_TO_READ: '文字が読みにくい',
+  CONTENT_MISMATCH: '内容が希望と違う',
+  PHOTO_UNNATURAL: '写真が不自然',
+  DESIGN_UNAPPEALING: 'デザインが好みではない',
+  OTHER: 'その他',
+};
 
 export default async function ServiceImageOperationsPage({
   params,
@@ -37,7 +44,9 @@ export default async function ServiceImageOperationsPage({
         status: true,
         errorCode: true,
         createdAt: true,
-        media: { select: { status: true } },
+        media: {
+          select: { status: true, pageIndex: true, reviewReason: true, reviewNote: true, updatedAt: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 500,
@@ -62,6 +71,14 @@ export default async function ServiceImageOperationsPage({
   ).length;
   const percent = (value: number, base: number) =>
     base ? `${Math.round((value / base) * 100)}%` : '―';
+  const memberNames = new Map(
+    members.map((member) => [member.id, member.user.displayName || member.user.email || '参加者']),
+  );
+  const feedback = requests.flatMap((request) =>
+    request.media
+      .filter((media) => media.pageIndex === 0 && media.status === 'REJECTED' && media.reviewReason)
+      .map((media) => ({ ...media, memberName: memberNames.get(request.groupMembershipId) ?? '参加者' })),
+  );
 
   return (
     <PublicShell showPlatformBrand={false}>
@@ -70,7 +87,7 @@ export default async function ServiceImageOperationsPage({
           <p className="eyebrow">サービス管理者</p>
           <h1>画像生成の利用状況</h1>
           <p>
-            このサービス全体の件数だけを確認できます。参加者が作った画像や投稿本文は表示しません。
+            このサービス全体の件数と、参加者が送った改善理由を確認できます。作った画像や投稿本文は表示しません。
           </p>
           <a href={`/s/${serviceSlug}/manage`}>← 管理メニューへ戻る</a>
         </header>
@@ -83,6 +100,23 @@ export default async function ServiceImageOperationsPage({
             完成率：{percent(completed, total)} ／ 完成後の採用率：{percent(adopted, completed)}
           </p>
           <p>失敗が続く場合は、システム管理者へ連絡してください。</p>
+        </section>
+        <section className="settings-card">
+          <h2>使わなかった理由</h2>
+          {feedback.length === 0 ? (
+            <p>理由はまだ届いていません。</p>
+          ) : (
+            <ul className="settings-status-list">
+              {feedback.slice(0, 30).map((item, index) => (
+                <li className="settings-status-item" key={`${item.updatedAt.toISOString()}-${index}`}>
+                  <strong>{item.memberName}</strong>
+                  <span>{reviewReasonLabel[item.reviewReason!] ?? item.reviewReason}</span>
+                  {item.reviewNote ? <span>補足：{item.reviewNote}</span> : null}
+                  <span>{item.updatedAt.toLocaleString('ja-JP')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
         <section className="settings-card">
           <h2>参加者ごとの件数</h2>

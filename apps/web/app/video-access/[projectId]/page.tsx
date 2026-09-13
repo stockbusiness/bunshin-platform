@@ -73,21 +73,49 @@ export default async function VideoAccessPage({
                     </section>
                   </>
                 ) : scope.project.reviewDecision === 'REJECTED' ? (
-                  <p role="status">
+                  <section className="settings-card" role="status">
                     <strong>今回は使わないことを記録しました。</strong>
-                  </p>
+                    <p>選んだ理由は運営者へ届き、次の動画づくりの改善に使われます。</p>
+                  </section>
                 ) : query.decision === 'adopted' ? (
                   <p role="status">この動画を使うことを記録しました。</p>
                 ) : null}
-                <div className="button-row">
+                <div className="form-stack">
                   <form action={`/video-access/${projectId}/decision`} method="post">
                     <input type="hidden" name="decision" value="ADOPTED" />
                     <button type="submit">この動画を使う</button>
                   </form>
                   <form action={`/video-access/${projectId}/decision`} method="post">
                     <input type="hidden" name="decision" value="REJECTED" />
+                    <label className="field">
+                      <span className="field__label">使わない理由</span>
+                      <select
+                        className="field__control"
+                        name="reviewReason"
+                        defaultValue={scope.project.reviewReason ?? ''}
+                        required
+                      >
+                        <option value="" disabled>選んでください</option>
+                        <option value="NARRATION_HARD_TO_HEAR">ナレーションが聞き取りにくい</option>
+                        <option value="AI_VOICE_UNNATURAL">声が不自然</option>
+                        <option value="CONTENT_MISMATCH">内容が希望と違う</option>
+                        <option value="VISUAL_UNNATURAL">映像や画像が不自然</option>
+                        <option value="TOO_LONG">動画が長すぎる</option>
+                        <option value="OTHER">その他</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span className="field__label">詳しく伝える（任意）</span>
+                      <textarea
+                        className="field__control"
+                        name="reviewNote"
+                        maxLength={500}
+                        defaultValue={scope.project.reviewNote ?? ''}
+                        placeholder="例：声が速くて聞き取れませんでした"
+                      />
+                    </label>
                     <button type="submit" className="button button--secondary">
-                      今回は使わない
+                      理由を送って今回は使わない
                     </button>
                   </form>
                 </div>

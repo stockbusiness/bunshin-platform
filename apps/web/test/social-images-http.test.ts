@@ -451,4 +451,35 @@ describe('social image HTTP', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ data: { status: 'ADOPTED' } });
   });
+
+  it('records why a generated image was not used', async () => {
+    fakes.findOwned.mockResolvedValue({ ...row('QUEUED', 2), status: 'READY_FOR_REVIEW' });
+    fakes.setMediaStatus.mockResolvedValue({
+      id: '00000000-0000-4000-8000-000000000009',
+      status: 'REJECTED',
+    });
+    const response = await decideSocialImageResponse(
+      new Request('https://example.com/api/images/request', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          mediaId: '00000000-0000-4000-8000-000000000009',
+          decision: 'REJECTED',
+          reviewReason: 'TEXT_HARD_TO_READ',
+          reviewNote: '文字をもっと大きくしてほしい',
+        }),
+      }),
+      ids.workspaceId,
+      ids.groupId,
+      ids.requestId,
+    );
+    expect(response.status).toBe(200);
+    expect(fakes.setMediaStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'REJECTED',
+        reviewReason: 'TEXT_HARD_TO_READ',
+        reviewNote: '文字をもっと大きくしてほしい',
+      }),
+    );
+  });
 });

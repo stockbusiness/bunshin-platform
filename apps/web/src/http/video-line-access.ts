@@ -62,6 +62,8 @@ export async function videoViewScope(id: string) {
       ownerUserId: true,
       title: true,
       reviewDecision: true,
+      reviewReason: true,
+      reviewNote: true,
       reviewedAt: true,
       disclosureSnapshot: true,
       socialImageGenerationRequestId: true,
@@ -314,9 +316,26 @@ export async function recordVideoReviewDecision(request: Request, id: string) {
     requireSameOrigin(request);
     const scope = await authorizedVideoView(id);
     if (!scope?.project.renderAttempts.length) throw new Error('Unavailable');
-    const decision = z
-      .enum(['ADOPTED', 'REJECTED'])
-      .parse((await request.formData()).get('decision'));
+    const form = await request.formData();
+    const decision = z.enum(['ADOPTED', 'REJECTED']).parse(form.get('decision'));
+    const reviewReason =
+      decision === 'REJECTED'
+        ? z
+            .enum([
+              'NARRATION_HARD_TO_HEAR',
+              'AI_VOICE_UNNATURAL',
+              'CONTENT_MISMATCH',
+              'VISUAL_UNNATURAL',
+              'TOO_LONG',
+              'OTHER',
+            ])
+            .parse(form.get('reviewReason'))
+        : null;
+    const reviewNoteValue = form.get('reviewNote');
+    const reviewNote =
+      decision === 'REJECTED' && typeof reviewNoteValue === 'string' && reviewNoteValue.trim()
+        ? z.string().trim().max(500).parse(reviewNoteValue)
+        : null;
     const changed = await scope.db.prisma.videoProject.updateMany({
       where: {
         id: scope.project.id,
@@ -325,7 +344,7 @@ export async function recordVideoReviewDecision(request: Request, id: string) {
         ownerUserId: scope.project.ownerUserId,
         status: { in: ['READY_FOR_REVIEW', 'COMPLETED'] },
       },
-      data: { reviewDecision: decision, reviewedAt: new Date() },
+      data: { reviewDecision: decision, reviewReason, reviewNote, reviewedAt: new Date() },
     });
     if (changed.count !== 1) throw new Error('Unavailable');
     return redirectTo(`${destination}?decision=${decision.toLowerCase()}`);

@@ -9,6 +9,10 @@ const homeSource = readFileSync(
   new URL('../app/s/[serviceSlug]/home/page.tsx', import.meta.url),
   'utf8',
 );
+const listSource = readFileSync(
+  new URL('../app/s/[serviceSlug]/bunshins/page.tsx', import.meta.url),
+  'utf8',
+);
 
 describe('service Bunshin web boundary', () => {
   it('resolves the service scope on the server instead of accepting IDs from the body', () => {
@@ -22,6 +26,13 @@ describe('service Bunshin web boundary', () => {
     expect(httpSource).toContain('ListServiceBunshins');
     expect(homeSource).toContain('/bunshins` as Route');
     expect(homeSource).toContain('投稿パートナーを作る・見る');
+  });
+
+  it('sends members to first setup before showing the partner list', () => {
+    expect(listSource).toContain('readServiceOnboardingSettings');
+    expect(listSource).toContain('membership.serviceOnboardingResponse');
+    expect(listSource).toContain('membership.serviceMemberBusinessProfile');
+    expect(listSource).toContain('/onboarding` as Route');
   });
 
   it('keeps detail and updates scoped by the server-resolved service', () => {

@@ -4,17 +4,20 @@ import { describe, expect, it } from 'vitest';
 const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const onboardingForm = source('app/s/[serviceSlug]/onboarding/service-onboarding-form.tsx');
+const onboardingApi = source('src/http/service-onboarding.ts');
 const proposals = source('app/s/[serviceSlug]/bunshins/new/service-bunshin-proposals.tsx');
 const detailPage = source('app/s/[serviceSlug]/bunshins/[bunshinId]/page.tsx');
 const setup = source('app/s/[serviceSlug]/bunshins/[bunshinId]/simple-first-post-setup.tsx');
 
 describe('service first-post guided setup', () => {
-  it('continues from onboarding directly to personalized partner proposals', () => {
-    expect(onboardingForm).toContain('/bunshins/new`');
+  it('creates one standard business partner and skips proposal selection', () => {
+    expect(onboardingApi).toContain('defaultBusinessPartner(value.businessProfile)');
+    expect(onboardingApi).toContain('existing[0] ??');
+    expect(onboardingForm).toContain('result.data?.bunshinId');
+    expect(onboardingForm).toContain('?setup=1`');
+    expect(onboardingForm).toContain(': `/s/${encodeURIComponent(serviceSlug)}/bunshins/new`');
     expect(onboardingForm).not.toContain('/home`');
     expect(proposals).toContain('useEffect');
-    expect(proposals).toContain('void propose()');
-    expect(proposals).toContain('回答をもとに、あなた向けの投稿パートナーを準備しています');
   });
 
   it('uses large choices for known questions and keeps a free-text fallback', () => {
@@ -32,7 +35,7 @@ describe('service first-post guided setup', () => {
 
   it('starts automatic preparation while leaving SNS posting to the member', () => {
     expect(detailPage).toContain('初回設定のあとは、投稿案を自動で準備してLINEでお知らせします。');
-    expect(setup).toContain('この設定で自動のお届けを始める');
+    expect(setup).toContain('LINE配信を始める');
     expect(setup).toContain('SNSへの投稿はご自身で行います');
   });
 });

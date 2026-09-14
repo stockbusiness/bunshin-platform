@@ -1,5 +1,9 @@
 import 'server-only';
-import { ServiceReferralRewardService } from '@bunshin/application';
+import {
+  CreateBunshin,
+  ListServiceBunshins,
+  ServiceReferralRewardService,
+} from '@bunshin/application';
 import { requestIdFromHeader } from '@bunshin/observability';
 import { ApplicationError, toApiError } from '@bunshin/shared';
 import { z } from 'zod';
@@ -8,6 +12,7 @@ import { requireSameOrigin } from '../auth/request-security';
 import { resolvePublicServiceContext } from '../services/public-service';
 import { buildServiceOnboardingAnswers } from '../services/service-onboarding-response';
 import { readServiceOnboardingSettings } from '../services/service-onboarding-settings';
+import { defaultBusinessPartner } from '../services/default-business-partner';
 
 const purposes = [
   'ATTRACT',
@@ -128,8 +133,28 @@ export async function saveServiceOnboardingResponse(request: Request, serviceSlu
       referredUserId: actor.userId,
       milestone: 'ONBOARDING_COMPLETED',
     });
+    let bunshinId: string | null = null;
+    if (value.businessProfile) {
+      const repository = new db.PrismaBunshinRepository();
+      const existing = await new ListServiceBunshins(repository).execute({
+        workspaceId: service.workspaceId,
+        groupId: service.serviceId,
+        actorUserId: actor.userId,
+      });
+      const bunshin =
+        existing[0] ??
+        (await new CreateBunshin(repository).execute({
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          actorUserId: actor.userId,
+          slug: `service-${crypto.randomUUID()}`,
+          type: 'EXPERT',
+          ...defaultBusinessPartner(value.businessProfile),
+        }));
+      bunshinId = bunshin.id;
+    }
     return Response.json(
-      { data: saved, requestId },
+      { data: { ...saved, bunshinId }, requestId },
       { status: 201, headers: { 'cache-control': 'private, no-store' } },
     );
   } catch (error) {

@@ -239,13 +239,13 @@ export function SimpleFirstPostSetup({
   return (
     <section className="simple-first-post" aria-labelledby="simple-setup-title">
       <header>
-        <p className="eyebrow">かんたん設定</p>
-        <h2 id="simple-setup-title">最初に設定すると、投稿案がLINEに届きます</h2>
-        <p>投稿するSNSとペースを選んでください。投稿予定と内容はこちらで準備します。</p>
+        <p className="eyebrow">あと一つで完了です</p>
+        <h2 id="simple-setup-title">投稿するSNSと受信時刻を選んでください</h2>
+        <p>発信方法と毎日の投稿案はこちらで準備します。</p>
       </header>
       {profiles.some(({ status }) => status === 'ACTIVE') ? null : (
         <fieldset>
-          <legend>1. どのSNSに投稿しますか？</legend>
+          <legend>投稿するSNS</legend>
           <div className="simple-first-post__choices">
             {(Object.keys(platformLabels) as SocialPlatform[]).map((value) => (
               <label key={value} className={platform === value ? 'is-selected' : ''}>
@@ -265,7 +265,7 @@ export function SimpleFirstPostSetup({
       {profiles.some(({ status }) => status === 'ACTIVE') ||
       (deliveryPolicy.enabled && deliveryPolicy.lockCadence) ? null : (
         <fieldset>
-          <legend>2. どのくらいのペースで投稿しますか？</legend>
+          <legend>投稿するペース</legend>
           <div className="simple-first-post__choices simple-first-post__choices--frequency">
             {frequencyOptions.map((option) => (
               <label key={option.value} className={frequency === option.value ? 'is-selected' : ''}>
@@ -301,7 +301,7 @@ export function SimpleFirstPostSetup({
         disabled={pending}
         onClick={() => void prepare()}
       >
-        {pending ? step || '準備しています…' : 'この設定で自動のお届けを始める'}
+        {pending ? step || '準備しています…' : 'LINE配信を始める'}
       </button>
       {pending ? (
         <p className="simple-first-post__wait">少し時間がかかります。そのままお待ちください。</p>

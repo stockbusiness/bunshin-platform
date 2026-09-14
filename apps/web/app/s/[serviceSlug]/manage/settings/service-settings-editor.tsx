@@ -192,8 +192,16 @@ export function ServiceSettingsEditor({
           reason: text('reason'),
         }),
       });
-      const result = (await response.json()) as { error?: { message?: string } };
-      if (!response.ok) throw new Error(result.error?.message ?? '設定を保存できませんでした。');
+      const result = (await response.json()) as {
+        requestId?: string;
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        const message = result.error?.message ?? '設定を保存できませんでした。';
+        throw new Error(
+          result.requestId ? `${message}（問い合わせ番号: ${result.requestId}）` : message,
+        );
+      }
       setMessage('設定を保存しました。サービス画面にも反映されます。');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '設定を保存できませんでした。');

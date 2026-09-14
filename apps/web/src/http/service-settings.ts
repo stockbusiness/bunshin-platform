@@ -1,6 +1,6 @@
 import 'server-only';
 import { ServiceFoundationService } from '@bunshin/application';
-import { requestIdFromHeader } from '@bunshin/observability';
+import { createLogger, requestIdFromHeader } from '@bunshin/observability';
 import { ApplicationError, toApiError } from '@bunshin/shared';
 import { z } from 'zod';
 import { currentUserProvider } from '../auth/current-user';
@@ -10,6 +10,17 @@ import {
   enforceBusinessFreeRegistrationSettings,
 } from '../services/business-daily-service-settings';
 import { resolveManagedServiceContext } from '../services/public-service';
+
+const logger = createLogger();
+
+function errorIdentity(error: unknown) {
+  if (error === null || typeof error !== 'object') return {};
+  const candidate = error as { name?: unknown; code?: unknown };
+  return {
+    ...(typeof candidate.name === 'string' ? { errorName: candidate.name } : {}),
+    ...(typeof candidate.code === 'string' ? { databaseErrorCode: candidate.code } : {}),
+  };
+}
 
 const optionalUrl = z
   .union([z.literal(''), z.string().url().max(2048)])
@@ -268,6 +279,13 @@ export async function updateServiceSettingsResponse(request: Request, serviceSlu
     );
   } catch (error) {
     const mapped = toApiError(error, requestId);
+    logger.error('service settings update failed', {
+      requestId,
+      route: `/api/services/${serviceSlug}/settings`,
+      status: mapped.status,
+      errorCode: mapped.body.error.code,
+      ...errorIdentity(error),
+    });
     return Response.json(mapped.body, {
       status: mapped.status,
       headers: { 'cache-control': 'private, no-store' },

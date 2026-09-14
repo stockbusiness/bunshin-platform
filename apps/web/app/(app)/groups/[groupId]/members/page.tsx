@@ -115,13 +115,9 @@ async function saveMemberFeatureAssignment(formData: FormData) {
     const code =
       error instanceof ApplicationError && error.code === 'VALIDATION_ERROR'
         ? 'invalid'
-        : error instanceof ApplicationError &&
-            error.code === 'CONFLICT' &&
-            error.message === 'rewards pilot member limit reached'
-          ? 'pilot-limit'
-          : error instanceof ApplicationError && error.code === 'FORBIDDEN'
-            ? 'forbidden'
-            : 'failed';
+        : error instanceof ApplicationError && error.code === 'FORBIDDEN'
+          ? 'forbidden'
+          : 'failed';
     redirect(`${returnPath}&error=${code}` as Route);
   }
   revalidatePath(memberPath(input.data.groupId));
@@ -310,6 +306,7 @@ export default async function GroupMemberFeaturesPage({
           role: true,
           serviceRole: true,
           status: true,
+          consentedAt: true,
           user: { select: { displayName: true, email: true } },
           serviceOnboardingResponse: { select: { completedAt: true } },
           featureAssignments: true,
@@ -369,14 +366,8 @@ export default async function GroupMemberFeaturesPage({
       ? membership.serviceRole !== 'PARTICIPANT'
       : membership.role === 'MANAGER',
   );
-  const rewardsPilotCount = activeMemberships.filter((membership) =>
-    membership.featureAssignments.some(
-      (assignment) =>
-        assignment.featureKey === 'REWARDS.POINTS_BADGES' &&
-        assignment.status === 'ENABLED' &&
-        (!assignment.startsAt || assignment.startsAt <= now) &&
-        (!assignment.endsAt || assignment.endsAt > now),
-    ),
+  const rewardsPilotCount = activeMemberships.filter(
+    (membership) => membership.serviceRole === 'PARTICIPANT' && membership.consentedAt,
   ).length;
   const assignments = new Map(
     (selectedMember?.featureAssignments ?? []).map((item) => [item.featureKey, item]),
@@ -387,7 +378,6 @@ export default async function GroupMemberFeaturesPage({
   const errors: Record<string, string> = {
     invalid: '入力内容を確認してください。変更理由は5文字以上必要です。',
     forbidden: 'グループに許可された範囲を超えているため保存できません。',
-    'pilot-limit': '試験利用は30人までです。別の参加者を停止してから、もう一度設定してください。',
     failed: '設定を保存できませんでした。もう一度お試しください。',
     'member-invalid': '役割・状態・変更理由を確認してください。変更理由は5文字以上必要です。',
     'member-forbidden':
@@ -710,7 +700,8 @@ export default async function GroupMemberFeaturesPage({
                   <p>{policy.feature.description}</p>
                   {policy.featureKey === 'REWARDS.POINTS_BADGES' ? (
                     <p>
-                      試験利用中：<strong>{rewardsPilotCount}人／30人</strong>
+                      登録と規約への同意を終えた一般参加者
+                      <strong>{rewardsPilotCount}人全員</strong>が自動で利用できます。
                     </p>
                   ) : null}
                   <p>
@@ -724,103 +715,117 @@ export default async function GroupMemberFeaturesPage({
                   <p>
                     この参加者：
                     <strong>
-                      {assignment ? statusLabel[assignment.status] : '未設定（利用できない）'}
+                      {policy.featureKey === 'REWARDS.POINTS_BADGES'
+                        ? selectedMember.serviceRole === 'PARTICIPANT' && selectedMember.consentedAt
+                          ? '登録済み（自動で利用できる）'
+                          : '対象外（一般参加者の登録と規約同意が必要）'
+                        : assignment
+                          ? statusLabel[assignment.status]
+                          : '未設定（利用できない）'}
                     </strong>
                   </p>
-                  {query.service ? (
+                  {query.service && policy.featureKey !== 'REWARDS.POINTS_BADGES' ? (
                     <p>
                       運営者は、システム管理者がこのサービスに許可した範囲で、参加者ごとの利用可否を変更できます。
                     </p>
                   ) : null}
-                  <form className="form-stack" action={saveMemberFeatureAssignment}>
-                    {query.service && (
-                      <input type="hidden" name="serviceSlug" value={query.service} />
-                    )}
-                    <input type="hidden" name="workspaceId" value={group.workspaceId} />
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="groupMembershipId" value={selectedMember.id} />
-                    <input type="hidden" name="featureKey" value={policy.featureKey} />
-                    <label className="field">
-                      <span className="field__label">この参加者が</span>
-                      <select
-                        className="field__control"
-                        name="status"
-                        defaultValue={assignment?.status ?? 'DISABLED'}
-                      >
-                        <option value="ENABLED">利用できる</option>
-                        <option value="DISABLED">利用できない</option>
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span className="field__label">1日の上限（空欄ならグループ上限と同じ）</span>
-                      <input
-                        className="field__control"
-                        name="dailyLimit"
-                        type="number"
-                        min="1"
-                        max={policy.dailyLimit ?? 1_000_000}
-                        defaultValue={assignment?.dailyLimit ?? ''}
-                      />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">
-                        1か月の上限（空欄ならグループ上限と同じ）
-                      </span>
-                      <input
-                        className="field__control"
-                        name="monthlyLimit"
-                        type="number"
-                        min="1"
-                        max={policy.monthlyLimit ?? 1_000_000}
-                        defaultValue={assignment?.monthlyLimit ?? ''}
-                      />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">利用開始日時（空欄なら今から）</span>
-                      <input
-                        className="field__control"
-                        name="startsAt"
-                        type="datetime-local"
-                        defaultValue={localDateTime(assignment?.startsAt ?? null)}
-                      />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">利用終了日時（空欄なら期限なし）</span>
-                      <input
-                        className="field__control"
-                        name="endsAt"
-                        type="datetime-local"
-                        defaultValue={localDateTime(assignment?.endsAt ?? null)}
-                      />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">変更理由</span>
-                      <textarea
-                        className="field__control"
-                        name="reason"
-                        required
-                        minLength={5}
-                        maxLength={1000}
-                        placeholder="例：画像作成を担当してもらうため"
-                      />
-                    </label>
-                    <div className="form-actions">
-                      <button className="button" type="submit" name="status" value="ENABLED">
-                        この参加者に利用を許可する
-                      </button>
-                      <button
-                        className="button button--secondary"
-                        type="submit"
-                        name="status"
-                        value="DISABLED"
-                      >
-                        この参加者の利用を停止する
-                      </button>
-                      <button className="button button--secondary" type="submit">
-                        上限などを保存する
-                      </button>
-                    </div>
-                  </form>
+                  {policy.featureKey === 'REWARDS.POINTS_BADGES' ? (
+                    <p>
+                      個別の利用許可は必要ありません。参加を停止するとポイントとバッジも自動で利用できなくなります。
+                    </p>
+                  ) : (
+                    <form className="form-stack" action={saveMemberFeatureAssignment}>
+                      {query.service && (
+                        <input type="hidden" name="serviceSlug" value={query.service} />
+                      )}
+                      <input type="hidden" name="workspaceId" value={group.workspaceId} />
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input type="hidden" name="groupMembershipId" value={selectedMember.id} />
+                      <input type="hidden" name="featureKey" value={policy.featureKey} />
+                      <label className="field">
+                        <span className="field__label">この参加者が</span>
+                        <select
+                          className="field__control"
+                          name="status"
+                          defaultValue={assignment?.status ?? 'DISABLED'}
+                        >
+                          <option value="ENABLED">利用できる</option>
+                          <option value="DISABLED">利用できない</option>
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span className="field__label">
+                          1日の上限（空欄ならグループ上限と同じ）
+                        </span>
+                        <input
+                          className="field__control"
+                          name="dailyLimit"
+                          type="number"
+                          min="1"
+                          max={policy.dailyLimit ?? 1_000_000}
+                          defaultValue={assignment?.dailyLimit ?? ''}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">
+                          1か月の上限（空欄ならグループ上限と同じ）
+                        </span>
+                        <input
+                          className="field__control"
+                          name="monthlyLimit"
+                          type="number"
+                          min="1"
+                          max={policy.monthlyLimit ?? 1_000_000}
+                          defaultValue={assignment?.monthlyLimit ?? ''}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">利用開始日時（空欄なら今から）</span>
+                        <input
+                          className="field__control"
+                          name="startsAt"
+                          type="datetime-local"
+                          defaultValue={localDateTime(assignment?.startsAt ?? null)}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">利用終了日時（空欄なら期限なし）</span>
+                        <input
+                          className="field__control"
+                          name="endsAt"
+                          type="datetime-local"
+                          defaultValue={localDateTime(assignment?.endsAt ?? null)}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">変更理由</span>
+                        <textarea
+                          className="field__control"
+                          name="reason"
+                          required
+                          minLength={5}
+                          maxLength={1000}
+                          placeholder="例：画像作成を担当してもらうため"
+                        />
+                      </label>
+                      <div className="form-actions">
+                        <button className="button" type="submit" name="status" value="ENABLED">
+                          この参加者に利用を許可する
+                        </button>
+                        <button
+                          className="button button--secondary"
+                          type="submit"
+                          name="status"
+                          value="DISABLED"
+                        >
+                          この参加者の利用を停止する
+                        </button>
+                        <button className="button button--secondary" type="submit">
+                          上限などを保存する
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </section>
               );
             })

@@ -36,7 +36,8 @@ describe('service reward export boundaries', () => {
 
   it('uses the configured pilot period and exports an aggregate plus participant results', () => {
     expect(source).toContain('resolveRewardsPilotMeasurementPeriod');
-    expect(source).toContain('participatedInRewardsPilotPeriod');
+    expect(source).toContain("serviceRole: 'PARTICIPANT'");
+    expect(source).toContain('consentedAt: { not: null }');
     expect(source).toContain("'全体'");
     expect(source).toContain("'参加者'");
     expect(source).toContain("'3日以上続けた'");

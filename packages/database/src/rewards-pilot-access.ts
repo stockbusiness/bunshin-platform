@@ -312,6 +312,7 @@ export async function getActiveRewardsPilotAccess(
       userId: scope.userId,
       ...(scope.groupId ? { groupId: scope.groupId } : {}),
       status: 'ACTIVE',
+      serviceRole: 'PARTICIPANT',
       consentedAt: { not: null },
       group: {
         status: 'ACTIVE',
@@ -319,9 +320,6 @@ export async function getActiveRewardsPilotAccess(
         featurePolicies: {
           some: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
         },
-      },
-      featureAssignments: {
-        some: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
       },
     },
     select: {
@@ -335,20 +333,13 @@ export async function getActiveRewardsPilotAccess(
           },
         },
       },
-      featureAssignments: {
-        where: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
-        select: { endsAt: true },
-      },
     },
   });
   if (!membership) return null;
   return {
     membershipId: membership.id,
     groupId: membership.groupId,
-    endsAt: earliestDate([
-      ...membership.group.featurePolicies.map(({ endsAt }) => endsAt),
-      ...membership.featureAssignments.map(({ endsAt }) => endsAt),
-    ]),
+    endsAt: earliestDate(membership.group.featurePolicies.map(({ endsAt }) => endsAt)),
   };
 }
 
@@ -375,6 +366,7 @@ export async function listActiveRewardsPilotServiceAccesses(
       workspaceId: scope.workspaceId,
       userId: scope.userId,
       status: 'ACTIVE',
+      serviceRole: 'PARTICIPANT',
       consentedAt: { not: null },
       group: {
         status: 'ACTIVE',
@@ -383,9 +375,6 @@ export async function listActiveRewardsPilotServiceAccesses(
         featurePolicies: {
           some: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
         },
-      },
-      featureAssignments: {
-        some: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
       },
     },
     select: {
@@ -401,10 +390,6 @@ export async function listActiveRewardsPilotServiceAccesses(
           },
         },
       },
-      featureAssignments: {
-        where: { featureKey: REWARDS_PILOT_FEATURE_KEY, ...activeWindow },
-        select: { endsAt: true },
-      },
     },
     orderBy: { createdAt: 'asc' },
   });
@@ -418,10 +403,7 @@ export async function listActiveRewardsPilotServiceAccesses(
         groupId: membership.groupId,
         serviceSlug: service.slug,
         serviceName: service.displayName,
-        endsAt: earliestDate([
-          ...membership.group.featurePolicies.map(({ endsAt }) => endsAt),
-          ...membership.featureAssignments.map(({ endsAt }) => endsAt),
-        ]),
+        endsAt: earliestDate(membership.group.featurePolicies.map(({ endsAt }) => endsAt)),
       },
     ];
   });

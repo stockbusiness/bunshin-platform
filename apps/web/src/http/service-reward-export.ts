@@ -4,7 +4,6 @@ import { ApplicationError, toApiError } from '@bunshin/shared';
 import { currentUserProvider } from '../auth/current-user';
 import {
   buildRewardsPilotMetrics,
-  participatedInRewardsPilotPeriod,
   resolveRewardsPilotMeasurementPeriod,
 } from '../rewards/rewards-pilot-metrics';
 import { resolveManagedServiceContext } from '../services/public-service';
@@ -409,28 +408,22 @@ const pilotStatusLabel = {
 
 async function pilotRows(workspaceId: string, groupId: string, now: Date) {
   const db = await import('@bunshin/database');
-  const [policy, assignments] = await Promise.all([
+  const [policy, registeredParticipants] = await Promise.all([
     db.prisma.groupFeaturePolicy.findFirst({
       where: { workspaceId, groupId, featureKey: 'REWARDS.POINTS_BADGES' },
       select: { startsAt: true, endsAt: true },
     }),
-    db.prisma.groupMemberFeatureAssignment.findMany({
+    db.prisma.groupMembership.findMany({
       where: {
         workspaceId,
         groupId,
-        featureKey: 'REWARDS.POINTS_BADGES',
-        status: 'ENABLED',
+        status: 'ACTIVE',
+        serviceRole: 'PARTICIPANT',
+        consentedAt: { not: null },
       },
       select: {
-        status: true,
-        startsAt: true,
-        endsAt: true,
-        groupMembership: {
-          select: {
-            userId: true,
-            user: { select: { displayName: true, email: true } },
-          },
-        },
+        userId: true,
+        user: { select: { displayName: true, email: true } },
       },
     }),
   ]);
@@ -440,12 +433,7 @@ async function pilotRows(workspaceId: string, groupId: string, now: Date) {
     now,
   });
   const participants = new Map(
-    assignments
-      .filter((assignment) => participatedInRewardsPilotPeriod(assignment, period))
-      .map(
-        (assignment) =>
-          [assignment.groupMembership.userId, assignment.groupMembership.user] as const,
-      ),
+    registeredParticipants.map((membership) => [membership.userId, membership.user] as const),
   );
   const participantIds = [...participants.keys()];
   const timestampRange = { gte: period.from, lt: period.toExclusive };

@@ -10,12 +10,11 @@ import { readFileSync } from 'node:fs';
 const repository = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
 
 describe('rewards pilot access', () => {
-  it('requires an active group policy and an active assignment for the same member', async () => {
+  it('allows every active, consented participant under an active group policy', async () => {
     const findFirst = vi.fn().mockResolvedValue({
       id: 'membership-1',
       groupId: 'group-1',
       group: { featurePolicies: [{ endsAt: new Date('2026-09-18T00:00:00.000Z') }] },
-      featureAssignments: [{ endsAt: new Date('2026-09-16T00:00:00.000Z') }],
     });
     const at = new Date('2026-09-11T00:00:00.000Z');
 
@@ -34,21 +33,20 @@ describe('rewards pilot access', () => {
           groupId: 'group-1',
           userId: 'user-1',
           status: 'ACTIVE',
+          serviceRole: 'PARTICIPANT',
           consentedAt: { not: null },
           group: expect.objectContaining({
             featurePolicies: {
               some: expect.objectContaining({ featureKey: REWARDS_PILOT_FEATURE_KEY }),
             },
           }),
-          featureAssignments: {
-            some: expect.objectContaining({ featureKey: REWARDS_PILOT_FEATURE_KEY }),
-          },
         }),
       }),
     );
+    expect(findFirst.mock.calls[0]?.[0]?.where).not.toHaveProperty('featureAssignments');
   });
 
-  it('returns the earliest end of the service and participant settings', async () => {
+  it('returns the service policy end date', async () => {
     const access = await getActiveRewardsPilotAccess(
       {
         groupMembership: {
@@ -56,7 +54,6 @@ describe('rewards pilot access', () => {
             id: 'membership-1',
             groupId: 'group-1',
             group: { featurePolicies: [{ endsAt: new Date('2026-09-18T00:00:00.000Z') }] },
-            featureAssignments: [{ endsAt: new Date('2026-09-16T00:00:00.000Z') }],
           }),
         },
       } as never,
@@ -67,7 +64,7 @@ describe('rewards pilot access', () => {
     expect(access).toEqual({
       membershipId: 'membership-1',
       groupId: 'group-1',
-      endsAt: new Date('2026-09-16T00:00:00.000Z'),
+      endsAt: new Date('2026-09-18T00:00:00.000Z'),
     });
   });
 
@@ -90,7 +87,6 @@ describe('rewards pilot access', () => {
           serviceConfiguration: { slug: 'service-a', displayName: 'サービスA' },
           featurePolicies: [{ endsAt: new Date('2026-10-01T00:00:00.000Z') }],
         },
-        featureAssignments: [{ endsAt: new Date('2026-09-30T00:00:00.000Z') }],
       },
       {
         id: 'membership-2',
@@ -100,7 +96,6 @@ describe('rewards pilot access', () => {
           serviceConfiguration: { slug: 'service-b', displayName: 'サービスB' },
           featurePolicies: [{ endsAt: null }],
         },
-        featureAssignments: [{ endsAt: null }],
       },
     ]);
 
@@ -117,7 +112,7 @@ describe('rewards pilot access', () => {
         groupId: 'group-1',
         serviceSlug: 'service-a',
         serviceName: 'サービスA',
-        endsAt: new Date('2026-09-30T00:00:00.000Z'),
+        endsAt: new Date('2026-10-01T00:00:00.000Z'),
       },
       {
         membershipId: 'membership-2',
@@ -139,9 +134,8 @@ describe('rewards pilot access', () => {
     );
   });
 
-  it('limits the pilot to 30 enabled participant assignments', () => {
-    expect(repository).toContain("input.featureKey === 'REWARDS.POINTS_BADGES'");
-    expect(repository).toContain('if (otherEnabledMembers >= 30)');
-    expect(repository).toContain("'rewards pilot member limit reached'");
+  it('does not limit registered participants to a manually selected group of 30', () => {
+    expect(repository).not.toContain('if (otherEnabledMembers >= 30)');
+    expect(repository).not.toContain("'rewards pilot member limit reached'");
   });
 });

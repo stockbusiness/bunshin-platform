@@ -14,7 +14,7 @@ describe('rewards pilot web boundary', () => {
     (source) => {
       expect(source).toContain('listActiveRewardsPilotServiceAccesses');
       expect(source).toContain('現在は試験利用中です');
-      expect(source).toContain('運営者から案内を受けた方だけ利用できます。');
+      expect(source).toContain('サービスへの登録と、規約への同意が必要です。');
     },
   );
 
@@ -36,28 +36,26 @@ describe('rewards pilot web boundary', () => {
     },
   );
 
-  it('shows operators the 30-person pilot count and a clear limit error', () => {
-    expect(membersPage).toContain('試験利用中：');
-    expect(membersPage).toContain('{rewardsPilotCount}人／30人');
-    expect(membersPage).toContain('試験利用は30人までです。');
+  it('shows operators that all registered participants are included automatically', () => {
+    expect(membersPage).toContain('一般参加者');
+    expect(membersPage).toContain('{rewardsPilotCount}人全員');
+    expect(membersPage).toContain('個別の利用許可は必要ありません。');
   });
 
-  it('links the service operator from point settings to pilot enrollment', () => {
-    expect(servicePointsPage).toContain('現在 <strong>{rewardsPilotActiveCount}人／30人</strong>');
-    expect(servicePointsPage).toContain('試験利用者を選ぶ');
-    expect(servicePointsPage).toContain('/s/${serviceSlug}/manage/members');
+  it('shows every registered participant as an automatic pilot participant', () => {
+    expect(servicePointsPage).toContain('<strong>{rewardsPilotActiveCount}人全員</strong>');
+    expect(servicePointsPage).toContain('新しく登録した一般参加者も自動で追加されます。');
+    expect(servicePointsPage).not.toContain('試験利用者を選ぶ');
     expect(servicePointsPage).toContain('/admin/groups/${service.serviceId}/features');
   });
 
-  it('lets a phone operator set four weeks and select all pilot members in one form', () => {
+  it('lets a phone operator set four weeks without selecting members', () => {
     expect(servicePointsPage).toContain('startFourWeekPilot');
     expect(servicePointsPage).toContain('startFourWeekRewardsPilot');
     expect(servicePointsPage).toContain('今日から4週間に設定する');
-    expect(servicePointsPage).toContain('replacePilotMembers');
-    expect(servicePointsPage).toContain('replaceRewardsPilotMemberAssignments');
-    expect(servicePointsPage).toContain('name="membershipIds"');
-    expect(servicePointsPage).toContain('選んだ人を試験利用者として保存する');
-    expect(servicePointsPage).toContain('membership.consentedAt');
+    expect(servicePointsPage).toContain('全員が自動で対象になります。');
+    expect(servicePointsPage).not.toContain('replacePilotMembers');
+    expect(servicePointsPage).not.toContain('name="membershipIds"');
     expect(servicePointsPage).not.toContain('期間の設定はシステム管理者へ依頼してください。');
   });
 
@@ -83,9 +81,8 @@ describe('rewards pilot web boundary', () => {
     expect(servicePointsPage).toContain('自動判定は不正を断定するものではありません');
   });
 
-  it('warns operators about service and participant expiration separately', () => {
+  it('warns operators about service expiration', () => {
     expect(servicePointsPage).toContain('サービスの試験利用終了日が近づいています');
-    expect(servicePointsPage).toContain('参加者の試験利用終了日が近づいています');
-    expect(servicePointsPage).toContain('参加者の終了日を確認する');
+    expect(servicePointsPage).not.toContain('参加者の試験利用終了日が近づいています');
   });
 });

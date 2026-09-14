@@ -6,9 +6,10 @@ const setup = source('app/s/[serviceSlug]/bunshins/[bunshinId]/simple-first-post
 const page = source('app/s/[serviceSlug]/bunshins/[bunshinId]/page.tsx');
 
 describe('simple service first-post setup', () => {
-  it('asks members only for the posting destination and pace', () => {
-    expect(setup).toContain('1. どのSNSに投稿しますか？');
-    expect(setup).toContain('2. どのくらいのペースで投稿しますか？');
+  it('asks members only for the posting destination, pace when unlocked, and delivery time', () => {
+    expect(setup).toContain('<legend>投稿するSNS</legend>');
+    expect(setup).toContain('<legend>投稿するペース</legend>');
+    expect(setup).toContain('受け取る時刻（日本時間）');
     expect(setup).toContain('deliveryPolicy.enabled && deliveryPolicy.lockCadence');
     expect(setup).toContain("? deliveryPolicy.cadence : 'WEEKLY'");
     expect(setup).toContain('serviceContentAssistanceLevel(deliveryPolicy.contentMode)');

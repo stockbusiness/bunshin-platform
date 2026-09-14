@@ -80,7 +80,7 @@ export default async function BadgesPage({
         ) : (
           <section className="settings-card">
             <h2>現在は試験利用中です</h2>
-            <p>ポイントとバッジは、運営者から案内を受けた方だけ利用できます。</p>
+            <p>ポイントとバッジを利用するサービスへの登録と、規約への同意が必要です。</p>
             <Link className="button button--secondary" href="/bunshins">
               ホームへ戻る
             </Link>

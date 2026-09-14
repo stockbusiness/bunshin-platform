@@ -2185,3 +2185,11 @@
 - Preparation: SNS選択とLINE通知同意後、Content Pillar、Social Profile、Strategy、週間予定の準備を既存の一括設定で進める。
 - Boundary: 投稿パートナー候補を選ぶ従来導線は、事業プロフィールを使わない他Service向けに維持する。
 - Source: `docs/WATASHI_WORKS_BUSINESS_ONBOARDING_REPORT.md`
+
+## 2026-09-14: ポイント・バッジの無料試験は登録済み一般参加者を全員対象にする
+
+- Eligibility: 対象Serviceで利用中の一般参加者が利用規約へ同意すると、ポイントとバッジを自動で利用できる。
+- Operation: 運営者による参加者の個別選択、個別許可、30人上限を廃止し、今後登録する一般参加者も自動で対象に加える。
+- Boundary: Serviceの機能許可、試験期間、一括停止、ポイント付与条件は引き続き適用する。サービス所有者、運営管理者、コンテンツ担当者は自動対象に含めない。
+- Privacy: 規約同意前、参加停止中、または別Serviceの参加者には利用を許可しない。
+- Source: `docs/REWARDS_ALL_REGISTERED_PARTICIPANTS_REPORT.md`

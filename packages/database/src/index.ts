@@ -12969,19 +12969,6 @@ export class PrismaGroupFeatureEntitlementRepository implements GroupFeatureEnti
       return null;
     return this.client.$transaction(
       async (tx) => {
-        if (input.featureKey === 'REWARDS.POINTS_BADGES' && input.status === 'ENABLED') {
-          const otherEnabledMembers = await tx.groupMemberFeatureAssignment.count({
-            where: {
-              workspaceId: input.workspaceId,
-              groupId: input.groupId,
-              featureKey: input.featureKey,
-              status: 'ENABLED',
-              groupMembershipId: { not: input.groupMembershipId },
-            },
-          });
-          if (otherEnabledMembers >= 30)
-            throw new ApplicationError('CONFLICT', 'rewards pilot member limit reached');
-        }
         const before = await tx.groupMemberFeatureAssignment.findUnique({
           where: {
             groupMembershipId_featureKey: {

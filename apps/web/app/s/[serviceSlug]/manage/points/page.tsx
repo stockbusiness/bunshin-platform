@@ -8,7 +8,6 @@ import { currentUserProvider } from '../../../../../src/auth/current-user';
 import { buildRewardsPilotReadiness } from '../../../../../src/rewards/rewards-pilot-readiness';
 import {
   buildRewardsPilotMetrics,
-  participatedInRewardsPilotPeriod,
   resolveRewardsPilotMeasurementPeriod,
 } from '../../../../../src/rewards/rewards-pilot-metrics';
 import { getRewardsPilotExpiryNotice } from '../../../../../src/rewards/rewards-pilot-expiry';
@@ -123,11 +122,6 @@ const pointControlSchema = z.object({
 });
 
 const pilotPeriodPresetSchema = z.object({
-  serviceSlug: z.string().trim().min(1).max(80),
-  reason: z.string().trim().min(5).max(1000),
-});
-
-const pilotMemberSelectionSchema = z.object({
   serviceSlug: z.string().trim().min(1).max(80),
   reason: z.string().trim().min(5).max(1000),
 });
@@ -830,49 +824,6 @@ async function startFourWeekPilot(formData: FormData) {
   redirect(`${returnPath}?pilotPeriod=1` as Route);
 }
 
-async function replacePilotMembers(formData: FormData) {
-  'use server';
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  if (!actor) redirect('/login');
-  const parsed = pilotMemberSelectionSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) redirect('/groups');
-  const membershipIds = [
-    ...new Set(
-      formData
-        .getAll('membershipIds')
-        .flatMap((value) =>
-          typeof value === 'string' && z.uuid().safeParse(value).success ? [value] : [],
-        ),
-    ),
-  ];
-  const returnPath = `/s/${parsed.data.serviceSlug}/manage/points` as Route;
-  if (membershipIds.length < 1 || membershipIds.length > 30)
-    redirect(`${returnPath}?error=pilot-members` as Route);
-  try {
-    const service = await resolveManagedServiceContext(parsed.data.serviceSlug, actor.userId);
-    const db = await import('@bunshin/database');
-    await db.prisma.$transaction(
-      (tx) =>
-        db.replaceRewardsPilotMemberAssignments(tx, {
-          workspaceId: service.workspaceId,
-          groupId: service.serviceId,
-          actorUserId: actor.userId,
-          membershipIds,
-          reason: parsed.data.reason,
-          now: new Date(),
-        }),
-      { isolationLevel: 'Serializable' },
-    );
-  } catch {
-    redirect(`${returnPath}?error=pilot-members` as Route);
-  }
-  revalidatePath(returnPath);
-  revalidatePath(`/s/${parsed.data.serviceSlug}/manage/members`);
-  revalidatePath('/points');
-  revalidatePath('/badges');
-  redirect(`${returnPath}?pilotMembers=1` as Route);
-}
-
 export default async function ServicePointSettingsPage({
   params,
   searchParams,
@@ -887,7 +838,6 @@ export default async function ServicePointSettingsPage({
     rewards?: string;
     control?: string;
     pilotPeriod?: string;
-    pilotMembers?: string;
     error?: string;
   }>;
 }) {
@@ -910,10 +860,6 @@ export default async function ServicePointSettingsPage({
       user: { select: { displayName: true, email: true } },
       serviceRole: true,
       consentedAt: true,
-      featureAssignments: {
-        where: { featureKey: 'REWARDS.POINTS_BADGES' },
-        select: { status: true, startsAt: true, endsAt: true },
-      },
     },
     orderBy: { user: { displayName: 'asc' } },
   });
@@ -1119,20 +1065,10 @@ export default async function ServicePointSettingsPage({
     rewardsPolicy.endsAt > now &&
     rewardsPolicy.endsAt.getTime() - rewardsPolicy.startsAt.getTime() >= 28 * 24 * 60 * 60 * 1000,
   );
-  const activeRewardsPilotMembers = memberships.filter((membership) =>
-    Boolean(
-      membership.consentedAt &&
-      membership.featureAssignments.some(
-        (assignment) =>
-          assignment.status === 'ENABLED' &&
-          (!assignment.startsAt || assignment.startsAt <= now) &&
-          (!assignment.endsAt || assignment.endsAt > now),
-      ),
-    ),
+  const activeRewardsPilotMembers = memberships.filter(
+    (membership) => membership.consentedAt && membership.serviceRole === 'PARTICIPANT',
   );
   const rewardsPilotActiveCount = activeRewardsPilotMembers.length;
-  const consentedPilotCandidates = memberships.filter(({ consentedAt }) => consentedAt !== null);
-  const activePilotMembershipIds = new Set(activeRewardsPilotMembers.map(({ id }) => id));
   const activePointRuleCount = RULES.filter((rule) => {
     const saved = current.get(rule.key);
     return !saved || saved.status === 'ACTIVE';
@@ -1146,45 +1082,11 @@ export default async function ServicePointSettingsPage({
     pointIssuanceStopped: pointConfiguration.pointIssuanceStopped,
     activeRuleCount: activePointRuleCount,
   });
-  const rewardsPilotAssignments = await db.prisma.groupMemberFeatureAssignment.findMany({
-    where: {
-      workspaceId: service.workspaceId,
-      groupId: service.serviceId,
-      featureKey: 'REWARDS.POINTS_BADGES',
-      status: 'ENABLED',
-    },
-    select: {
-      status: true,
-      startsAt: true,
-      endsAt: true,
-      groupMembership: {
-        select: {
-          userId: true,
-          user: { select: { displayName: true, email: true } },
-        },
-      },
-    },
-  });
-  const rewardsPilotParticipants = rewardsPilotAssignments
-    .filter((assignment) => participatedInRewardsPilotPeriod(assignment, pilotPeriod))
-    .map((assignment) => assignment.groupMembership);
   const rewardsPilotUserIds = [
-    ...new Set(rewardsPilotParticipants.map((membership) => membership.userId)),
+    ...new Set(activeRewardsPilotMembers.map((membership) => membership.userId)),
   ];
   const rewardsPilotCount = rewardsPilotUserIds.length;
   const policyExpiryNotice = getRewardsPilotExpiryNotice(rewardsPolicy?.endsAt ?? null, now);
-  const expiringPilotMembers = activeRewardsPilotMembers
-    .map((membership) => ({
-      membership,
-      notice: getRewardsPilotExpiryNotice(
-        membership.featureAssignments
-          .map(({ endsAt }) => endsAt)
-          .filter((endsAt): endsAt is Date => endsAt !== null)
-          .sort((left, right) => left.getTime() - right.getTime())[0] ?? null,
-        now,
-      ),
-    }))
-    .filter(({ notice }) => notice !== null);
   const [pilotPosts, pilotGrantTransactions, pilotRedemptions] = await Promise.all([
     db.prisma.postRecord.findMany({
       where: {
@@ -1262,7 +1164,7 @@ export default async function ServicePointSettingsPage({
       ? `${formatPilotDate(rewardsPolicy.startsAt)}〜${formatPilotDate(rewardsPolicy.endsAt)}`
       : null;
   const memberName = new Map(
-    [...memberships, ...rewardsPilotParticipants].map((membership) => [
+    memberships.map((membership) => [
       membership.userId,
       membership.user.displayName || membership.user.email || '参加者',
     ]),
@@ -1318,9 +1220,6 @@ export default async function ServicePointSettingsPage({
         {query.pilotPeriod ? (
           <p className="notice notice--success">今日から4週間の試験期間を設定しました。</p>
         ) : null}
-        {query.pilotMembers ? (
-          <p className="notice notice--success">試験利用者をまとめて保存しました。</p>
-        ) : null}
         {query.control === 'stop' ? (
           <p className="notice notice--success">ポイント付与を一括停止しました。</p>
         ) : null}
@@ -1333,21 +1232,19 @@ export default async function ServicePointSettingsPage({
               ? '回収を取り消せませんでした。すでに取り消されていないか確認してください。'
               : query.error === 'pilot-period'
                 ? '4週間の試験期間を設定できませんでした。システム管理者の権限を確認してください。'
-                : query.error === 'pilot-members'
-                  ? '試験利用者を保存できませんでした。同意済みの人を1〜30人選んでください。'
-                  : query.error === 'recovery'
-                    ? '回収を記録できませんでした。画面を更新し、入力内容を確認してください。'
-                    : query.error === 'budget'
-                      ? '発行上限は、すでに発行したポイント以上にしてください。'
-                      : query.error === 'campaign-budget'
-                        ? '募集の発行上限は、すでに発行したポイント以上にしてください。'
-                        : query.error === 'campaign-rules'
-                          ? '募集ごとのポイント設定を保存できませんでした。募集の期間と入力内容を確認してください。'
-                          : query.error === 'stopped'
-                            ? 'ポイント付与は一括停止中です。再開してからボーナスを付与してください。'
-                            : query.error === 'rewards'
-                              ? 'ポイントの使い道を保存できませんでした。入力内容を確認してください。'
-                              : '保存できませんでした。入力内容を確認してください。'}
+                : query.error === 'recovery'
+                  ? '回収を記録できませんでした。画面を更新し、入力内容を確認してください。'
+                  : query.error === 'budget'
+                    ? '発行上限は、すでに発行したポイント以上にしてください。'
+                    : query.error === 'campaign-budget'
+                      ? '募集の発行上限は、すでに発行したポイント以上にしてください。'
+                      : query.error === 'campaign-rules'
+                        ? '募集ごとのポイント設定を保存できませんでした。募集の期間と入力内容を確認してください。'
+                        : query.error === 'stopped'
+                          ? 'ポイント付与は一括停止中です。再開してからボーナスを付与してください。'
+                          : query.error === 'rewards'
+                            ? 'ポイントの使い道を保存できませんでした。入力内容を確認してください。'
+                            : '保存できませんでした。入力内容を確認してください。'}
           </p>
         ) : null}
 
@@ -1417,13 +1314,14 @@ export default async function ServicePointSettingsPage({
           <p>スマートフォンでは、次の順番で設定すると開始できます。</p>
           <ol>
             <li>今日から4週間の期間を設定します。</li>
-            <li>試験に参加する人を1〜30人選びます。</li>
+            <li>登録と規約への同意を終えた一般参加者は、全員が自動で対象になります。</li>
             <li>上の開始確認がすべて「準備済み」になったら完了です。</li>
           </ol>
 
           {configuredFourWeekPilot ? (
             <p className="notice notice--success">
-              4週間の期間は設定済みです。下で参加者を選んでください。
+              4週間の期間は設定済みです。登録済みの一般参加者
+              {rewardsPilotActiveCount}人が全員対象です。
             </p>
           ) : (
             <form action={startFourWeekPilot} className="form-stack">
@@ -1439,54 +1337,9 @@ export default async function ServicePointSettingsPage({
             </form>
           )}
 
-          {configuredFourWeekPilot ? (
-            consentedPilotCandidates.length ? (
-              <form action={replacePilotMembers} className="form-stack">
-                <input type="hidden" name="serviceSlug" value={serviceSlug} />
-                <fieldset className="field">
-                  <legend className="field__label">
-                    試験に参加する人（{rewardsPilotActiveCount}人選択中）
-                  </legend>
-                  <div className="checkbox-stack">
-                    {consentedPilotCandidates.map((membership) => (
-                      <label key={membership.id}>
-                        <input
-                          type="checkbox"
-                          name="membershipIds"
-                          value={membership.id}
-                          defaultChecked={activePilotMembershipIds.has(membership.id)}
-                        />{' '}
-                        {membership.user.displayName || membership.user.email || '参加者'}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <label className="field">
-                  <span className="field__label">選んだ理由</span>
-                  <textarea
-                    className="field__control"
-                    name="reason"
-                    minLength={5}
-                    maxLength={1000}
-                    required
-                    defaultValue="無料試験の参加者として本人の同意を確認したため"
-                  />
-                </label>
-                <button className="button" type="submit">
-                  選んだ人を試験利用者として保存する
-                </button>
-                <p>
-                  <small>
-                    チェックを外した人は試験対象から外れます。過去のポイント・バッジ履歴は削除されません。
-                  </small>
-                </p>
-              </form>
-            ) : (
-              <p>利用規約への同意が完了した参加者がまだいません。先に参加者を招待してください。</p>
-            )
-          ) : (
-            <p>先に4週間の期間を設定すると、参加者をまとめて選べます。</p>
-          )}
+          <p>
+            今後登録する一般参加者も、規約への同意が完了すると自動で対象になります。運営者による選択操作は必要ありません。
+          </p>
         </section>
 
         {policyExpiryNotice ? (
@@ -1509,36 +1362,18 @@ export default async function ServicePointSettingsPage({
           </section>
         ) : null}
 
-        {expiringPilotMembers.length ? (
-          <section className="settings-card" aria-labelledby="pilot-members-expiry-title">
-            <h2 id="pilot-members-expiry-title">参加者の試験利用終了日が近づいています</h2>
-            <p>
-              7日以内に<strong>{expiringPilotMembers.length}人</strong>
-              の参加者設定が終了します。継続する人の終了日を確認してください。
-            </p>
-            <a className="button button--secondary" href={`/s/${serviceSlug}/manage/members`}>
-              参加者の終了日を確認する
-            </a>
-          </section>
-        ) : null}
-
         <section className="settings-card">
-          <h2>試験利用者を選ぶ</h2>
+          <h2>無料試験の参加者</h2>
           <p>
-            現在 <strong>{rewardsPilotActiveCount}人／30人</strong>{' '}
-            がポイントとバッジを利用できます。
+            現在、登録と規約への同意を終えた一般参加者
+            <strong>{rewardsPilotActiveCount}人全員</strong>がポイントとバッジを利用できます。
           </p>
           {rewardsPolicyActive ? (
-            <p>参加者ごとに利用開始・停止と利用期間を設定できます。</p>
+            <p>新しく登録した一般参加者も自動で追加されます。</p>
           ) : (
             <p>最初にシステム管理者が、このサービスの試験利用を許可してください。</p>
           )}
           <div className="form-actions">
-            {rewardsPolicyActive ? (
-              <a className="button" href={`/s/${serviceSlug}/manage/members`}>
-                試験利用者を選ぶ
-              </a>
-            ) : null}
             {!rewardsPolicyActive && platformAdmin ? (
               <a className="button" href={`/admin/groups/${service.serviceId}/features`}>
                 サービスの試験利用を許可する

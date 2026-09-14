@@ -32,8 +32,7 @@ export function buildRewardsPilotReadiness(input: {
     input.endsAt.getTime() - input.startsAt.getTime() >= FOUR_WEEKS_MS,
   );
   const completed = Boolean(hasValidPeriod && input.endsAt && input.endsAt <= input.now);
-  const participantCountIsValid =
-    input.activeParticipantCount >= 1 && input.activeParticipantCount <= 30;
+  const participantCountIsValid = input.activeParticipantCount >= 1;
 
   const items: RewardsPilotReadinessItem[] = [
     {
@@ -58,10 +57,8 @@ export function buildRewardsPilotReadiness(input: {
       ready: participantCountIsValid,
       label: '試験利用者',
       detail: participantCountIsValid
-        ? `${input.activeParticipantCount}人が試験利用できます。`
-        : input.activeParticipantCount > 30
-          ? '試験利用者を30人以下にしてください。'
-          : '試験利用者を1人以上選んでください。',
+        ? `登録済みの一般参加者${input.activeParticipantCount}人が全員利用できます。`
+        : '規約への同意を終えた一般参加者が登録されると、自動で利用できます。',
     },
     {
       key: 'ISSUANCE',

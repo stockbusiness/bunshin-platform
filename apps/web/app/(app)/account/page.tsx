@@ -5,22 +5,65 @@ import { redirect } from 'next/navigation';
 import { currentUserProvider } from '../../../src/auth/current-user';
 
 export const dynamic = 'force-dynamic';
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ service?: string | string[] }>;
+}) {
   const user = await (await currentUserProvider()).getCurrentUser();
   if (!user) redirect('/login');
   const db = await import('@bunshin/database');
+  const query = await searchParams;
+  const requestedService =
+    typeof query.service === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query.service)
+      ? query.service
+      : null;
+  const scopedMembership = requestedService
+    ? await db.prisma.groupMembership.findFirst({
+        where: {
+          userId: user.userId,
+          status: 'ACTIVE',
+          group: {
+            status: 'ACTIVE',
+            workspace: { status: 'ACTIVE' },
+            serviceConfiguration: { is: { slug: requestedService } },
+          },
+        },
+        select: {
+          group: {
+            select: {
+              name: true,
+              workspaceId: true,
+              serviceConfiguration: {
+                select: {
+                  slug: true,
+                  displayName: true,
+                  termsUrl: true,
+                  privacyUrl: true,
+                },
+              },
+            },
+          },
+        },
+      })
+    : null;
+  if (requestedService && !scopedMembership) redirect(`/s/${requestedService}`);
+  const scopedService = scopedMembership?.group.serviceConfiguration ?? null;
+  const scopedWorkspaceId = scopedMembership?.group.workspaceId ?? null;
   const [request, managedOrganizationCount, managedServices] = await Promise.all([
     new GetAccountDeletionRequest(new db.PrismaAccountDeletionRequestRepository()).execute(
       user.userId,
     ),
-    db.prisma.workspaceMembership.count({
-      where: {
-        userId: user.userId,
-        status: 'ACTIVE',
-        role: { in: ['OWNER', 'ADMIN'] },
-        workspace: { type: 'ORGANIZATION', status: 'ACTIVE' },
-      },
-    }),
+    scopedService
+      ? Promise.resolve(0)
+      : db.prisma.workspaceMembership.count({
+          where: {
+            userId: user.userId,
+            status: 'ACTIVE',
+            role: { in: ['OWNER', 'ADMIN'] },
+            workspace: { type: 'ORGANIZATION', status: 'ACTIVE' },
+          },
+        }),
     db.prisma.groupMembership.findMany({
       where: {
         userId: user.userId,
@@ -29,7 +72,9 @@ export default async function AccountPage() {
         group: {
           status: 'ACTIVE',
           workspace: { status: 'ACTIVE' },
-          serviceConfiguration: { isNot: null },
+          serviceConfiguration: scopedService
+            ? { is: { slug: scopedService.slug } }
+            : { isNot: null },
         },
       },
       select: {
@@ -47,8 +92,12 @@ export default async function AccountPage() {
     <main className="app-page account-page">
       <header className="app-page__heading">
         <p className="eyebrow">アカウント</p>
-        <h1>アカウント</h1>
-        <p>利用情報や通知、セキュリティに関する設定を確認できます。</p>
+        <h1>{scopedService ? `${scopedService.displayName}のアカウント` : 'アカウント'}</h1>
+        <p>
+          {scopedService
+            ? `${scopedService.displayName}で使う情報と設定を確認できます。`
+            : '利用情報や通知、セキュリティに関する設定を確認できます。'}
+        </p>
       </header>
 
       {managedOrganizationCount > 0 || managedServices.length > 0 ? (
@@ -86,30 +135,55 @@ export default async function AccountPage() {
       ) : null}
 
       <section className="settings-card" aria-labelledby="content-settings-title">
-        <h2 id="content-settings-title">BUNSHINの設定</h2>
+        <h2 id="content-settings-title">
+          {scopedService ? `${scopedService.displayName}の設定` : 'BUNSHINの設定'}
+        </h2>
         <nav className="settings-list" aria-label="BUNSHINの設定">
-          <Link href="/bunshins" className="settings-row">
+          {scopedService ? (
+            <Link href={`/s/${scopedService.slug}/home` as Route} className="settings-row">
+              <span>
+                <strong>ホーム</strong>
+                <small>このサービスで今日やることを確認</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          ) : null}
+          <Link
+            href={scopedService ? `/s/${scopedService.slug}/bunshins` : '/bunshins'}
+            className="settings-row"
+          >
             <span>
               <strong>BUNSHIN</strong>
               <small>分身の選択・編集</small>
             </span>
             <span aria-hidden="true">›</span>
           </Link>
-          <Link href="/knowledge" className="settings-row">
-            <span>
-              <strong>知識</strong>
-              <small>発信に活用する情報</small>
-            </span>
-            <span aria-hidden="true">›</span>
-          </Link>
-          <Link href="/groups" className="settings-row">
-            <span>
-              <strong>グループ</strong>
-              <small>参加中のグループと、管理できる機能</small>
-            </span>
-            <span aria-hidden="true">›</span>
-          </Link>
-          <Link href="/points" className="settings-row">
+          {!scopedService ? (
+            <Link href="/knowledge" className="settings-row">
+              <span>
+                <strong>知識</strong>
+                <small>発信に活用する情報</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          ) : null}
+          {!scopedService ? (
+            <Link href="/groups" className="settings-row">
+              <span>
+                <strong>グループ</strong>
+                <small>参加中のグループと、管理できる機能</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          ) : null}
+          <Link
+            href={
+              scopedService
+                ? `/points?workspaceId=${scopedWorkspaceId}&serviceSlug=${scopedService.slug}`
+                : '/points'
+            }
+            className="settings-row"
+          >
             <span>
               <strong>ワタシポイント</strong>
               <small>残高・ため方・最近の履歴</small>
@@ -122,13 +196,13 @@ export default async function AccountPage() {
       <section className="settings-card" aria-labelledby="support-settings-title">
         <h2 id="support-settings-title">サービス情報</h2>
         <nav className="settings-list" aria-label="サービス情報">
-          <Link href="/terms" className="settings-row">
+          <Link href={scopedService?.termsUrl ?? '/terms'} className="settings-row">
             <span>
               <strong>利用規約</strong>
             </span>
             <span aria-hidden="true">›</span>
           </Link>
-          <Link href="/privacy" className="settings-row">
+          <Link href={scopedService?.privacyUrl ?? '/privacy'} className="settings-row">
             <span>
               <strong>プライバシーポリシー</strong>
             </span>

@@ -2,12 +2,22 @@ import type { CSSProperties } from 'react';
 import type { Route } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { currentUserProvider } from '../../../../src/auth/current-user';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { isRouteNotFound } from '../../../../src/navigation/route-not-found';
+import { resolveMemberServiceContext } from '../../../../src/services/public-service';
 import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { PublicShell } from '../../../ui/public-shell';
 import { ServiceOnboardingForm } from './service-onboarding-form';
 
 export const dynamic = 'force-dynamic';
+
+async function context(slug: string, actorUserId: string) {
+  try {
+    return await resolveMemberServiceContext(slug, actorUserId);
+  } catch (error) {
+    if (isRouteNotFound(error)) notFound();
+    throw error;
+  }
+}
 
 export default async function ServiceOnboardingPage({
   params,
@@ -15,11 +25,10 @@ export default async function ServiceOnboardingPage({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
-  if (!service) notFound();
   const actor = await (await currentUserProvider()).getCurrentUser();
   const returnTo = `/s/${serviceSlug}/onboarding`;
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
+  const service = await context(serviceSlug, actor.userId);
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

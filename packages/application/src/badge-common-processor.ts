@@ -38,7 +38,7 @@ export const COMMON_BADGE_CATALOG: readonly CommonBadgeCatalogItem[] = [
     code: 'FIRST_PERSONA',
     category: 'START',
     title: 'はじめの一歩',
-    description: 'はじめて分身を作りました',
+    description: 'はじめて投稿パートナーを作りました',
     conditionType: 'FIRST',
     eventType: 'BUNSHIN_CREATED',
     target: 1,

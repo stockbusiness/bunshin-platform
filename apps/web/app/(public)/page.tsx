@@ -16,7 +16,7 @@ export default async function HomePage() {
       <section className="landing-hero" aria-labelledby="landing-title">
         <div className="landing-hero__copy">
           <p className="eyebrow">あなたのための企画担当</p>
-          <h1 id="landing-title">毎日の発信を、あなたの分身と。</h1>
+          <h1 id="landing-title">毎日の発信を、あなたの投稿パートナーと。</h1>
           <p>
             あなた専用のSNS戦略を考え、今日やることと投稿案を届けます。内容を選んでコピーし、投稿するだけです。
           </p>

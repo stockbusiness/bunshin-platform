@@ -294,7 +294,7 @@ export default async function VideoProjectPage({
       {project.scenes.length === 0 ? (
         <section className="settings-card">
           <h2>企画と台本を作る</h2>
-          <p>分身の目的・届けたい相手・話し方と、使える素材をもとにAIが提案します。</p>
+          <p>投稿パートナーの目的・届けたい相手・話し方と、使える素材をもとにAIが提案します。</p>
           <p>
             選択した写真または背景と字幕を合成します。音声を有効にした場合はAIナレーションを追加します。
           </p>

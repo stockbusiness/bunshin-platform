@@ -90,7 +90,7 @@ export function MemberProductContentForm({
       if (!response.ok) throw new Error('SAVE_FAILED');
       const payload = (await response.json()) as { data: { id: string } };
       if (!bunshinId) throw new Error('BUNSHIN_REQUIRED');
-      setMessage('分身設定に合わせて3案を作成しています…');
+      setMessage('投稿パートナー設定に合わせて3案を作成しています…');
       const suggestionResponse = await fetch(
         `/api/services/${encodeURIComponent(serviceSlug)}/member-products/suggestions`,
         {
@@ -106,7 +106,7 @@ export function MemberProductContentForm({
       setCandidates(suggestionPayload.data.candidates.map(({ body }) => body));
       setActivityId(suggestionPayload.data.activityId);
       setSelectedCandidate(0);
-      setMessage('分身設定に合わせた投稿文を3案作成しました。内容を確認してください。');
+      setMessage('投稿パートナー設定に合わせた投稿文を3案作成しました。内容を確認してください。');
       setProfileId(payload.data.id);
       router.refresh();
     } catch {
@@ -286,7 +286,7 @@ export function MemberProductContentForm({
         </select>
       </label>
       <label>
-        投稿文に使う分身
+        投稿文に使う投稿パートナー
         <select value={bunshinId} onChange={(event) => setBunshinId(event.target.value)} required>
           {bunshins.map((bunshin) => (
             <option key={bunshin.id} value={bunshin.id}>
@@ -299,7 +299,7 @@ export function MemberProductContentForm({
         価格・効果・在庫などは自動取得しません。事実を確認して入力してください。投稿文にはPR表記が入ります。
       </p>
       {bunshins.length === 0 && (
-        <p className="notice">先に投稿パートナー（分身）を作成すると、AI投稿案を利用できます。</p>
+        <p className="notice">先に投稿パートナーを作成すると、AI投稿案を利用できます。</p>
       )}
       <button className="button button--primary button--full" type="submit" disabled={saving}>
         {saving ? '作成中…' : '商品情報を保存してAIで3案作る'}

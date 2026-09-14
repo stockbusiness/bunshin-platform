@@ -16,7 +16,7 @@ export default async function BunshinsPage() {
   if (workspace === undefined)
     return (
       <main>
-        <h1>BUNSHIN</h1>
+        <h1>投稿パートナー</h1>
         <p>ワークスペースがありません。</p>
       </main>
     );
@@ -30,8 +30,8 @@ export default async function BunshinsPage() {
   return (
     <main className="app-page bunshin-home">
       <header className="app-page__heading">
-        <p className="eyebrow">あなたのBUNSHIN</p>
-        <h1>BUNSHIN</h1>
+        <p className="eyebrow">あなたの投稿パートナー</p>
+        <h1>投稿パートナー</h1>
         <p>{workspace.name}</p>
       </header>
       {platformAdmin ? (
@@ -49,20 +49,20 @@ export default async function BunshinsPage() {
       {bunshins.length === 0 ? (
         <section className="empty-state bunshin-empty-state">
           <div className="echo-motif" aria-hidden="true" />
-          <h2>最初のBUNSHINを作りましょう</h2>
+          <h2>最初の投稿パートナーを作りましょう</h2>
           <p>あなたの目的や話し方を理解して、毎日の発信を一緒に考えるパートナーです。</p>
           <Link
             className="button button--primary button--full"
             href={`/bunshins/new?workspaceId=${workspace.id}` as Route}
           >
-            BUNSHINを作る
+            投稿パートナーを作る
           </Link>
           <small>約3分・あとから変更できます</small>
         </section>
       ) : (
         <section>
           <div className="section-heading">
-            <h2>あなたのBUNSHIN</h2>
+            <h2>あなたの投稿パートナー</h2>
             <Link href={`/bunshins/new?workspaceId=${workspace.id}` as Route}>新しく作る</Link>
           </div>
           <ul className="bunshin-card-list">

@@ -15,7 +15,7 @@ type Proposal = {
 const questions = [
   {
     key: 'goal',
-    title: 'BUNSHINに何を手伝ってほしいですか？',
+    title: '投稿パートナーに何を手伝ってほしいですか？',
     description: '今、一番近い目的を選んでください。',
     options: [
       ['CONSISTENCY', 'SNS発信を続けたい'],
@@ -108,7 +108,7 @@ export function BunshinWizard({ workspaceId }: { workspaceId: string }) {
         `/bunshins/${result.data.id}?workspaceId=${encodeURIComponent(workspaceId)}` as Route,
       );
     } catch {
-      setError('BUNSHINを作成できませんでした。もう一度お試しください。');
+      setError('投稿パートナーを作成できませんでした。もう一度お試しください。');
       setBusy(false);
     }
   }
@@ -185,8 +185,8 @@ export function BunshinWizard({ workspaceId }: { workspaceId: string }) {
       </header>
       <section className="proposal-screen">
         <div className="page-heading">
-          <p className="eyebrow">BUNSHINからの3つの案</p>
-          <h1>あなたに合うBUNSHINを3つ考えました</h1>
+          <p className="eyebrow">投稿パートナーからの3つの案</p>
+          <h1>あなたに合う投稿パートナーを3つ考えました</h1>
           <p>一番近いものを選んでください。作成後にも調整できます。</p>
         </div>
         <div className="proposal-grid">
@@ -239,7 +239,7 @@ export function BunshinWizard({ workspaceId }: { workspaceId: string }) {
             disabled={selected === null || busy}
             onClick={() => void create()}
           >
-            {busy ? '作成中…' : 'このBUNSHINを作る'}
+            {busy ? '作成中…' : 'この投稿パートナーを作る'}
           </button>
         </div>
       </section>

@@ -2,7 +2,7 @@ import type { AdminUserStage } from '@bunshin/application';
 
 export const stageLabels: Record<AdminUserStage, string> = {
   REGISTERED: '登録',
-  BUNSHIN_CREATED: 'BUNSHIN作成',
+  BUNSHIN_CREATED: '投稿パートナー作成',
   SOCIAL_ACTIVATED: 'SNS利用開始',
   STRATEGY_APPROVED: '発信方針を決定',
   MISSION_VIEWED: '投稿案を確認',

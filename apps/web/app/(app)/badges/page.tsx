@@ -14,7 +14,7 @@ import { RewardsServiceSelector } from '../../ui/rewards-service-selector';
 export const dynamic = 'force-dynamic';
 
 const acquiredReason: Record<string, string> = {
-  BUNSHIN_CREATED: 'はじめて分身を作ったため',
+  BUNSHIN_CREATED: 'はじめて投稿パートナーを作ったため',
   STRATEGY_APPROVED: '発信の作戦を決めたため',
   MISSION_VIEWED: '投稿案を確認したため',
   MISSION_ACCEPTED: '企画を使うと決めたため',

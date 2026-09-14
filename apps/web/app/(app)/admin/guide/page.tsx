@@ -37,7 +37,7 @@ export default async function OperationsGuidePage() {
           <li>最新mainのMigrationとHealth Smokeが成功していることを確認する</li>
           <li>Supabaseのバックアップ状態を確認し、復元練習を行う</li>
           <li>本番でLINE・メールのログインとログアウトを試す</li>
-          <li>スマートフォンで分身作成から投稿完了・感想保存まで通す</li>
+          <li>スマートフォンで投稿パートナー作成から投稿完了・感想保存まで通す</li>
           <li>退会処理をdry-runし、対象件数とエラーを確認する</li>
           <li>LINE Webhook、通知上限、緊急停止、Go/No-Goを確認する</li>
           <li>話題調査を1回実行し、出典、候補、期限、今日の企画への反映、金額記録を確認する</li>

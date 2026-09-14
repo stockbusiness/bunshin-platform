@@ -126,7 +126,7 @@ export class AiProviderConnectionTestAdapter {
           ? fetch('https://api.exa.ai/search', {
               method: 'POST',
               headers: { 'content-type': 'application/json', 'x-api-key': input.apiKey },
-              body: JSON.stringify({ query: 'BUNSHIN connection test', numResults: 1 }),
+              body: JSON.stringify({ query: 'provider connection test', numResults: 1 }),
               signal: AbortSignal.timeout(10_000),
             })
           : input.provider === 'FIRECRAWL'

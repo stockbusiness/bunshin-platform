@@ -10,7 +10,7 @@ const input = {
   destinationType: 'PROFILE' as const,
   destinationDetail: null,
   bunshin: {
-    name: 'BUNSHIN',
+    name: '投稿パートナー',
     objectiveSummary: '支援',
     audienceSummary: '初心者',
     personalitySummary: '丁寧',

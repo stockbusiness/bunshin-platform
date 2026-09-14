@@ -80,7 +80,7 @@ const input: DailyMissionPlannerInput = {
   },
   facePolicy: 'FULL_ANONYMOUS',
   bunshin: {
-    name: 'BUNSHIN',
+    name: '投稿パートナー',
     objectiveSummary: '発信を継続する',
     audienceSummary: '副業初心者',
     personalitySummary: '丁寧',

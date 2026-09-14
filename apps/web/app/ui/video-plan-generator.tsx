@@ -20,7 +20,7 @@ export function VideoPlanGenerator({
 
   async function generate() {
     setGenerating(true);
-    setMessage('分身が動画の流れと台本を考えています…');
+    setMessage('投稿パートナーが動画の流れと台本を考えています…');
     try {
       const response = await fetch(
         `/api/workspaces/${workspaceId}/groups/${groupId}/video-projects/${projectId}/generate`,
@@ -48,7 +48,7 @@ export function VideoPlanGenerator({
   return (
     <section className="settings-card">
       <h2>{revision === 1 ? '動画の台本を作る' : '台本を作り直す'}</h2>
-      <p>AIが分身の話し方、紹介する相手、許可された商品と素材だけを使って提案します。</p>
+      <p>AIが投稿パートナーの話し方、紹介する相手、許可された商品と素材だけを使って提案します。</p>
       <button
         className="button"
         type="button"

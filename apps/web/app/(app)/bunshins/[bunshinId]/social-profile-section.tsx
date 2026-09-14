@@ -74,7 +74,7 @@ export const assistanceOptions: ReadonlyArray<{
   {
     value: 'READY_TO_USE',
     label: 'そのまま使えるものを作ってほしい',
-    description: '文章、台本、画像や動画を作るための指示までBUNSHINが用意します。',
+    description: '文章、台本、画像や動画を作るための指示まで投稿パートナーが用意します。',
     example: '例：完成した投稿文や撮影台本をコピーして使えます。',
     recommended: true,
   },
@@ -194,7 +194,7 @@ function ProfileForm({
         ))}
       </fieldset>
       <fieldset className="assistance-level-fieldset">
-        <legend>BUNSHINにどこまで作ってほしいですか？</legend>
+        <legend>投稿パートナーにどこまで作ってほしいですか？</legend>
         <p>あとから変えられます。迷ったら「おすすめ」を選んでください。</p>
         <div className="assistance-level-options">
           {assistanceOptions.map((option) => (
@@ -291,7 +291,7 @@ export function SocialProfileSection({
         <span className="social-setup__count">設定済み {profiles.length}件</span>
       </div>
       <p className="social-setup__note">
-        BUNSHINが投稿案を作ります。SNSへの投稿は、あなたが自分で行います。
+        投稿パートナーが投稿案を作ります。SNSへの投稿は、あなたが自分で行います。
       </p>
       {capabilityStatus === null && !autoStart ? (
         <p className="social-setup__notice">
@@ -340,7 +340,8 @@ export function SocialProfileSection({
                   {profile.preferredFormats.map((value) => formatLabels[value]).join('、')}
                 </p>
                 <p>
-                  BUNSHINにお願いすること：{assistanceLevelLabel(profile.defaultAssistanceLevel)}
+                  投稿パートナーにお願いすること：
+                  {assistanceLevelLabel(profile.defaultAssistanceLevel)}
                 </p>
                 {!readonly && effectiveStatus === 'ACTIVE' ? (
                   <div className="social-profile-actions">

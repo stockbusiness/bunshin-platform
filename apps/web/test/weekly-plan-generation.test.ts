@@ -118,7 +118,7 @@ describe('WeeklyPlanGenerationService', () => {
       strategies: { list: vi.fn().mockResolvedValue([strategy]) } as never,
       bunshins: {
         find: vi.fn().mockResolvedValue({
-          name: 'BUNSHIN',
+          name: '投稿パートナー',
           objectiveSummary: '継続',
           audienceSummary: '副業初心者',
           personalitySummary: '丁寧',

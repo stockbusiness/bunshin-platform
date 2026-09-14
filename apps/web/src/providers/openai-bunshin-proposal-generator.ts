@@ -89,7 +89,7 @@ export class OpenAIBunshinProposalGenerator {
           {
             role: 'system',
             content:
-              'あなたはBUNSHIN設計担当です。選択回答だけを使い、初心者が違いを判断しやすい日本語のBUNSHIN案を必ず3つ作成してください。3案は役割と個性を明確に変え、誇張や未提供の個人情報を加えないでください。',
+              'あなたは投稿パートナー設計担当です。選択回答だけを使い、初心者が違いを判断しやすい日本語の投稿パートナー案を必ず3つ作成してください。3案は役割と個性を明確に変え、誇張や未提供の個人情報を加えないでください。',
           },
           { role: 'user', content: JSON.stringify(input) },
         ],

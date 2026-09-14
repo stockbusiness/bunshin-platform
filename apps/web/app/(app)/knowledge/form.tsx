@@ -51,7 +51,7 @@ export function KnowledgeForm({
   }
   return (
     <main>
-      <h1>{item ? '教えた内容を直す' : 'BUNSHINに新しく教える'}</h1>
+      <h1>{item ? '教えた内容を直す' : '投稿パートナーに新しく教える'}</h1>
       <form
         onSubmit={(event) => {
           void save(event);

@@ -7,7 +7,7 @@ import { currentLineEnvironment } from '../line/secure-configuration';
 
 const stageLabels = {
   REGISTERED: '登録',
-  BUNSHIN_CREATED: 'BUNSHIN作成',
+  BUNSHIN_CREATED: '投稿パートナー作成',
   SOCIAL_ACTIVATED: 'SNS利用開始',
   STRATEGY_APPROVED: '発信方針を決定',
   MISSION_VIEWED: '投稿案を確認',
@@ -126,7 +126,7 @@ export async function adminReportExportResponse(request: Request) {
                 '認証方法',
                 '登録日時',
                 '現在の段階',
-                'BUNSHIN数',
+                '投稿パートナー数',
                 '投稿数',
                 'AI実行',
                 'AI失敗',

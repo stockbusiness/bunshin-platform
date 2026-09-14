@@ -122,8 +122,8 @@ export function VideoProjectCreator({
   return (
     <section className="settings-card">
       <h2>新しい動画を考える</h2>
-      <p>使う分身と投稿先を選ぶと、AIが30秒または60秒の台本を提案します。</p>
-      {bunshins.length === 0 ? <p>先に自分の分身を作ってください。</p> : null}
+      <p>使う投稿パートナーと投稿先を選ぶと、AIが30秒または60秒の台本を提案します。</p>
+      {bunshins.length === 0 ? <p>先に自分の投稿パートナーを作ってください。</p> : null}
       <form className="form-stack" onSubmit={(event) => void create(event)}>
         <label className="field">
           <span className="field__label">動画の名前</span>
@@ -136,7 +136,7 @@ export function VideoProjectCreator({
           />
         </label>
         <label className="field">
-          <span className="field__label">話す分身</span>
+          <span className="field__label">動画に使う投稿パートナー</span>
           <select
             className="field__control"
             name="bunshinId"

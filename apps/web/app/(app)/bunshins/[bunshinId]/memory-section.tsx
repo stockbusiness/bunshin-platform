@@ -72,7 +72,7 @@ export function MemorySection({
     if (!response.ok)
       return setMessage('覚える内容を保存できませんでした。入力を確認してください。');
     setForm(initialForm);
-    setMessage('BUNSHINが新しく覚えました。');
+    setMessage('投稿パートナーが新しく覚えました。');
     router.refresh();
   }
 
@@ -119,8 +119,8 @@ export function MemorySection({
     <section className="memory-section">
       <div className="memory-section__heading">
         <div>
-          <p className="memory-section__eyebrow">分身に教えること</p>
-          <h2>BUNSHINが覚えていること</h2>
+          <p className="memory-section__eyebrow">投稿パートナーに教えること</p>
+          <h2>投稿パートナーが覚えていること</h2>
           <p>
             経験や考えを教えると、投稿づくりや回答に使います。いつでも直したり、お休みにしたりできます。
           </p>
@@ -195,7 +195,7 @@ export function MemorySection({
           />
         </label>
         <button className="button button--primary button--full" type="submit">
-          BUNSHINに覚えてもらう
+          投稿パートナーに覚えてもらう
         </button>
       </form>
 

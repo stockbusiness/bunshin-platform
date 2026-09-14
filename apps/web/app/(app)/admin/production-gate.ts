@@ -118,7 +118,7 @@ export function productionGateChecklist(input: {
       code: 'FREE_MVP_SMOKE',
       title: 'スマートフォンで初回投稿まで確認',
       status: manualStatus('FREE_MVP_SMOKE'),
-      guidance: '分身作成から投稿完了・感想の保存まで、本番テスト利用者で一度通します。',
+      guidance: '投稿パートナー作成から投稿完了・感想の保存まで、本番テスト利用者で一度通します。',
       href: '/admin/guide',
     },
     {

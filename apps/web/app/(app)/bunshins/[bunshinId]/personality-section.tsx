@@ -137,8 +137,8 @@ export function PersonalitySection({
     <section className="personality-section settings-card">
       <div className="personality-section__heading">
         <div>
-          <p className="personality-section__eyebrow">分身らしさの設定</p>
-          <h2>BUNSHINの話し方</h2>
+          <p className="personality-section__eyebrow">投稿パートナーらしさの設定</p>
+          <h2>投稿パートナーの話し方</h2>
         </div>
         <span className="personality-section__version">いまは第{current.version}版</span>
       </div>

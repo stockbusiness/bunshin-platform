@@ -19,7 +19,7 @@ describe('member product content UI boundary', () => {
   });
 
   it('lets the member select a Bunshin and edit one of three drafts', () => {
-    expect(form).toContain('投稿文に使う分身');
+    expect(form).toContain('投稿文に使う投稿パートナー');
     expect(form).toContain('member-products/suggestions');
     expect(form).toContain('suggestionPayload.data.candidates');
     expect(form).toContain('setCandidates');

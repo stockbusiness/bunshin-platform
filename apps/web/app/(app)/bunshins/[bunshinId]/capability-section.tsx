@@ -54,7 +54,7 @@ export function CapabilitySection({
             <strong>{socialStatus === null ? 'まだ始めていません' : labels[socialStatus]}</strong>
           </p>
           <p>
-            BUNSHINが「何を投稿するか」をいっしょに考えます。あなたの許可なく、勝手に投稿することはありません。
+            投稿パートナーが「何を投稿するか」をいっしょに考えます。あなたの許可なく、勝手に投稿することはありません。
           </p>
         </div>
         {socialStatus === null ? (

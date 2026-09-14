@@ -170,7 +170,7 @@ export class LineConnectionTestAdapter {
 export interface LineEndpointUrls {
   /** LINE Developers Consoleへ登録するSupabase AuthのProvider Callback。 */
   callbackUrl: string;
-  /** Supabase認証完了後に戻るBUNSHIN Application Callback。 */
+  /** Supabase認証完了後に戻るアプリケーションのコールバック。 */
   applicationCallbackUrl: string;
   webhookUrl: string;
   liffEndpointUrl: string;

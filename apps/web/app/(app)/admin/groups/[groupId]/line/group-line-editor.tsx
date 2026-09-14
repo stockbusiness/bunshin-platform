@@ -313,7 +313,7 @@ export function GroupLineEditor(props: {
         <p className="eyebrow">4. LINEのメニューを公開する</p>
         <h2>標準リッチメニュー</h2>
         <p>
-          今日やること、分身を見る、お知らせ設定、アカウントの4ボタンを、この{scopeLabel}
+          今日やること、投稿パートナーを見る、お知らせ設定、アカウントの4ボタンを、この{scopeLabel}
           専用LINEへ自動で設定します。
         </p>
         <button

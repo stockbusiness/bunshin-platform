@@ -256,7 +256,7 @@ export function WeeklyPlanSection({
         <div>
           <p className="content-planning__eyebrow">今週の準備</p>
           <h2>1週間の投稿予定</h2>
-          <p>BUNSHINが、決めたSNSと投稿テーマを使って、1週間分の予定を考えます。</p>
+          <p>投稿パートナーが、決めたSNSと投稿テーマを使って、1週間分の予定を考えます。</p>
         </div>
         <span className="content-planning__count">予定 {plans.length}件</span>
       </div>
@@ -287,7 +287,7 @@ export function WeeklyPlanSection({
             });
           }}
         >
-          <h3>BUNSHINに1週間の予定を考えてもらう</h3>
+          <h3>投稿パートナーに1週間の予定を考えてもらう</h3>
           <label>
             SNS
             <select

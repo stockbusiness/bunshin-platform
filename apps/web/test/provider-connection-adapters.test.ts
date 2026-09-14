@@ -36,7 +36,9 @@ describe('外部サービス接続確認', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('{"error":"invalid_grant"}', { status: 400 }))
-      .mockResolvedValueOnce(Response.json({ displayName: 'BUNSHIN公式', basicId: '@bunshin' }))
+      .mockResolvedValueOnce(
+        Response.json({ displayName: '投稿パートナー公式', basicId: '@bunshin' }),
+      )
       .mockResolvedValueOnce(Response.json({ client_id: 'different-channel' }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -60,7 +62,7 @@ describe('外部サービス接続確認', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('{"error":"invalid_client"}', { status: 400 }))
-      .mockResolvedValueOnce(Response.json({ displayName: 'BUNSHIN公式' }))
+      .mockResolvedValueOnce(Response.json({ displayName: '投稿パートナー公式' }))
       .mockResolvedValueOnce(Response.json({ client_id: 'messaging-channel' }));
     vi.stubGlobal('fetch', fetchMock);
 

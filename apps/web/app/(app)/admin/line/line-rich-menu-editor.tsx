@@ -118,7 +118,7 @@ export function LineRichMenuEditor(props: { environment: string; initialMenus: M
         <li>内容を見直して確認済みにする</li>
         <li>公開する</li>
       </ol>
-      <p>4つのボタン：今日やること／分身を見る／お知らせ設定／アカウント</p>
+      <p>4つのボタン：今日やること／投稿パートナーを見る／お知らせ設定／アカウント</p>
       {message ? <p role="status">{message}</p> : null}
       <div>
         <h3>かんたん設定</h3>

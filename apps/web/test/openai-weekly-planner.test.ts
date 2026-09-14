@@ -7,7 +7,7 @@ const input = {
   platform: 'X' as const,
   availableMinutes: 5 as const,
   bunshin: {
-    name: 'BUNSHIN',
+    name: '投稿パートナー',
     objectiveSummary: '継続',
     audienceSummary: '初心者',
     personalitySummary: '丁寧',

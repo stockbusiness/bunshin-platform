@@ -87,7 +87,7 @@ describe('LINE rich menu provider', () => {
     );
   });
 
-  it('初回は任意URLを使わず4つのBUNSHIN固定リンクで作成する', async () => {
+  it('初回は任意URLを使わず4つの投稿パートナー固定リンクで作成する', async () => {
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ richmenus: [] }))

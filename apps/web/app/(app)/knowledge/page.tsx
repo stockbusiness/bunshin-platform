@@ -13,7 +13,7 @@ export default async function KnowledgePage() {
   if (!workspace)
     return (
       <main>
-        <h1>BUNSHINに教えること</h1>
+        <h1>投稿パートナーに教えること</h1>
         <p>利用する場所がまだありません。</p>
       </main>
     );
@@ -23,7 +23,7 @@ export default async function KnowledgePage() {
   });
   return (
     <main>
-      <h1>BUNSHINに教えること</h1>
+      <h1>投稿パートナーに教えること</h1>
       <p>
         <Link href={`/knowledge/new?workspaceId=${workspace.id}` as Route}>新規作成</Link>
       </p>

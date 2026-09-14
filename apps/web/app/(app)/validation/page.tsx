@@ -45,7 +45,7 @@ export default async function ValidationPage({
   return (
     <main className="validation-dashboard">
       <p>
-        <Link href="/bunshins">← BUNSHINへ戻る</Link>
+        <Link href="/bunshins">← 投稿パートナーへ戻る</Link>
       </p>
       <header className="validation-header">
         <div>

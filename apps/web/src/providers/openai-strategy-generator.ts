@@ -51,7 +51,7 @@ export class OpenAIStrategyGenerator implements StrategyGeneratorPort {
           {
             role: 'system',
             content:
-              'あなたはBUNSHINのSNS戦略担当です。提供された対象BunshinとGrant済みKnowledgeだけを使い、実行可能で誇張のない日本語戦略を作成してください。',
+              'あなたは投稿パートナーのSNS戦略担当です。提供された対象BunshinとGrant済みKnowledgeだけを使い、実行可能で誇張のない日本語戦略を作成してください。',
           },
           { role: 'user', content: JSON.stringify(input) },
         ],

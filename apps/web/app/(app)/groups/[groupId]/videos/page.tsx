@@ -178,7 +178,7 @@ export default async function VideosPage({
         <h1>{videoGenerationAvailable ? '動画の企画と台本' : '作成した動画'}</h1>
         {videoGenerationAvailable ? (
           <>
-            <p>{membership.group.name}で使う短い動画を、分身と一緒に考えます。</p>
+            <p>{membership.group.name}で使う短い動画を、投稿パートナーと一緒に考えます。</p>
             <p>ここでは企画と台本を作ります。動画本体は、内容を確認したあとに作ります。</p>
           </>
         ) : (

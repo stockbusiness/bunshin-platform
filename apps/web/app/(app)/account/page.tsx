@@ -141,9 +141,9 @@ export default async function AccountPage({
 
       <section className="settings-card" aria-labelledby="content-settings-title">
         <h2 id="content-settings-title">
-          {scopedService ? `${scopedService.displayName}の設定` : 'BUNSHINの設定'}
+          {scopedService ? `${scopedService.displayName}の設定` : '投稿パートナーの設定'}
         </h2>
-        <nav className="settings-list" aria-label="BUNSHINの設定">
+        <nav className="settings-list" aria-label="投稿パートナーの設定">
           {scopedService ? (
             <Link href={`/s/${scopedService.slug}/home` as Route} className="settings-row">
               <span>
@@ -158,8 +158,8 @@ export default async function AccountPage({
             className="settings-row"
           >
             <span>
-              <strong>BUNSHIN</strong>
-              <small>分身の選択・編集</small>
+              <strong>投稿パートナー</strong>
+              <small>投稿パートナーの選択・編集</small>
             </span>
             <span aria-hidden="true">›</span>
           </Link>

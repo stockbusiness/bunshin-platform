@@ -5921,10 +5921,11 @@ export class PrismaCurrentUserAccountRepository implements CurrentUserAccountRep
       return await this.client.$transaction(async (tx) => {
         const createdUser = await tx.user.create({
           data: {
-            displayName: (input.displayName ?? input.email?.split('@')[0] ?? 'BUNSHIN User').slice(
-              0,
-              100,
-            ),
+            displayName: (
+              input.displayName ??
+              input.email?.split('@')[0] ??
+              'ワタシワークス利用者'
+            ).slice(0, 100),
             email: input.email,
           },
         });
@@ -7145,7 +7146,7 @@ export class PrismaBunshinRepository implements BunshinRepository {
             personalityId: row.personality.id,
             version: 1,
             source: 'INITIAL',
-            changeReason: '分身作成時の初期人格',
+            changeReason: '投稿パートナー作成時の初期設定',
             tone: row.personality.tone,
             formality: row.personality.formality,
             energyLevel: row.personality.energyLevel,
@@ -9706,7 +9707,7 @@ function adminUserSummary(
   if (row.status !== 'ACTIVE') attentionReason = '利用停止・退会済み';
   else if (deletionPending) attentionReason = '退会処理待ち';
   else if (row.bunshins.length === 0 && now.getTime() - row.createdAt.getTime() >= 86_400_000)
-    attentionReason = 'BUNSHINが未作成';
+    attentionReason = '投稿パートナーが未作成';
   else if (now.getTime() - lastActiveAt.getTime() >= 7 * 86_400_000)
     attentionReason = '7日以上利用がありません';
   else if (row.aiUsageEvents.filter(({ status }) => status === 'FAILED').length >= 3)

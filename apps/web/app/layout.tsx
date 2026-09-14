@@ -5,7 +5,7 @@ import './styles.css';
 export const metadata: Metadata = {
   title: 'ワタシワークス',
   applicationName: 'ワタシワークス',
-  description: 'あなた専用のAI分身と、毎日の発信を進める企画サービス',
+  description: 'あなた専用のAI投稿パートナーと、毎日の発信を進める企画サービス',
   icons: {
     icon: '/watashiworks-icon.jpg',
     apple: '/watashiworks-icon.jpg',

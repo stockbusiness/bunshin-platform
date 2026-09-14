@@ -27,7 +27,12 @@ export const DEFAULT_LINE_RICH_MENU = {
 
 const items = [
   { title: '今日やること', subtitle: '今日の予定を確認', symbol: '✓', color: '#2563eb' },
-  { title: '分身を見る', subtitle: 'あなたの分身一覧', symbol: '人', color: '#7c3aed' },
+  {
+    title: '投稿パートナーを見る',
+    subtitle: 'あなたの投稿パートナー一覧',
+    symbol: '人',
+    color: '#7c3aed',
+  },
   { title: 'お知らせ設定', subtitle: '通知方法を変更', symbol: '●', color: '#db2777' },
   { title: 'アカウント', subtitle: '登録情報を確認', symbol: '○', color: '#059669' },
 ] as const;

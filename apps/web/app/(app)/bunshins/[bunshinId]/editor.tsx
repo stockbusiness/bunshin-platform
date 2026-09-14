@@ -107,7 +107,7 @@ export function BunshinEditor({
   return (
     <main className="app-page bunshin-detail-page">
       <header className="bunshin-detail-header">
-        <p className="eyebrow">あなたのBUNSHIN</p>
+        <p className="eyebrow">あなたの投稿パートナー</p>
         <h1>{bunshin.name}</h1>
       </header>
       <section id="daily-mission">
@@ -124,7 +124,7 @@ export function BunshinEditor({
           localDate={localDate}
         />
       </section>
-      <nav className="bunshin-section-nav" aria-label="BUNSHIN設定">
+      <nav className="bunshin-section-nav" aria-label="投稿パートナー設定">
         <a href="#overview">概要</a>
         <a href="#social-strategy">SNS戦略</a>
         <a href="#content-planning">発信テーマ</a>
@@ -145,7 +145,7 @@ export function BunshinEditor({
         <details className="settings-disclosure">
           <summary>基本情報を編集</summary>
           <p className="settings-disclosure__intro">
-            分身の名前と、何のために・誰へ向けて発信するかを短い言葉で設定します。
+            投稿パートナーの名前と、何のために・誰へ向けて発信するかを短い言葉で設定します。
           </p>
           <form
             onSubmit={(event) => {
@@ -153,7 +153,7 @@ export function BunshinEditor({
             }}
           >
             <label>
-              <span>分身の名前</span>
+              <span>投稿パートナーの名前</span>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -276,14 +276,14 @@ export function BunshinEditor({
           </span>
           <span>
             <h2>知識</h2>
-            <p>BUNSHINに教えることと、覚えていること</p>
+            <p>投稿パートナーに教えることと、覚えていること</p>
           </span>
         </header>
         <details className="settings-disclosure">
           <summary>知識と記憶を確認・編集</summary>
           <div className="settings-disclosure__content">
             <section>
-              <h2>BUNSHINに教えること</h2>
+              <h2>投稿パートナーに教えること</h2>
               {knowledge.length === 0 ? (
                 <p>教えられる内容はまだありません。</p>
               ) : (
@@ -314,7 +314,7 @@ export function BunshinEditor({
           </span>
           <span>
             <h2>通知と設定</h2>
-            <p>LINE通知とBUNSHINの管理</p>
+            <p>LINE通知と投稿パートナーの管理</p>
           </span>
         </header>
         <details className="settings-disclosure">
@@ -326,7 +326,7 @@ export function BunshinEditor({
               preference={lineNotificationPreference}
             />
             <div className="bunshin-archive">
-              <h2>このBUNSHINを停止する</h2>
+              <h2>この投稿パートナーを停止する</h2>
               <p>停止後もデータは保持されます。</p>
               <button
                 className="button button--danger"

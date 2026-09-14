@@ -443,7 +443,7 @@ export default async function AdminUserDetailPage({
         ))}
       </section>
       <section>
-        <h2>BUNSHIN</h2>
+        <h2>投稿パートナー</h2>
         {detail.bunshins.length ? (
           <ul>
             {detail.bunshins.map((item) => (

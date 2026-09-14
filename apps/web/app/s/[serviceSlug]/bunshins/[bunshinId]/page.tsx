@@ -63,7 +63,7 @@ export default async function ServiceBunshinDetailPage({
   const { serviceSlug, bunshinId } = await params;
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/bunshins/${bunshinId}` as Route,
+    `/s/${serviceSlug}/bunshins/${bunshinId}`,
   );
   const onboarding = readServiceOnboardingSettings(
     service.configuration.registration.onboardingConfig,

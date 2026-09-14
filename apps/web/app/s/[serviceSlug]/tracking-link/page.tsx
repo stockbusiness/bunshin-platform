@@ -22,7 +22,7 @@ export default async function ServiceMemberTrackingLinkPage({
   const { serviceSlug } = await params;
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/tracking-link` as Route,
+    `/s/${serviceSlug}/tracking-link`,
   );
   const db = await import('@bunshin/database');
   const settings = await new ExternalTrackingMemberLinkService(

@@ -1,4 +1,3 @@
-import type { Route } from 'next';
 import GroupVideosPage from '../../../(app)/groups/[groupId]/videos/page';
 import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 
@@ -12,7 +11,7 @@ export default async function ServiceVideosPage({
   const { serviceSlug } = await params;
   const { service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/videos` as Route,
+    `/s/${serviceSlug}/videos`,
   );
   return GroupVideosPage({
     params: Promise.resolve({ groupId: service.serviceId }),

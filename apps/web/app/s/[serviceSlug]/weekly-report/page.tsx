@@ -41,7 +41,7 @@ export default async function ServiceWeeklyReportPage({
   const window = resolveWeeklyReportWindow((await searchParams).week);
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/weekly-report?week=${window.weekStart}` as Route,
+    `/s/${serviceSlug}/weekly-report?week=${window.weekStart}`,
   );
   const db = await import('@bunshin/database');
   const report = (

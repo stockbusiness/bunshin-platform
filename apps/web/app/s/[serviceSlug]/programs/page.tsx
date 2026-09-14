@@ -1,4 +1,3 @@
-import type { Route } from 'next';
 import { notFound } from 'next/navigation';
 import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { PublicShell } from '../../../ui/public-shell';
@@ -13,7 +12,7 @@ export default async function MemberProgramsPage({
   const { serviceSlug } = await params;
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/programs` as Route,
+    `/s/${serviceSlug}/programs`,
   );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({

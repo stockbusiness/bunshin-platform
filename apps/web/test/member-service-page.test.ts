@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Route } from 'next';
 
 const mocks = vi.hoisted(() => ({
   currentUser: vi.fn(),
@@ -37,10 +36,7 @@ describe('authenticated member service page', () => {
 
   it('opens a private service through the authenticated membership boundary', async () => {
     await expect(
-      resolveAuthenticatedMemberServicePage(
-        'private-service',
-        '/s/private-service/images' as Route,
-      ),
+      resolveAuthenticatedMemberServicePage('private-service', '/s/private-service/images'),
     ).resolves.toEqual({
       actor: { userId: 'user-a' },
       service: { serviceId: 'service-a' },
@@ -53,7 +49,7 @@ describe('authenticated member service page', () => {
     await expect(
       resolveAuthenticatedMemberServicePage(
         'private-service',
-        '/s/private-service/weekly-report?week=2026-09-14' as Route,
+        '/s/private-service/weekly-report?week=2026-09-14',
       ),
     ).rejects.toThrow(
       'REDIRECT:/login?returnTo=%2Fs%2Fprivate-service%2Fweekly-report%3Fweek%3D2026-09-14',
@@ -65,10 +61,7 @@ describe('authenticated member service page', () => {
     mocks.resolveMember.mockRejectedValue(new Error('SERVICE_NOT_FOUND'));
     mocks.isRouteNotFound.mockReturnValue(true);
     await expect(
-      resolveAuthenticatedMemberServicePage(
-        'private-service',
-        '/s/private-service/videos' as Route,
-      ),
+      resolveAuthenticatedMemberServicePage('private-service', '/s/private-service/videos'),
     ).rejects.toThrow('NOT_FOUND');
   });
 });

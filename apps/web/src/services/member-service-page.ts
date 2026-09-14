@@ -6,7 +6,7 @@ import { isRouteNotFound } from '../navigation/route-not-found';
 import { resolveMemberServiceContext } from './public-service';
 
 /** ログインと参加状態を同じ順序で確認し、限定公開サービスの参加者画面を開く。 */
-export async function resolveAuthenticatedMemberServicePage(serviceSlug: string, returnTo: Route) {
+export async function resolveAuthenticatedMemberServicePage(serviceSlug: string, returnTo: string) {
   const actor = await (await currentUserProvider()).getCurrentUser();
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
 

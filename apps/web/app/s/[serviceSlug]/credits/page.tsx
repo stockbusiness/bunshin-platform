@@ -18,7 +18,7 @@ export default async function ServiceCreditsPage({
   const { serviceSlug } = await params;
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/credits` as Route,
+    `/s/${serviceSlug}/credits`,
   );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({

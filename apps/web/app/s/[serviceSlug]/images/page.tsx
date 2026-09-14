@@ -1,4 +1,3 @@
-import type { Route } from 'next';
 import GroupImagesPage from '../../../(app)/groups/[groupId]/images/page';
 import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 
@@ -14,7 +13,7 @@ export default async function ServiceImagesPage({
   const { serviceSlug } = await params;
   const { service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/images` as Route,
+    `/s/${serviceSlug}/images`,
   );
   return GroupImagesPage({
     params: Promise.resolve({ groupId: service.serviceId }),

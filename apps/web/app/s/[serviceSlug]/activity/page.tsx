@@ -39,7 +39,7 @@ export default async function ServiceMemberActivityPage({
   const { serviceSlug } = await params;
   const { actor, service } = await resolveAuthenticatedMemberServicePage(
     serviceSlug,
-    `/s/${serviceSlug}/activity` as Route,
+    `/s/${serviceSlug}/activity`,
   );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({

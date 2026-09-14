@@ -20,7 +20,7 @@ describe('dedicated group LINE rich menu', () => {
         serviceSlug: 'sennokuni',
         image: Buffer.from([1, 2, 3]),
       }),
-    ).resolves.toEqual({ lineRichMenuId: 'richmenu-group' });
+    ).resolves.toEqual({ lineRichMenuId: 'richmenu-group', cleanupFailedIds: [] });
     const definition = JSON.parse(request.mock.calls[1]?.[1]?.body as string) as {
       chatBarText: string;
       areas: Array<{ action: { uri: string } }>;
@@ -37,7 +37,7 @@ describe('dedicated group LINE rich menu', () => {
     );
   });
 
-  it('reuses the deterministic menu on retry', async () => {
+  it('creates a replacement menu and removes the previous image-backed menu', async () => {
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -45,18 +45,24 @@ describe('dedicated group LINE rich menu', () => {
           richmenus: [{ name: 'bunshin-group:group-1:default:v3', richMenuId: 'existing' }],
         }),
       )
+      .mockResolvedValueOnce(Response.json({ richMenuId: 'replacement' }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
-    await publishDefaultGroupRichMenu({
-      request,
-      accessToken: 'dedicated-token',
-      groupId: 'group-1',
-      groupName: '千ノ国メディア',
-      appUrl: 'https://app.example.com',
-      serviceSlug: null,
-      image: Buffer.from([1]),
-    });
-    expect(request).toHaveBeenCalledTimes(3);
+    await expect(
+      publishDefaultGroupRichMenu({
+        request,
+        accessToken: 'dedicated-token',
+        groupId: 'group-1',
+        groupName: '千ノ国メディア',
+        appUrl: 'https://app.example.com',
+        serviceSlug: null,
+        image: Buffer.from([1]),
+      }),
+    ).resolves.toEqual({ lineRichMenuId: 'replacement', cleanupFailedIds: [] });
+    expect(request).toHaveBeenCalledTimes(5);
+    expect(request.mock.calls[4]?.[0]).toBe('https://api.line.me/v2/bot/richmenu/existing');
+    expect(request.mock.calls[4]?.[1]?.method).toBe('DELETE');
   });
 
   it('uses a participant-facing service label in the chat bar', async () => {

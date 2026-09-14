@@ -1,4 +1,5 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import type { LineRichMenuAction } from '@bunshin/application';
 import { ApplicationError } from '@bunshin/shared';
 import { DEFAULT_LINE_RICH_MENU } from './default-rich-menu';
@@ -37,7 +38,8 @@ export async function publishDefaultGroupRichMenu(input: {
 }) {
   const request = input.request ?? fetch;
   const headers = { authorization: `Bearer ${input.accessToken}` };
-  const providerName = `bunshin-group:${input.groupId}:default:v3`;
+  const providerNamePrefix = `bunshin-group:${input.groupId}:default:`;
+  const providerName = `${providerNamePrefix}v4:${randomUUID()}`;
   const chatBarText = `${input.groupName.replace(/公式$/, '').trim()}メニュー`.slice(0, 14);
   const listed = await request(`${endpoint}/v2/bot/richmenu/list`, {
     headers,
@@ -47,31 +49,33 @@ export async function publishDefaultGroupRichMenu(input: {
   const listBody = (await listed.json()) as {
     richmenus?: Array<{ richMenuId?: unknown; name?: unknown }>;
   };
-  let lineRichMenuId = listBody.richmenus?.find(
-    (item) => item.name === providerName && typeof item.richMenuId === 'string',
-  )?.richMenuId as string | undefined;
-  if (!lineRichMenuId) {
-    const created = await request(`${endpoint}/v2/bot/richmenu`, {
-      method: 'POST',
-      headers: { ...headers, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        size: { width: DEFAULT_LINE_RICH_MENU.width, height: DEFAULT_LINE_RICH_MENU.height },
-        selected: true,
-        name: providerName,
-        chatBarText,
-        areas: DEFAULT_LINE_RICH_MENU.areas.map((area) => ({
-          bounds: { x: area.x, y: area.y, width: area.width, height: area.height },
-          action: { type: 'uri', uri: actionUrl(area.action, input.appUrl, input.serviceSlug) },
-        })),
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!created.ok) throw providerError(created.status);
-    const body = (await created.json()) as { richMenuId?: unknown };
-    if (typeof body.richMenuId !== 'string')
-      throw new ApplicationError('INTERNAL_ERROR', 'LINEの応答を確認できませんでした');
-    lineRichMenuId = body.richMenuId;
-  }
+  const previousMenus = (listBody.richmenus ?? []).flatMap((item) =>
+    typeof item.name === 'string' &&
+    item.name.startsWith(providerNamePrefix) &&
+    typeof item.richMenuId === 'string'
+      ? [item.richMenuId]
+      : [],
+  );
+  const created = await request(`${endpoint}/v2/bot/richmenu`, {
+    method: 'POST',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      size: { width: DEFAULT_LINE_RICH_MENU.width, height: DEFAULT_LINE_RICH_MENU.height },
+      selected: true,
+      name: providerName,
+      chatBarText,
+      areas: DEFAULT_LINE_RICH_MENU.areas.map((area) => ({
+        bounds: { x: area.x, y: area.y, width: area.width, height: area.height },
+        action: { type: 'uri', uri: actionUrl(area.action, input.appUrl, input.serviceSlug) },
+      })),
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!created.ok) throw providerError(created.status);
+  const body = (await created.json()) as { richMenuId?: unknown };
+  if (typeof body.richMenuId !== 'string')
+    throw new ApplicationError('INTERNAL_ERROR', 'LINEの応答を確認できませんでした');
+  const lineRichMenuId = body.richMenuId;
   const uploaded = await request(
     `https://api-data.line.me/v2/bot/richmenu/${lineRichMenuId}/content`,
     {
@@ -88,5 +92,14 @@ export async function publishDefaultGroupRichMenu(input: {
     signal: AbortSignal.timeout(10_000),
   });
   if (!activated.ok) throw providerError(activated.status);
-  return { lineRichMenuId };
+  const cleanupFailedIds: string[] = [];
+  for (const previousMenuId of previousMenus) {
+    const removed = await request(`${endpoint}/v2/bot/richmenu/${previousMenuId}`, {
+      method: 'DELETE',
+      headers,
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!removed.ok) cleanupFailedIds.push(previousMenuId);
+  }
+  return { lineRichMenuId, cleanupFailedIds };
 }

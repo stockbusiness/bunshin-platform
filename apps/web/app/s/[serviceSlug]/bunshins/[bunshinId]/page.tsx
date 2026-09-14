@@ -17,9 +17,9 @@ import {
 import type { CSSProperties } from 'react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUserProvider } from '../../../../../src/auth/current-user';
+import { notFound } from 'next/navigation';
 import { isRouteNotFound } from '../../../../../src/navigation/route-not-found';
+import { resolveAuthenticatedMemberServicePage } from '../../../../../src/services/member-service-page';
 import { resolvePublicServiceContext } from '../../../../../src/services/public-service';
 import { readServiceOnboardingSettings } from '../../../../../src/services/service-onboarding-settings';
 import { PublicShell } from '../../../../ui/public-shell';
@@ -42,22 +42,17 @@ import { readBusinessOutcomes } from '../../../../../src/services/business-outco
 
 export const dynamic = 'force-dynamic';
 
-async function context(slug: string) {
-  try {
-    return await resolvePublicServiceContext(slug);
-  } catch (error) {
-    if (isRouteNotFound(error)) notFound();
-    throw error;
-  }
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ serviceSlug: string; bunshinId: string }>;
 }): Promise<Metadata> {
-  const service = await context((await params).serviceSlug);
-  return { title: `${service.configuration.displayName}｜投稿パートナー設定` };
+  const service = await resolvePublicServiceContext((await params).serviceSlug).catch(() => null);
+  return {
+    title: service
+      ? `${service.configuration.displayName}｜投稿パートナー設定`
+      : '投稿パートナー設定',
+  };
 }
 
 export default async function ServiceBunshinDetailPage({
@@ -66,15 +61,15 @@ export default async function ServiceBunshinDetailPage({
   params: Promise<{ serviceSlug: string; bunshinId: string }>;
 }) {
   const { serviceSlug, bunshinId } = await params;
-  const service = await context(serviceSlug);
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/bunshins/${bunshinId}` as Route,
+  );
   const onboarding = readServiceOnboardingSettings(
     service.configuration.registration.onboardingConfig,
     service.configuration.registration.surveyConfig,
   );
   const isBusinessDailyService = onboarding.businessProfileEnabled;
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  const returnTo = `/s/${service.configuration.slug}/bunshins/${bunshinId}` as Route;
-  if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
   const db = await import('@bunshin/database');
   let bunshin;
   let capabilities;

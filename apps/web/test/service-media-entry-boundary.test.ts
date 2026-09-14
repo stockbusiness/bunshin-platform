@@ -22,7 +22,7 @@ describe('service media entry boundary', () => {
   it.each([images, videos, videoAssets, videoDetail])(
     'resolves the server-owned service context before reusing media operations',
     (entry) => {
-      expect(entry).toContain('resolvePublicServiceContext(serviceSlug)');
+      expect(entry).toContain('resolveAuthenticatedMemberServicePage');
       expect(entry).toContain('groupId: service.serviceId');
       expect(entry).not.toContain('groupId: searchParams');
     },

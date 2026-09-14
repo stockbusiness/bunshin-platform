@@ -1,5 +1,6 @@
+import type { Route } from 'next';
 import GroupImagesPage from '../../../(app)/groups/[groupId]/images/page';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,10 @@ export default async function ServiceImagesPage({
   searchParams: Promise<{ mission?: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await resolvePublicServiceContext(serviceSlug);
+  const { service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/images` as Route,
+  );
   return GroupImagesPage({
     params: Promise.resolve({ groupId: service.serviceId }),
     searchParams: Promise.resolve({ ...(await searchParams), service: service.configuration.slug }),

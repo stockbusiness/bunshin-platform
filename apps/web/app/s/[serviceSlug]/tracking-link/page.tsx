@@ -6,9 +6,8 @@ import {
 } from '@bunshin/application';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUserProvider } from '../../../../src/auth/current-user';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { redirect } from 'next/navigation';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { PublicShell } from '../../../ui/public-shell';
 import { MemberTrackingLinkForm } from './member-tracking-link-form';
 import { MemberProductContentForm } from './member-product-content-form';
@@ -21,11 +20,10 @@ export default async function ServiceMemberTrackingLinkPage({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
-  if (!service) notFound();
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  if (!actor)
-    redirect(`/login?returnTo=${encodeURIComponent(`/s/${serviceSlug}/tracking-link`)}` as Route);
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/tracking-link` as Route,
+  );
   const db = await import('@bunshin/database');
   const settings = await new ExternalTrackingMemberLinkService(
     new db.PrismaExternalTrackingLinkRepository(undefined, service.serviceId),

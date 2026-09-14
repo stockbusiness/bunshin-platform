@@ -2,10 +2,9 @@ import { getServerEnvironment } from '@bunshin/config';
 import type { CSSProperties } from 'react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
-import { currentUserProvider } from '../../../../src/auth/current-user';
-import { isRouteNotFound } from '../../../../src/navigation/route-not-found';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { resolvePublicServiceContext } from '../../../../src/services/public-service';
 import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { PublicShell } from '../../../ui/public-shell';
@@ -22,23 +21,14 @@ const referralStatusLabel = {
   REJECTED: '対象外になりました',
 } as const;
 
-async function context(slug: string) {
-  try {
-    return await resolvePublicServiceContext(slug);
-  } catch (error) {
-    if (isRouteNotFound(error)) notFound();
-    throw error;
-  }
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ serviceSlug: string }>;
 }): Promise<Metadata> {
   const { serviceSlug } = await params;
-  const service = await context(serviceSlug);
-  return { title: `${service.configuration.displayName}｜活動・紹介` };
+  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
+  return { title: service ? `${service.configuration.displayName}｜活動・紹介` : '活動・紹介' };
 }
 
 export default async function ServiceMemberActivityPage({
@@ -47,10 +37,10 @@ export default async function ServiceMemberActivityPage({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await context(serviceSlug);
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  const returnTo = `/s/${serviceSlug}/activity` as Route;
-  if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/activity` as Route,
+  );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

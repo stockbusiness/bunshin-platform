@@ -5,7 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import { currentUserProvider } from '../../../../src/auth/current-user';
 import { localDateInTimezone } from '../../../../src/activity-progress';
 import { isRouteNotFound } from '../../../../src/navigation/route-not-found';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { resolveMemberServiceContext } from '../../../../src/services/public-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ export default async function OpenMissionForPointsPage({
 
   let service;
   try {
-    service = await resolvePublicServiceContext(serviceSlug);
+    service = await resolveMemberServiceContext(serviceSlug, user.userId);
   } catch (error) {
     if (isRouteNotFound(error)) notFound();
     throw error;

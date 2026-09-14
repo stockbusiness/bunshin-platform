@@ -24,4 +24,33 @@ describe('private service rich menu destinations', () => {
     expect(page).toContain('`/account?service=${encodeURIComponent(requestedService)}`');
     expect(page).toContain('`/login?returnTo=${encodeURIComponent(returnTo)}`');
   });
+
+  it.each([
+    'app/s/[serviceSlug]/activity/page.tsx',
+    'app/s/[serviceSlug]/weekly-report/page.tsx',
+    'app/s/[serviceSlug]/programs/page.tsx',
+    'app/s/[serviceSlug]/credits/page.tsx',
+    'app/s/[serviceSlug]/tracking-link/page.tsx',
+    'app/s/[serviceSlug]/images/page.tsx',
+    'app/s/[serviceSlug]/videos/page.tsx',
+    'app/s/[serviceSlug]/video-assets/page.tsx',
+    'app/s/[serviceSlug]/videos/[videoProjectId]/page.tsx',
+    'app/s/[serviceSlug]/bunshins/[bunshinId]/page.tsx',
+  ])('uses the shared private member boundary in %s', (relativePath) => {
+    const page = source(relativePath);
+    expect(page).toContain('resolveAuthenticatedMemberServicePage');
+    expect(page).not.toContain('const service = await resolvePublicServiceContext(serviceSlug);');
+  });
+
+  it('lets authenticated members open help for a private service', () => {
+    const page = source('app/s/[serviceSlug]/help/page.tsx');
+    expect(page).toContain('resolveMemberServiceContext(slug, actorUserId)');
+    expect(page).toContain('serviceContext(serviceSlug, user?.userId)');
+  });
+
+  it('opens a private service mission from the points screen', () => {
+    const page = source('app/(app)/points/open-mission/page.tsx');
+    expect(page).toContain('resolveMemberServiceContext(serviceSlug, user.userId)');
+    expect(page).not.toContain('resolvePublicServiceContext(serviceSlug)');
+  });
 });

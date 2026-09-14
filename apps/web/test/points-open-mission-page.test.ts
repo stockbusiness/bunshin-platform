@@ -21,7 +21,7 @@ vi.mock('../src/auth/current-user', () => ({
   currentUserProvider: () => Promise.resolve({ getCurrentUser: mocks.currentUser }),
 }));
 vi.mock('../src/services/public-service', () => ({
-  resolvePublicServiceContext: mocks.resolveService,
+  resolveMemberServiceContext: mocks.resolveService,
 }));
 vi.mock('../src/navigation/route-not-found', () => ({ isRouteNotFound: () => false }));
 vi.mock('@bunshin/capability-social', () => ({
@@ -64,6 +64,7 @@ describe('points latest mission opener', () => {
         orderBy: [{ missionDate: 'desc' }, { createdAt: 'desc' }],
       }),
     );
+    expect(mocks.resolveService).toHaveBeenCalledWith('my-service', 'user-a');
     expect(mocks.record).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: 'workspace-a',

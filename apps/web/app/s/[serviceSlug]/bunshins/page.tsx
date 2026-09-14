@@ -9,6 +9,7 @@ import {
   resolveMemberServiceContext,
   resolvePublicServiceContext,
 } from '../../../../src/services/public-service';
+import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { PublicShell } from '../../../ui/public-shell';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,30 @@ export default async function ServiceBunshinsPage({
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
   const service = await context(serviceSlug, actor.userId);
   const db = await import('@bunshin/database');
+  const membership = await db.prisma.groupMembership.findFirst({
+    where: {
+      workspaceId: service.workspaceId,
+      groupId: service.serviceId,
+      userId: actor.userId,
+      status: 'ACTIVE',
+      group: { status: 'ACTIVE', workspace: { status: 'ACTIVE' } },
+    },
+    select: {
+      serviceOnboardingResponse: { select: { id: true } },
+      serviceMemberBusinessProfile: { select: { id: true } },
+    },
+  });
+  if (!membership) redirect(`/s/${service.configuration.slug}` as Route);
+  const onboarding = readServiceOnboardingSettings(
+    service.configuration.registration.onboardingConfig,
+    service.configuration.registration.surveyConfig,
+  );
+  if (
+    (onboarding.questions.length > 0 && !membership.serviceOnboardingResponse) ||
+    (onboarding.businessProfileEnabled && !membership.serviceMemberBusinessProfile)
+  ) {
+    redirect(`/s/${service.configuration.slug}/onboarding` as Route);
+  }
   const bunshins = await new ListServiceBunshins(new db.PrismaBunshinRepository()).execute({
     workspaceId: service.workspaceId,
     groupId: service.serviceId,

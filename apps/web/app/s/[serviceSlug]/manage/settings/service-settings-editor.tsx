@@ -198,7 +198,9 @@ export function ServiceSettingsEditor({
       };
       if (!response.ok) {
         const message = result.error?.message ?? '設定を保存できませんでした。';
-        throw new Error(result.requestId ? `${message}（問い合わせ番号: ${result.requestId}）` : message);
+        throw new Error(
+          result.requestId ? `${message}（問い合わせ番号: ${result.requestId}）` : message,
+        );
       }
       setMessage('設定を保存しました。サービス画面にも反映されます。');
     } catch (error) {

@@ -11446,10 +11446,6 @@ export class PrismaServiceFoundationRepository implements ServiceFoundationRepos
         },
       });
       await Promise.all([
-        tx.group.update({
-          where: { id: input.groupId },
-          data: { name: value.displayName },
-        }),
         tx.serviceBrand.upsert({
           where: { groupId: input.groupId },
           create: {

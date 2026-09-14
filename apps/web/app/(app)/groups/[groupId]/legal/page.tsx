@@ -73,6 +73,8 @@ async function createDraft(formData: FormData) {
   const userId = await actorId();
   const db = await import('@bunshin/database');
   try {
+    if (!(await canManage(input.data.workspaceId, input.data.groupId, userId)))
+      throw new ApplicationError('FORBIDDEN', 'service legal management denied');
     await db.prisma.$transaction(async (tx) => {
       const configuration = await tx.serviceConfiguration.findFirst({
         where: {
@@ -81,10 +83,7 @@ async function createDraft(formData: FormData) {
           group: { status: 'ACTIVE' },
         },
       });
-      if (
-        configuration === null ||
-        !(await canManage(input.data.workspaceId, input.data.groupId, userId))
-      )
+      if (configuration === null)
         throw new ApplicationError('FORBIDDEN', 'service legal management denied');
       const latest = await tx.serviceLegalDocument.aggregate({
         where: { groupId: input.data.groupId, type: input.data.type },
@@ -134,6 +133,8 @@ async function publish(formData: FormData) {
   const userId = await actorId();
   const db = await import('@bunshin/database');
   try {
+    if (!(await canManage(input.data.workspaceId, input.data.groupId, userId)))
+      throw new ApplicationError('FORBIDDEN', 'service legal publication denied');
     await db.prisma.$transaction(async (tx) => {
       const document = await tx.serviceLegalDocument.findFirst({
         where: {
@@ -143,10 +144,7 @@ async function publish(formData: FormData) {
           status: 'DRAFT',
         },
       });
-      if (
-        document === null ||
-        !(await canManage(input.data.workspaceId, input.data.groupId, userId))
-      )
+      if (document === null)
         throw new ApplicationError('FORBIDDEN', 'service legal publication denied');
       await tx.serviceLegalDocument.updateMany({
         where: { groupId: input.data.groupId, type: document.type, status: 'PUBLISHED' },

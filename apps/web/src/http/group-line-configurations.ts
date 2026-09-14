@@ -258,7 +258,11 @@ export function publishDefaultGroupRichMenuResponse(request: Request, groupIdVal
         actorUserId,
         action: 'RICH_MENU_PUBLISH',
         reason,
-        afterData: { lineRichMenuId: published.lineRichMenuId, template: 'DEFAULT_V1' },
+        afterData: {
+          lineRichMenuId: published.lineRichMenuId,
+          template: 'DEFAULT_V1',
+          cleanupFailedIds: published.cleanupFailedIds,
+        },
       },
     });
     return { ...published, name: '標準リッチメニュー' };

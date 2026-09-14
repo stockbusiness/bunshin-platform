@@ -1,12 +1,11 @@
 import type { Route } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUserProvider } from '../../../../src/auth/current-user';
+import { redirect } from 'next/navigation';
 import {
   serviceCreditAmountLabel,
   serviceCreditLedgerSummary,
 } from '../../../../src/services/service-credit-balance';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { PublicShell } from '../../../ui/public-shell';
 
 export const dynamic = 'force-dynamic';
@@ -17,11 +16,10 @@ export default async function ServiceCreditsPage({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
-  if (!service) notFound();
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  if (!actor)
-    redirect(`/login?returnTo=${encodeURIComponent(`/s/${serviceSlug}/credits`)}` as Route);
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/credits`,
+  );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

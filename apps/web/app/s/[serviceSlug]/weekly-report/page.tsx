@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUserProvider } from '../../../../src/auth/current-user';
+import { notFound } from 'next/navigation';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { resolvePublicServiceContext } from '../../../../src/services/public-service';
 import { loadServiceWeeklyProgressReports } from '../../../../src/services/weekly-progress-report-data';
 import {
@@ -19,8 +19,10 @@ export async function generateMetadata({
 }: {
   params: Promise<{ serviceSlug: string }>;
 }): Promise<Metadata> {
-  const service = await resolvePublicServiceContext((await params).serviceSlug);
-  return { title: `${service.configuration.displayName}｜今週のふり返り` };
+  const service = await resolvePublicServiceContext((await params).serviceSlug).catch(() => null);
+  return {
+    title: service ? `${service.configuration.displayName}｜今週のふり返り` : '今週のふり返り',
+  };
 }
 
 const dateLabel = (value: string) =>
@@ -36,13 +38,11 @@ export default async function ServiceWeeklyReportPage({
   searchParams: Promise<{ week?: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
-  if (!service) notFound();
   const window = resolveWeeklyReportWindow((await searchParams).week);
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  const returnTo =
-    `/s/${service.configuration.slug}/weekly-report?week=${window.weekStart}` as Route;
-  if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/weekly-report?week=${window.weekStart}`,
+  );
   const db = await import('@bunshin/database');
   const report = (
     await loadServiceWeeklyProgressReports({

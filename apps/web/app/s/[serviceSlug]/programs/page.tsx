@@ -1,6 +1,5 @@
-import { notFound, redirect } from 'next/navigation';
-import { currentUserProvider } from '../../../../src/auth/current-user';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { notFound } from 'next/navigation';
+import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { PublicShell } from '../../../ui/public-shell';
 import { MemberProgramsEditor } from './member-programs-editor';
 
@@ -11,10 +10,10 @@ export default async function MemberProgramsPage({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const actor = await (await currentUserProvider()).getCurrentUser();
-  if (!actor) redirect(`/login?returnTo=${encodeURIComponent(`/s/${serviceSlug}/programs`)}`);
-  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
-  if (!service) notFound();
+  const { actor, service } = await resolveAuthenticatedMemberServicePage(
+    serviceSlug,
+    `/s/${serviceSlug}/programs`,
+  );
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

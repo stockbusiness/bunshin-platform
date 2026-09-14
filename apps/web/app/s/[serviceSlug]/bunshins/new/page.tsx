@@ -4,16 +4,19 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { currentUserProvider } from '../../../../../src/auth/current-user';
 import { isRouteNotFound } from '../../../../../src/navigation/route-not-found';
-import { resolvePublicServiceContext } from '../../../../../src/services/public-service';
+import {
+  resolveMemberServiceContext,
+  resolvePublicServiceContext,
+} from '../../../../../src/services/public-service';
 import { PublicShell } from '../../../../ui/public-shell';
 import { ServiceBunshinForm } from './service-bunshin-form';
 import { ServiceBunshinProposals } from './service-bunshin-proposals';
 
 export const dynamic = 'force-dynamic';
 
-async function context(slug: string) {
+async function context(slug: string, actorUserId: string) {
   try {
-    return await resolvePublicServiceContext(slug);
+    return await resolveMemberServiceContext(slug, actorUserId);
   } catch (error) {
     if (isRouteNotFound(error)) notFound();
     throw error;
@@ -25,8 +28,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ serviceSlug: string }>;
 }): Promise<Metadata> {
-  const service = await context((await params).serviceSlug);
-  return { title: `${service.configuration.displayName}｜投稿パートナーを作る` };
+  const service = await resolvePublicServiceContext((await params).serviceSlug).catch(() => null);
+  return {
+    title: service
+      ? `${service.configuration.displayName}｜投稿パートナーを作る`
+      : '投稿パートナーを作る',
+  };
 }
 
 export default async function NewServiceBunshinPage({
@@ -34,10 +41,11 @@ export default async function NewServiceBunshinPage({
 }: {
   params: Promise<{ serviceSlug: string }>;
 }) {
-  const service = await context((await params).serviceSlug);
+  const { serviceSlug } = await params;
   const actor = await (await currentUserProvider()).getCurrentUser();
-  const returnTo = `/s/${service.configuration.slug}/bunshins/new` as Route;
+  const returnTo = `/s/${serviceSlug}/bunshins/new` as Route;
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
+  const service = await context(serviceSlug, actor.userId);
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

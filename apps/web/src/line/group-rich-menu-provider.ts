@@ -15,11 +15,14 @@ function providerError(status: number) {
 function actionUrl(action: LineRichMenuAction, appUrl: string, serviceSlug: string | null) {
   const base = new URL(appUrl).origin;
   const serviceBase = serviceSlug ? `${base}/s/${serviceSlug}` : null;
+  const accountUrl = serviceSlug
+    ? `${base}/account?service=${encodeURIComponent(serviceSlug)}`
+    : `${base}/account`;
   return {
     OPEN_TODAY: serviceBase ? `${serviceBase}/home` : `${base}/today`,
     OPEN_BUNSHINS: serviceBase ? `${serviceBase}/bunshins` : `${base}/bunshins`,
-    OPEN_NOTIFICATION_SETTINGS: `${base}/account#notifications`,
-    OPEN_ACCOUNT: `${base}/account`,
+    OPEN_NOTIFICATION_SETTINGS: `${accountUrl}#notifications`,
+    OPEN_ACCOUNT: accountUrl,
   }[action];
 }
 
@@ -34,7 +37,7 @@ export async function publishDefaultGroupRichMenu(input: {
 }) {
   const request = input.request ?? fetch;
   const headers = { authorization: `Bearer ${input.accessToken}` };
-  const providerName = `bunshin-group:${input.groupId}:default:v1`;
+  const providerName = `bunshin-group:${input.groupId}:default:v2`;
   const listed = await request(`${endpoint}/v2/bot/richmenu/list`, {
     headers,
     signal: AbortSignal.timeout(10_000),

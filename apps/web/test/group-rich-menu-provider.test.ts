@@ -27,8 +27,8 @@ describe('dedicated group LINE rich menu', () => {
     expect(definition.areas.map((area) => area.action.uri)).toEqual([
       'https://app.example.com/s/sennokuni/home',
       'https://app.example.com/s/sennokuni/bunshins',
-      'https://app.example.com/account#notifications',
-      'https://app.example.com/account',
+      'https://app.example.com/account?service=sennokuni#notifications',
+      'https://app.example.com/account?service=sennokuni',
     ]);
     expect(request.mock.calls[3]?.[0]).toBe(
       'https://api.line.me/v2/bot/user/all/richmenu/richmenu-group',
@@ -40,7 +40,7 @@ describe('dedicated group LINE rich menu', () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         Response.json({
-          richmenus: [{ name: 'bunshin-group:group-1:default:v1', richMenuId: 'existing' }],
+          richmenus: [{ name: 'bunshin-group:group-1:default:v2', richMenuId: 'existing' }],
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 200 }))

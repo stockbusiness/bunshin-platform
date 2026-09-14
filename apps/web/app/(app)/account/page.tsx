@@ -196,18 +196,18 @@ export default async function AccountPage({
       <section className="settings-card" aria-labelledby="support-settings-title">
         <h2 id="support-settings-title">サービス情報</h2>
         <nav className="settings-list" aria-label="サービス情報">
-          <Link href={scopedService?.termsUrl ?? '/terms'} className="settings-row">
+          <a href={scopedService?.termsUrl ?? '/terms'} className="settings-row">
             <span>
               <strong>利用規約</strong>
             </span>
             <span aria-hidden="true">›</span>
-          </Link>
-          <Link href={scopedService?.privacyUrl ?? '/privacy'} className="settings-row">
+          </a>
+          <a href={scopedService?.privacyUrl ?? '/privacy'} className="settings-row">
             <span>
               <strong>プライバシーポリシー</strong>
             </span>
             <span aria-hidden="true">›</span>
-          </Link>
+          </a>
         </nav>
       </section>
 

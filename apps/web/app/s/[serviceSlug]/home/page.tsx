@@ -13,7 +13,10 @@ import {
   weekRange,
   weeklyCalendar,
 } from '../../../../src/activity-progress';
-import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import {
+  resolveMemberServiceContext,
+  resolvePublicServiceContext,
+} from '../../../../src/services/public-service';
 import {
   isServiceAnnouncementVisible,
   readServiceAnnouncement,
@@ -23,9 +26,9 @@ import { PublicShell } from '../../../ui/public-shell';
 
 export const dynamic = 'force-dynamic';
 
-async function context(slug: string) {
+async function context(slug: string, actorUserId: string) {
   try {
-    return await resolvePublicServiceContext(slug);
+    return await resolveMemberServiceContext(slug, actorUserId);
   } catch (error) {
     if (isRouteNotFound(error)) notFound();
     throw error;
@@ -38,8 +41,8 @@ export async function generateMetadata({
   params: Promise<{ serviceSlug: string }>;
 }): Promise<Metadata> {
   const { serviceSlug } = await params;
-  const { configuration } = await context(serviceSlug);
-  return { title: `${configuration.displayName}｜ホーム` };
+  const service = await resolvePublicServiceContext(serviceSlug).catch(() => null);
+  return { title: service ? `${service.configuration.displayName}｜ホーム` : 'サービスホーム' };
 }
 
 export default async function ServiceMemberHome({
@@ -48,10 +51,10 @@ export default async function ServiceMemberHome({
   params: Promise<{ serviceSlug: string }>;
 }) {
   const { serviceSlug } = await params;
-  const service = await context(serviceSlug);
   const actor = await (await currentUserProvider()).getCurrentUser();
-  const returnTo = `/s/${service.configuration.slug}/home` as Route;
+  const returnTo = `/s/${serviceSlug}/home` as Route;
   if (!actor) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}` as Route);
+  const service = await context(serviceSlug, actor.userId);
   const db = await import('@bunshin/database');
   const membership = await db.prisma.groupMembership.findFirst({
     where: {

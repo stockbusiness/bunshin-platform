@@ -235,7 +235,7 @@ export function publishDefaultGroupRichMenuResponse(request: Request, groupIdVal
         group: {
           select: {
             name: true,
-            serviceConfiguration: { select: { slug: true } },
+            serviceConfiguration: { select: { slug: true, displayName: true } },
           },
         },
       },
@@ -244,7 +244,7 @@ export function publishDefaultGroupRichMenuResponse(request: Request, groupIdVal
     const published = await publishDefaultGroupRichMenu({
       accessToken: new AesGcmLineSecretCrypto().decrypt(stored.encryptedAccessToken),
       groupId,
-      groupName: stored.group.name,
+      groupName: stored.group.serviceConfiguration?.displayName ?? stored.group.name,
       appUrl: getServerEnvironment().APP_URL,
       serviceSlug: stored.group.serviceConfiguration?.slug ?? null,
       image: await renderDefaultLineRichMenu(),

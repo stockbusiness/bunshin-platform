@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 
-const state = vi.hoisted(() => ({ findPublicBySlug: vi.fn() }));
+const state = vi.hoisted(() => ({ findPublicBySlug: vi.fn(), findMemberBySlug: vi.fn() }));
 vi.mock('@bunshin/database', () => ({
   PrismaServiceFoundationRepository: class {
     findPublicBySlug = state.findPublicBySlug;
+    findMemberBySlug = state.findMemberBySlug;
   },
 }));
 
-import { resolvePublicServiceContext } from '../src/services/public-service';
+import {
+  resolveMemberServiceContext,
+  resolvePublicServiceContext,
+} from '../src/services/public-service';
 
 const configuration = {
   id: 'configuration-1',
@@ -84,6 +88,23 @@ describe('public service context', () => {
           referralEnabled: false,
         },
       },
+    });
+  });
+
+  it('allows an active member to open a private service during limited operation', async () => {
+    state.findMemberBySlug.mockResolvedValue({ ...configuration, visibility: 'PRIVATE' });
+
+    await expect(
+      resolveMemberServiceContext('side-job-support', 'member-1'),
+    ).resolves.toMatchObject({
+      workspaceId: 'workspace-1',
+      serviceId: 'service-1',
+      configuration: { slug: 'side-job-support', visibility: 'PRIVATE' },
+    });
+    expect(state.findMemberBySlug).toHaveBeenCalledWith({
+      slug: 'side-job-support',
+      actorUserId: 'member-1',
+      now: expect.any(Date),
     });
   });
 

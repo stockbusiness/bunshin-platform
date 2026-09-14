@@ -37,7 +37,8 @@ export async function publishDefaultGroupRichMenu(input: {
 }) {
   const request = input.request ?? fetch;
   const headers = { authorization: `Bearer ${input.accessToken}` };
-  const providerName = `bunshin-group:${input.groupId}:default:v2`;
+  const providerName = `bunshin-group:${input.groupId}:default:v3`;
+  const chatBarText = `${input.groupName.replace(/公式$/, '').trim()}メニュー`.slice(0, 14);
   const listed = await request(`${endpoint}/v2/bot/richmenu/list`, {
     headers,
     signal: AbortSignal.timeout(10_000),
@@ -57,7 +58,7 @@ export async function publishDefaultGroupRichMenu(input: {
         size: { width: DEFAULT_LINE_RICH_MENU.width, height: DEFAULT_LINE_RICH_MENU.height },
         selected: true,
         name: providerName,
-        chatBarText: `${input.groupName}メニュー`.slice(0, 14),
+        chatBarText,
         areas: DEFAULT_LINE_RICH_MENU.areas.map((area) => ({
           bounds: { x: area.x, y: area.y, width: area.width, height: area.height },
           action: { type: 'uri', uri: actionUrl(area.action, input.appUrl, input.serviceSlug) },

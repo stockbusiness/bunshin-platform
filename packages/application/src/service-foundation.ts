@@ -68,6 +68,11 @@ export interface ServiceFoundationRepository {
     actorUserId: string;
   }): Promise<ServiceFoundationRecord | null>;
   findPublicBySlug(input: { slug: string; now: Date }): Promise<ServiceFoundationRecord | null>;
+  findMemberBySlug(input: {
+    slug: string;
+    actorUserId: string;
+    now: Date;
+  }): Promise<ServiceFoundationRecord | null>;
 }
 
 const text = (value: string, field: string, maximum: number) => {
@@ -177,6 +182,16 @@ export class ServiceFoundationService {
   async findPublicBySlug(input: { slug: string; now?: Date }) {
     const result = await this.repository.findPublicBySlug({
       slug: input.slug,
+      now: input.now ?? new Date(),
+    });
+    if (result === null) throw new ApplicationError('NOT_FOUND', 'service not found');
+    return result;
+  }
+
+  async findMemberBySlug(input: { slug: string; actorUserId: string; now?: Date }) {
+    const result = await this.repository.findMemberBySlug({
+      slug: input.slug,
+      actorUserId: input.actorUserId,
       now: input.now ?? new Date(),
     });
     if (result === null) throw new ApplicationError('NOT_FOUND', 'service not found');

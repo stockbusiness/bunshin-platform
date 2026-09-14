@@ -44,6 +44,7 @@ const repository = (save: ServiceFoundationRepository['save']): ServiceFoundatio
   save,
   findByGroup: () => Promise.resolve(record),
   findPublicBySlug: () => Promise.resolve(record),
+  findMemberBySlug: () => Promise.resolve(record),
 });
 
 describe('ServiceFoundationService', () => {

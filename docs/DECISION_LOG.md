@@ -2176,3 +2176,12 @@
 - Boundary: `Group.name`は運営団体配下のプロジェクト名、`ServiceConfiguration.displayName`は利用者に見せる公開サービス名として独立して管理する。
 - Update: サービスの見た目・登録設定を保存しても親Groupを更新せず、ブランド、登録方法、公開サービス設定だけを保存する。
 - Result: `企業向け`プロジェクトの公開名を`ワタシワークス公式`として運用しても、管理階層のプロジェクト名は`企業向け`のまま維持される。
+
+## 2026-09-14: 企業向け無料サービスの投稿パートナー選択を省略する
+
+- Entry: 利用者は事業情報を登録した後、投稿パートナー候補を選ばず、SNSと受信時刻の設定へ進む。
+- Default partner: 会社名、商品・サービス、目的、対象顧客、事業の特徴、希望する文章の雰囲気から、利用者専用の標準投稿パートナーを1件だけ作成する。
+- Existing member: 同じServiceに利用者本人の投稿パートナーがある場合は新規作成せず、その投稿パートナーを再利用する。
+- Preparation: SNS選択とLINE通知同意後、Content Pillar、Social Profile、Strategy、週間予定の準備を既存の一括設定で進める。
+- Boundary: 投稿パートナー候補を選ぶ従来導線は、事業プロフィールを使わない他Service向けに維持する。
+- Source: `docs/WATASHI_WORKS_BUSINESS_ONBOARDING_REPORT.md`

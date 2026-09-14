@@ -105,7 +105,13 @@ export function ServiceOnboardingForm({
       setMessage('保存できませんでした。入力内容を確認して、もう一度お試しください。');
       return;
     }
-    router.replace(`/s/${encodeURIComponent(serviceSlug)}/bunshins/new`);
+    const result = (await response.json()) as { data?: { bunshinId?: string | null } };
+    const bunshinId = result.data?.bunshinId;
+    router.replace(
+      businessProfileEnabled && bunshinId
+        ? `/s/${encodeURIComponent(serviceSlug)}/bunshins/${encodeURIComponent(bunshinId)}?setup=1`
+        : `/s/${encodeURIComponent(serviceSlug)}/bunshins/new`,
+    );
     router.refresh();
   }
 

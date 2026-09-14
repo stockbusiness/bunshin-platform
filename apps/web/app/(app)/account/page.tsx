@@ -10,14 +10,19 @@ export default async function AccountPage({
 }: {
   searchParams: Promise<{ service?: string | string[] }>;
 }) {
-  const user = await (await currentUserProvider()).getCurrentUser();
-  if (!user) redirect('/login');
-  const db = await import('@bunshin/database');
   const query = await searchParams;
   const requestedService =
     typeof query.service === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(query.service)
       ? query.service
       : null;
+  const user = await (await currentUserProvider()).getCurrentUser();
+  if (!user) {
+    const returnTo = requestedService
+      ? `/account?service=${encodeURIComponent(requestedService)}`
+      : '/account';
+    redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  const db = await import('@bunshin/database');
   const scopedMembership = requestedService
     ? await db.prisma.groupMembership.findFirst({
         where: {

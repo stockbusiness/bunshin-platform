@@ -11552,6 +11552,27 @@ export class PrismaServiceFoundationRepository implements ServiceFoundationRepos
     });
     return value === null ? null : serviceFoundationRecord(value);
   }
+
+  async findMemberBySlug(input: Parameters<ServiceFoundationRepository['findMemberBySlug']>[0]) {
+    const value = await this.client.serviceConfiguration.findFirst({
+      where: {
+        slug: input.slug,
+        group: {
+          status: 'ACTIVE',
+          workspace: { status: 'ACTIVE' },
+          memberships: {
+            some: { userId: input.actorUserId, status: 'ACTIVE' },
+          },
+        },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: input.now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gt: input.now } }] },
+        ],
+      },
+      include: { brand: true, registration: true },
+    });
+    return value === null ? null : serviceFoundationRecord(value);
+  }
 }
 
 export class PrismaServiceParticipationRepository implements ServiceParticipationRepository {

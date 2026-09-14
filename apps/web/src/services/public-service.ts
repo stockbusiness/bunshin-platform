@@ -66,6 +66,25 @@ export async function resolvePublicServiceContext(slug: string): Promise<PublicS
   };
 }
 
+/** 公開前の限定運用でも、参加済みユーザーには自分のサービス画面を提供する。 */
+export async function resolveMemberServiceContext(
+  slug: string,
+  actorUserId: string,
+): Promise<PublicServiceContext> {
+  if (slug.length > 80 || !SERVICE_SLUG.test(slug))
+    throw new ApplicationError('NOT_FOUND', 'service not found');
+  const db = await import('@bunshin/database');
+  const storedConfiguration = await new ServiceFoundationService(
+    new db.PrismaServiceFoundationRepository(),
+  ).findMemberBySlug({ slug, actorUserId });
+  const configuration = effectiveServiceConfiguration(storedConfiguration);
+  return {
+    workspaceId: configuration.workspaceId,
+    serviceId: configuration.groupId,
+    configuration,
+  };
+}
+
 export async function resolveManagedServiceContext(
   slug: string,
   actorUserId: string,

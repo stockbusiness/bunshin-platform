@@ -10,17 +10,37 @@ import {
   enforceBusinessFreeRegistrationSettings,
 } from '../services/business-daily-service-settings';
 import { resolveManagedServiceContext } from '../services/public-service';
+import { readServiceOnboardingSettings } from '../services/service-onboarding-settings';
 
 const logger = createLogger();
 
 function errorIdentity(error: unknown) {
   if (error === null || typeof error !== 'object') return {};
-  const candidate = error as { name?: unknown; code?: unknown };
+  const candidate = error as { name?: unknown; code?: unknown; cause?: unknown };
+  const validationError =
+    error instanceof z.ZodError
+      ? error
+      : candidate.cause instanceof z.ZodError
+        ? candidate.cause
+        : null;
   return {
     ...(typeof candidate.name === 'string' ? { errorName: candidate.name } : {}),
     ...(typeof candidate.code === 'string' ? { databaseErrorCode: candidate.code } : {}),
+    ...(validationError
+      ? {
+          validationIssues: validationError.issues.slice(0, 10).map((issue) => ({
+            code: issue.code,
+            path: issue.path.join('.'),
+          })),
+        }
+      : {}),
   };
 }
+
+const record = (value: unknown): Record<string, unknown> | null =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 
 const optionalUrl = z
   .union([z.literal(''), z.string().url().max(2048)])
@@ -31,7 +51,7 @@ const scheduledDateTime = z
   .optional()
   .transform((value) => (value ? new Date(`${value}:00+09:00`).toISOString() : null));
 
-const schema = z
+export const serviceSettingsUpdateSchema = z
   .object({
     displayName: z.string().min(1).max(120),
     description: z.string().min(1).max(1000),
@@ -188,6 +208,38 @@ const schema = z
     }
   });
 
+function normalizeServiceSettingsUpdatePayload(input: unknown): unknown {
+  const value = record(input);
+  if (!value) return input;
+  const onboarding = readServiceOnboardingSettings(
+    {
+      businessProfileEnabled: value.businessProfileEnabled === true,
+      profileQuestions: value.profileQuestions,
+      dailyIdeaDelivery: value.dailyIdeaDelivery,
+    },
+    null,
+  );
+  return {
+    ...value,
+    profileQuestions: onboarding.profileQuestions,
+    dailyIdeaDelivery: onboarding.dailyIdeaDelivery,
+  };
+}
+
+export async function parseServiceSettingsUpdatePayload(input: unknown) {
+  const result = await serviceSettingsUpdateSchema.safeParseAsync(
+    normalizeServiceSettingsUpdatePayload(input),
+  );
+  if (!result.success) {
+    throw new ApplicationError(
+      'VALIDATION_ERROR',
+      'service settings update payload is invalid',
+      result.error,
+    );
+  }
+  return result.data;
+}
+
 export async function updateServiceSettingsResponse(request: Request, serviceSlug: string) {
   const requestId = requestIdFromHeader(request.headers.get('x-request-id'));
   try {
@@ -198,7 +250,7 @@ export async function updateServiceSettingsResponse(request: Request, serviceSlu
     if (!actor) throw new ApplicationError('UNAUTHENTICATED', 'session required');
     const [service, parsedValue] = await Promise.all([
       resolveManagedServiceContext(serviceSlug, actor.userId),
-      schema.parseAsync(request.json()),
+      request.json().then(parseServiceSettingsUpdatePayload),
     ]);
     const value = enforceBusinessFreeRegistrationSettings(
       enforceBusinessDailyServiceSettings(parsedValue),

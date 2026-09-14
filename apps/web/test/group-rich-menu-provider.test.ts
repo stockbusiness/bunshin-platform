@@ -22,8 +22,10 @@ describe('dedicated group LINE rich menu', () => {
       }),
     ).resolves.toEqual({ lineRichMenuId: 'richmenu-group' });
     const definition = JSON.parse(request.mock.calls[1]?.[1]?.body as string) as {
+      chatBarText: string;
       areas: Array<{ action: { uri: string } }>;
     };
+    expect(definition.chatBarText).toBe('千ノ国メディアメニュー');
     expect(definition.areas.map((area) => area.action.uri)).toEqual([
       'https://app.example.com/s/sennokuni/home',
       'https://app.example.com/s/sennokuni/bunshins',
@@ -40,7 +42,7 @@ describe('dedicated group LINE rich menu', () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         Response.json({
-          richmenus: [{ name: 'bunshin-group:group-1:default:v2', richMenuId: 'existing' }],
+          richmenus: [{ name: 'bunshin-group:group-1:default:v3', richMenuId: 'existing' }],
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
@@ -55,5 +57,27 @@ describe('dedicated group LINE rich menu', () => {
       image: Buffer.from([1]),
     });
     expect(request).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses a participant-facing service label in the chat bar', async () => {
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ richmenus: [] }))
+      .mockResolvedValueOnce(Response.json({ richMenuId: 'richmenu-official' }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    await publishDefaultGroupRichMenu({
+      request,
+      accessToken: 'dedicated-token',
+      groupId: 'group-1',
+      groupName: 'ワタシワークス公式',
+      appUrl: 'https://app.example.com',
+      serviceSlug: 'watashi-works-official',
+      image: Buffer.from([1]),
+    });
+    const definition = JSON.parse(request.mock.calls[1]?.[1]?.body as string) as {
+      chatBarText: string;
+    };
+    expect(definition.chatBarText).toBe('ワタシワークスメニュー');
   });
 });

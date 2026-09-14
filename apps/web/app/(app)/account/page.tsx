@@ -69,29 +69,29 @@ export default async function AccountPage({
             workspace: { type: 'ORGANIZATION', status: 'ACTIVE' },
           },
         }),
-    db.prisma.groupMembership.findMany({
-      where: {
-        userId: user.userId,
-        status: 'ACTIVE',
-        serviceRole: { in: ['SERVICE_OWNER', 'SERVICE_ADMIN'] },
-        group: {
-          status: 'ACTIVE',
-          workspace: { status: 'ACTIVE' },
-          serviceConfiguration: scopedService
-            ? { is: { slug: scopedService.slug } }
-            : { isNot: null },
-        },
-      },
-      select: {
-        group: {
-          select: {
-            name: true,
-            serviceConfiguration: { select: { slug: true, displayName: true } },
+    scopedService
+      ? Promise.resolve([])
+      : db.prisma.groupMembership.findMany({
+          where: {
+            userId: user.userId,
+            status: 'ACTIVE',
+            serviceRole: { in: ['SERVICE_OWNER', 'SERVICE_ADMIN'] },
+            group: {
+              status: 'ACTIVE',
+              workspace: { status: 'ACTIVE' },
+              serviceConfiguration: { isNot: null },
+            },
           },
-        },
-      },
-      orderBy: { group: { name: 'asc' } },
-    }),
+          select: {
+            group: {
+              select: {
+                name: true,
+                serviceConfiguration: { select: { slug: true, displayName: true } },
+              },
+            },
+          },
+          orderBy: { group: { name: 'asc' } },
+        }),
   ]);
   return (
     <main className="app-page account-page">
@@ -105,7 +105,7 @@ export default async function AccountPage({
         </p>
       </header>
 
-      {managedOrganizationCount > 0 || managedServices.length > 0 ? (
+      {!scopedService && (managedOrganizationCount > 0 || managedServices.length > 0) ? (
         <section className="settings-card" aria-labelledby="operator-settings-title">
           <h2 id="operator-settings-title">運営者メニュー</h2>
           <nav className="settings-list" aria-label="運営者メニュー">

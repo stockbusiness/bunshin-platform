@@ -70,22 +70,15 @@ describe('service-scoped account page', () => {
     });
     const rendered = renderToStaticMarkup(page);
 
-    expect(rendered).toContain('ワタシワークス公式を運営する');
-    expect(rendered).toContain('/s/watashi-works-official/manage');
+    expect(rendered).not.toContain('運営者メニュー');
+    expect(rendered).not.toContain('ワタシワークス公式を運営する');
+    expect(rendered).not.toContain('/s/watashi-works-official/manage');
     expect(rendered).toContain('/s/watashi-works-official/bunshins');
     expect(rendered).not.toContain('運営団体・サービスを管理');
     expect(rendered).not.toContain('知識');
     expect(rendered).not.toContain('グループ');
     expect(mocks.countOrganizations).not.toHaveBeenCalled();
-    expect(mocks.findManagedServices).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          group: expect.objectContaining({
-            serviceConfiguration: { is: { slug: 'watashi-works-official' } },
-          }),
-        }),
-      }),
-    );
+    expect(mocks.findManagedServices).not.toHaveBeenCalled();
   });
 
   it('does not expose the global account when the user is outside the requested service', async () => {

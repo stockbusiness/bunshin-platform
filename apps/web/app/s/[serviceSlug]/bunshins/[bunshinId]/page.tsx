@@ -43,6 +43,7 @@ import {
 } from './business-response-insights';
 import { ServiceDeliverySettings } from './service-delivery-settings';
 import { DailyActionSection, type DailyActionView } from './daily-action-section';
+import { SocialInsightRecorder } from './social-insight-recorder';
 import { dailyVideoProjectId } from '../../../../../src/services/automatic-daily-video';
 import { localDateInTimezone } from '../../../../../src/activity-progress';
 import { resolveDeliveryScheduleStatus } from '../../../../../src/services/delivery-schedule-status';
@@ -410,6 +411,18 @@ export default async function ServiceBunshinDetailPage({
       },
     ];
   });
+  const socialInsightSnapshots = isBusinessDailyService
+    ? await db.prisma.socialInsightSnapshot.findMany({
+        where: {
+          workspaceId: service.workspaceId,
+          groupId: service.serviceId,
+          userId: actor.userId,
+          bunshinId,
+        },
+        orderBy: [{ observedOn: 'desc' }, { updatedAt: 'desc' }],
+        take: 12,
+      })
+    : [];
   const successfulBusinessTopic = isBusinessDailyService
     ? buildBusinessResponseInsight(dailyMissions).bestTopic
     : null;
@@ -463,6 +476,28 @@ export default async function ServiceBunshinDetailPage({
         ) : null}
         {isBusinessDailyService ? (
           <BusinessWeeklyOverview today={today} plans={weeklyPlans} pillars={contentPillars} />
+        ) : null}
+        {isBusinessDailyService ? (
+          <SocialInsightRecorder
+            endpoint={`/api/services/${encodeURIComponent(service.configuration.slug)}/bunshins/${encodeURIComponent(bunshin.id)}/social-insights`}
+            profiles={socialProfiles
+              .filter(({ status }) => status === 'ACTIVE')
+              .map(({ id, platform }) => ({ id, platform }))}
+            initialSnapshots={socialInsightSnapshots.map((snapshot) => ({
+              id: snapshot.id,
+              socialProfileId: snapshot.socialProfileId,
+              platform: snapshot.platform,
+              observedOn: snapshot.observedOn.toISOString().slice(0, 10),
+              periodStart: snapshot.periodStart?.toISOString().slice(0, 10) ?? null,
+              periodEnd: snapshot.periodEnd?.toISOString().slice(0, 10) ?? null,
+              followers: snapshot.followers,
+              reach: snapshot.reach,
+              impressions: snapshot.impressions,
+              profileViews: snapshot.profileViews,
+              interactions: snapshot.interactions,
+              source: snapshot.source,
+            }))}
+          />
         ) : null}
         {isBusinessDailyService ? <BusinessResponseInsights missions={dailyMissions} /> : null}
         {businessProgram ? (

@@ -17,6 +17,11 @@ export const dynamic = 'force-dynamic';
 
 const sections = [
   {
+    title: '90日集客レポート',
+    description: '参加者ごとの投稿、ポイント、集客成果、SNSの変化を確認します。',
+    href: '90-day-report',
+  },
+  {
     title: '週次レポート',
     description: '今週の利用状況と、声かけが役立ちそうな参加者を確認します。',
     href: 'weekly-report',
@@ -99,6 +104,7 @@ const sections = [
 ] as const;
 
 const businessDailySectionHrefs = new Set<string>([
+  '90-day-report',
   'weekly-report',
   'members',
   'knowledge',

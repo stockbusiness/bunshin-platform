@@ -3,6 +3,7 @@ import {
   ListBunshinCapabilityAssignments,
   ListPointRewardCatalog,
   businessGrowthActionForMission,
+  businessGrowthProgramStatus,
 } from '@bunshin/application';
 import {
   ListContentPillars,
@@ -35,6 +36,7 @@ import { ServiceDailyMissionSection } from './service-daily-mission-section';
 import { SimpleFirstPostSetup } from './simple-first-post-setup';
 import { BusinessProfileGuide } from './business-profile-guide';
 import { BusinessWeeklyOverview } from './business-weekly-overview';
+import { BusinessOperatingPattern } from './business-operating-pattern';
 import {
   BusinessResponseInsights,
   buildBusinessResponseInsight,
@@ -88,6 +90,7 @@ export default async function ServiceBunshinDetailPage({
   let dailyMissions: DailyMissionView[];
   let variantPointCost: number | null = null;
   let rewardsPilotActive = false;
+  let businessProgramStartedAt: Date | null = null;
   const videos: Record<string, { href: string; status: string }> = {};
   try {
     const scope = {
@@ -107,6 +110,7 @@ export default async function ServiceBunshinDetailPage({
           select: { createdAt: true },
         })
       : null;
+    businessProgramStartedAt = businessProgramProfile?.createdAt ?? null;
     bunshin = await new GetBunshin(new db.PrismaBunshinRepository()).execute(scope);
     capabilities = await new ListBunshinCapabilityAssignments(
       new db.PrismaBunshinCapabilityAssignmentRepository(),
@@ -409,6 +413,9 @@ export default async function ServiceBunshinDetailPage({
   const successfulBusinessTopic = isBusinessDailyService
     ? buildBusinessResponseInsight(dailyMissions).bestTopic
     : null;
+  const businessProgram = businessProgramStartedAt
+    ? businessGrowthProgramStatus({ startedAt: businessProgramStartedAt, currentDate: today })
+    : null;
   return (
     <PublicShell showPlatformBrand={false}>
       <article className="service-entry service-member-home" style={style}>
@@ -458,6 +465,16 @@ export default async function ServiceBunshinDetailPage({
           <BusinessWeeklyOverview today={today} plans={weeklyPlans} pillars={contentPillars} />
         ) : null}
         {isBusinessDailyService ? <BusinessResponseInsights missions={dailyMissions} /> : null}
+        {businessProgram ? (
+          <BusinessOperatingPattern
+            program={businessProgram}
+            missions={dailyMissions}
+            roadmapHref={`/s/${service.configuration.slug}/roadmap`}
+            {...(approvedBusinessStrategy?.destinationDetail
+              ? { destination: approvedBusinessStrategy.destinationDetail }
+              : {})}
+          />
+        ) : null}
         <details className="service-advanced-settings">
           <summary>細かい設定を自分で変える（必要な方だけ）</summary>
           <div className="service-advanced-settings__content">

@@ -90,6 +90,17 @@ export default async function ServiceBunshinDetailPage({
       bunshinId,
       actorUserId: actor.userId,
     };
+    const businessProgramProfile = isBusinessDailyService
+      ? await db.prisma.serviceMemberBusinessProfile.findFirst({
+          where: {
+            workspaceId: service.workspaceId,
+            groupId: service.serviceId,
+            userId: actor.userId,
+            groupMembership: { status: 'ACTIVE' },
+          },
+          select: { createdAt: true },
+        })
+      : null;
     bunshin = await new GetBunshin(new db.PrismaBunshinRepository()).execute(scope);
     capabilities = await new ListBunshinCapabilityAssignments(
       new db.PrismaBunshinCapabilityAssignmentRepository(),
@@ -229,6 +240,9 @@ export default async function ServiceBunshinDetailPage({
             businessAction: businessGrowthActionForMission({
               missionDate: mission.missionDate,
               topic: mission.topic,
+              ...(businessProgramProfile
+                ? { programStartedAt: businessProgramProfile.createdAt }
+                : {}),
             }),
           }
         : {}),

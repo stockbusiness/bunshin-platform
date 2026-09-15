@@ -1,6 +1,7 @@
 import { ApplicationError } from '@bunshin/shared';
 import type { LineConfigurationEnvironment } from './index';
 import { BUSINESS_GROWTH_ACTION_KINDS, type BusinessGrowthAction } from './business-growth-actions';
+import { BUSINESS_GROWTH_PROGRAM_PHASES } from './business-growth-program';
 
 export type LineMessageKind = 'DAILY_MISSION' | 'REMINDER';
 export type LineMessageDeliveryStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'CANCELLED';
@@ -231,6 +232,19 @@ export function normalizeLineMissionNotificationSummary(
       input.businessAction.steps.length !== 3)
   )
     throw new ApplicationError('VALIDATION_ERROR', 'invalid LINE Mission business action');
+  if (
+    input.businessAction?.program &&
+    (!Number.isInteger(input.businessAction.program.cycleNumber) ||
+      input.businessAction.program.cycleNumber < 1 ||
+      !Number.isInteger(input.businessAction.program.day) ||
+      input.businessAction.program.day < 1 ||
+      input.businessAction.program.day > 90 ||
+      !BUSINESS_GROWTH_PROGRAM_PHASES.some(
+        (phase) => phase.key === input.businessAction?.program?.phaseKey,
+      ) ||
+      !input.businessAction.program.phaseLabel.trim())
+  )
+    throw new ApplicationError('VALIDATION_ERROR', 'invalid LINE Mission business program');
   const campaign = input.campaign
     ? {
         name: input.campaign.name.replace(/\s+/g, ' ').trim().slice(0, 60),

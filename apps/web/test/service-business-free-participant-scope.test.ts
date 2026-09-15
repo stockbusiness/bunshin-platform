@@ -14,7 +14,7 @@ const help = source('app/s/[serviceSlug]/help/page.tsx');
 describe('business free participant scope', () => {
   it('keeps the member home focused on daily posting', () => {
     expect(home).toContain('const isBusinessDailyService = onboarding.businessProfileEnabled');
-    expect(home).toContain("isBusinessDailyService ? '毎日の投稿を進める' : '利用できる機能'");
+    expect(home).toContain("isBusinessDailyService ? '毎日の集客を進める' : '利用できる機能'");
     expect(home).toContain('!isBusinessDailyService && (');
     expect(home).toContain('活動・紹介を見る');
     expect(home).toContain('参加中のプログラムと目標');

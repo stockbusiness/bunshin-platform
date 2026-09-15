@@ -464,6 +464,13 @@ export function ServiceDailyMissionSection({
               </h3>
               {mission.businessAction ? (
                 <section className="mission-growth-action">
+                  {mission.businessAction.program ? (
+                    <p className="mission-growth-action__program">
+                      第{mission.businessAction.program.cycleNumber}期・
+                      {mission.businessAction.program.day}日目 /
+                      {mission.businessAction.program.phaseLabel}
+                    </p>
+                  ) : null}
                   <p>{mission.businessAction.reason}</p>
                   <p>
                     <strong>やることは3つです</strong>

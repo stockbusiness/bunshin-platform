@@ -3847,6 +3847,60 @@ a {
   display: grid;
 }
 
+.business-operating-pattern {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.business-operating-pattern header,
+.business-operating-pattern header p,
+.business-operating-pattern header h2 {
+  margin: 0;
+}
+
+.business-operating-pattern__items {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.business-operating-pattern__items > div {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #f2f5fa;
+}
+
+.business-operating-pattern__items dt {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.business-operating-pattern__items dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.business-operating-pattern__plan {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid color-mix(in srgb, var(--service-primary) 22%, white);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--service-primary) 5%, white);
+}
+
+.business-operating-pattern__plan ol {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-left: 1.5rem;
+  line-height: 1.65;
+}
+
 .service-advanced-settings > summary {
   padding: 20px 24px;
   color: var(--service-primary);

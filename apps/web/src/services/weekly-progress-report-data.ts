@@ -1,11 +1,13 @@
 import 'server-only';
 import type { prisma } from '@bunshin/database';
 import {
+  buildParticipantBusinessProgress,
   buildWeeklyProgressSummary,
   summarizeExpiringPointGrants,
   WEEKLY_COPY_ACTIVITY_TYPES,
   type WeeklyProgressMetrics,
 } from './weekly-progress-report';
+import { emptyBusinessOutcomes, sumBusinessOutcomes } from './business-outcomes';
 
 type Window = {
   weekStart: string;
@@ -19,6 +21,7 @@ type Participant = {
   userId: string;
   displayName: string;
   bunshins: { id: string; name: string }[];
+  businessProfileStartedAt: Date | null;
 };
 
 export type ServiceWeeklyProgressReport = ReturnType<typeof buildWeeklyProgressSummary> & {
@@ -26,6 +29,7 @@ export type ServiceWeeklyProgressReport = ReturnType<typeof buildWeeklyProgressS
   displayName: string;
   bunshins: { id: string; name: string }[];
   pointRecoveryNotice: string | null;
+  businessProgress: ReturnType<typeof buildParticipantBusinessProgress>;
 };
 
 const uniqueMissionCount = (items: { dailyMissionId: string }[]) =>
@@ -49,7 +53,11 @@ export async function loadServiceWeeklyProgressReports(input: {
         : { serviceRole: 'PARTICIPANT' as const, consentedAt: { not: null } }),
       user: { status: 'ACTIVE' },
     },
-    select: { userId: true, user: { select: { displayName: true } } },
+    select: {
+      userId: true,
+      user: { select: { displayName: true } },
+      serviceMemberBusinessProfile: { select: { createdAt: true } },
+    },
     orderBy: { createdAt: 'asc' },
   });
   const userIds = memberships.map(({ userId }) => userId);
@@ -71,6 +79,7 @@ export async function loadServiceWeeklyProgressReports(input: {
     bunshins: bunshins
       .filter(({ ownerUserId }) => ownerUserId === membership.userId)
       .map(({ id, name }) => ({ id, name })),
+    businessProfileStartedAt: membership.serviceMemberBusinessProfile?.createdAt ?? null,
   }));
   if (!participants.length) return [];
   const asOf = input.asOf ?? new Date();
@@ -93,6 +102,7 @@ export async function loadServiceWeeklyProgressReports(input: {
     pointAccounts,
     recoveryAudits,
     recoveryLinks,
+    latestPosts,
   ] = await Promise.all([
     input.client.dailyMission.findMany({
       where: { workspaceId: input.workspaceId, bunshinId: { in: bunshinIds }, missionDate },
@@ -114,7 +124,13 @@ export async function loadServiceWeeklyProgressReports(input: {
         actorUserId: { in: userIds },
         postedAt: timestamp,
       },
-      select: { actorUserId: true, bunshinId: true, dailyMissionId: true },
+      select: {
+        actorUserId: true,
+        bunshinId: true,
+        dailyMissionId: true,
+        postedAt: true,
+        manualMetrics: true,
+      },
     }),
     input.client.bunshinMemory.findMany({
       where: {
@@ -213,6 +229,16 @@ export async function loadServiceWeeklyProgressReports(input: {
       },
       orderBy: { createdAt: 'desc' },
     }),
+    input.client.postRecord.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        bunshinId: { in: bunshinIds },
+        actorUserId: { in: userIds },
+      },
+      select: { actorUserId: true, bunshinId: true, postedAt: true },
+      orderBy: { postedAt: 'desc' },
+      distinct: ['actorUserId', 'bunshinId'],
+    }),
   ]);
   const missionOwner = new Map(bunshins.map(({ id, ownerUserId }) => [id, ownerUserId] as const));
   return participants.map((participant): ServiceWeeklyProgressReport => {
@@ -222,6 +248,9 @@ export async function loadServiceWeeklyProgressReports(input: {
     );
     const byType = (types: string[]) => ownActivities.filter(({ type }) => types.includes(type));
     const ownPoints = points.filter(({ userId }) => userId === participant.userId);
+    const ownPosts = posts.filter(
+      ({ actorUserId, bunshinId }) => actorUserId === participant.userId && ownsBunshin(bunshinId),
+    );
     const pointExpiry = summarizeExpiringPointGrants(
       expiringGrants.filter(({ userId }) => userId === participant.userId),
     );
@@ -260,12 +289,7 @@ export async function loadServiceWeeklyProgressReports(input: {
       viewed: uniqueMissionCount(byType(['VIEWED'])),
       confirmed: uniqueMissionCount(byType(['CONFIRMED'])),
       copied: uniqueMissionCount(byType([...WEEKLY_COPY_ACTIVITY_TYPES])),
-      posted: uniqueMissionCount(
-        posts.filter(
-          ({ actorUserId, bunshinId }) =>
-            actorUserId === participant.userId && ownsBunshin(bunshinId),
-        ),
-      ),
+      posted: uniqueMissionCount(ownPosts),
       rested: uniqueMissionCount(byType(['RESTED'])),
       materials: materials.filter(({ bunshin }) => bunshin.ownerUserId === participant.userId)
         .length,
@@ -295,6 +319,18 @@ export async function loadServiceWeeklyProgressReports(input: {
       displayName: participant.displayName,
       bunshins: participant.bunshins,
       pointRecoveryNotice,
+      businessProgress: buildParticipantBusinessProgress({
+        startedAt: participant.businessProfileStartedAt,
+        asOf,
+        lastPostedAt:
+          latestPosts.find(
+            ({ actorUserId, bunshinId }) =>
+              actorUserId === participant.userId && ownsBunshin(bunshinId),
+          )?.postedAt ?? null,
+        outcomes: participant.businessProfileStartedAt
+          ? sumBusinessOutcomes(ownPosts.map(({ manualMetrics }) => manualMetrics))
+          : emptyBusinessOutcomes(),
+      }),
       ...buildWeeklyProgressSummary(metrics),
     };
   });

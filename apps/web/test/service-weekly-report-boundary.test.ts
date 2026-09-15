@@ -17,6 +17,9 @@ describe('service weekly report boundaries', () => {
     expect(participant).toContain('ポイントの期限と履歴を見る');
     expect(manager).toContain('resolveManagedServiceContext');
     expect(manager).toContain('投稿本文や本人の素材内容は表示しません');
+    expect(manager).toContain('90日計画');
+    expect(manager).toContain('最後の投稿');
+    expect(manager).toContain('今週のお客様の反応');
   });
 
   it('prefills a LINE message without participant counts or memory content', async () => {

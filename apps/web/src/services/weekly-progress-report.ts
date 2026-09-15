@@ -1,3 +1,6 @@
+import { businessGrowthProgramStatus } from '@bunshin/application';
+import type { BusinessOutcomes } from './business-outcomes';
+
 export const WEEKLY_COPY_ACTIVITY_TYPES = [
   'COPIED_TEXT',
   'COPIED_SLIDE',
@@ -29,6 +32,31 @@ export type WeeklyProgressSummary = WeeklyProgressMetrics & {
   headline: string;
   nextStep: string;
 };
+
+export function buildParticipantBusinessProgress(input: {
+  startedAt: Date | null;
+  asOf: Date;
+  lastPostedAt: Date | null;
+  outcomes: BusinessOutcomes;
+}) {
+  const outcomeTotal = Object.values(input.outcomes).reduce((total, count) => total + count, 0);
+  return {
+    program: input.startedAt
+      ? businessGrowthProgramStatus({
+          startedAt: input.startedAt,
+          currentDate: new Intl.DateTimeFormat('sv-SE', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(input.asOf),
+        })
+      : null,
+    lastPostedAt: input.lastPostedAt,
+    outcomes: input.outcomes,
+    outcomeTotal,
+  };
+}
 
 const emptyMetrics = (): WeeklyProgressMetrics => ({
   missions: 0,

@@ -21,6 +21,15 @@ const dateLabel = (value: string) =>
     new Date(`${value}T00:00:00.000Z`),
   );
 
+const dateTimeLabel = (value: Date) =>
+  new Intl.DateTimeFormat('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
+  }).format(value);
+
 const deliveryStatusLabel = {
   DRAFT: '下書き',
   SCHEDULED: '配信待ち',
@@ -190,6 +199,34 @@ export default async function ManagedWeeklyReportPage({
                   <small>
                     ポイント獲得 {report.pointsEarned}／バッジ {report.badges.length}
                   </small>
+                  {report.businessProgress.program ? (
+                    <dl className="weekly-report__business-progress">
+                      <div>
+                        <dt>90日計画</dt>
+                        <dd>
+                          第{report.businessProgress.program.cycleNumber}期・
+                          {report.businessProgress.program.day}日目（
+                          {report.businessProgress.program.phase.label}）
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>最後の投稿</dt>
+                        <dd>
+                          {report.businessProgress.lastPostedAt
+                            ? dateTimeLabel(report.businessProgress.lastPostedAt)
+                            : 'まだありません'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>今週のお客様の反応</dt>
+                        <dd>
+                          {report.businessProgress.outcomeTotal > 0
+                            ? `${report.businessProgress.outcomeTotal}件（問い合わせ${report.businessProgress.outcomes.inquiries}・予約${report.businessProgress.outcomes.reservations}・来店${report.businessProgress.outcomes.visits}・購入申込${report.businessProgress.outcomes.orders}・その他${report.businessProgress.outcomes.other}）`
+                            : '記録なし'}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
                 </article>
               ))}
             </div>

@@ -7,7 +7,11 @@ import {
   WEEKLY_COPY_ACTIVITY_TYPES,
   type WeeklyProgressMetrics,
 } from './weekly-progress-report';
-import { emptyBusinessOutcomes, sumBusinessOutcomes } from './business-outcomes';
+import {
+  emptyBusinessOutcomes,
+  readBusinessOutcomes,
+  sumBusinessOutcomes,
+} from './business-outcomes';
 
 type Window = {
   weekStart: string;
@@ -106,7 +110,7 @@ export async function loadServiceWeeklyProgressReports(input: {
   ] = await Promise.all([
     input.client.dailyMission.findMany({
       where: { workspaceId: input.workspaceId, bunshinId: { in: bunshinIds }, missionDate },
-      select: { id: true, bunshinId: true },
+      select: { id: true, bunshinId: true, topic: true },
     }),
     input.client.missionActivity.findMany({
       where: {
@@ -241,6 +245,7 @@ export async function loadServiceWeeklyProgressReports(input: {
     }),
   ]);
   const missionOwner = new Map(bunshins.map(({ id, ownerUserId }) => [id, ownerUserId] as const));
+  const missionTopic = new Map(missions.map(({ id, topic }) => [id, topic] as const));
   return participants.map((participant): ServiceWeeklyProgressReport => {
     const ownsBunshin = (bunshinId: string) => missionOwner.get(bunshinId) === participant.userId;
     const ownActivities = activities.filter(
@@ -330,6 +335,10 @@ export async function loadServiceWeeklyProgressReports(input: {
         outcomes: participant.businessProfileStartedAt
           ? sumBusinessOutcomes(ownPosts.map(({ manualMetrics }) => manualMetrics))
           : emptyBusinessOutcomes(),
+        weeklyPosts: ownPosts.map(({ dailyMissionId, manualMetrics }) => ({
+          topic: missionTopic.get(dailyMissionId) ?? '今週の投稿',
+          outcomes: readBusinessOutcomes(manualMetrics),
+        })),
       }),
       ...buildWeeklyProgressSummary(metrics),
     };

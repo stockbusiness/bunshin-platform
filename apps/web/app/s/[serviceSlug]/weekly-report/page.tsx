@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { resolveAuthenticatedMemberServicePage } from '../../../../src/services/member-service-page';
 import { resolvePublicServiceContext } from '../../../../src/services/public-service';
+import { readServiceOnboardingSettings } from '../../../../src/services/service-onboarding-settings';
 import { loadServiceWeeklyProgressReports } from '../../../../src/services/weekly-progress-report-data';
 import {
   nextWeek,
@@ -44,6 +45,10 @@ export default async function ServiceWeeklyReportPage({
     `/s/${serviceSlug}/weekly-report?week=${window.weekStart}`,
   );
   const db = await import('@bunshin/database');
+  const isBusinessDailyService = readServiceOnboardingSettings(
+    service.configuration.registration.onboardingConfig,
+    service.configuration.registration.surveyConfig,
+  ).businessProfileEnabled;
   const report = (
     await loadServiceWeeklyProgressReports({
       client: db.prisma,
@@ -128,6 +133,45 @@ export default async function ServiceWeeklyReportPage({
             </article>
           </div>
         </section>
+
+        {isBusinessDailyService && (
+          <section className="service-entry__card" aria-labelledby="weekly-customer-response">
+            <p className="eyebrow">集客のふり返り</p>
+            <h2 id="weekly-customer-response">今週のお客様の反応</h2>
+            {report.businessProgress.program ? (
+              <p>
+                90日計画 第{report.businessProgress.program.cycleNumber}期・
+                {report.businessProgress.program.day}日目「
+                {report.businessProgress.program.phase.label}」
+              </p>
+            ) : null}
+            <div className="weekly-report__metrics" aria-label="今週のお客様の反応件数">
+              <article>
+                <strong>{report.businessProgress.outcomes.inquiries}</strong>
+                <span>問い合わせ</span>
+              </article>
+              <article>
+                <strong>{report.businessProgress.outcomes.reservations}</strong>
+                <span>予約</span>
+              </article>
+              <article>
+                <strong>{report.businessProgress.outcomes.visits}</strong>
+                <span>来店</span>
+              </article>
+              <article>
+                <strong>{report.businessProgress.outcomes.orders}</strong>
+                <span>購入・申込</span>
+              </article>
+            </div>
+            <div className="business-response-insights__next">
+              <strong>来週は、これを意識しましょう</strong>
+              <p>{report.businessProgress.nextWeekFocus}</p>
+              {report.businessProgress.outcomeTotal === 0 && report.posted > 0 ? (
+                <p>反応がなかった場合も0のままで大丈夫です。続けた記録が次の改善に役立ちます。</p>
+              ) : null}
+            </div>
+          </section>
+        )}
 
         {(report.pointsEarned > 0 ||
           report.pointsUsed > 0 ||

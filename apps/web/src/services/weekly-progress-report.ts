@@ -38,23 +38,45 @@ export function buildParticipantBusinessProgress(input: {
   asOf: Date;
   lastPostedAt: Date | null;
   outcomes: BusinessOutcomes;
+  weeklyPosts?: Array<{ topic: string; outcomes: BusinessOutcomes }>;
 }) {
   const outcomeTotal = Object.values(input.outcomes).reduce((total, count) => total + count, 0);
+  const program = input.startedAt
+    ? businessGrowthProgramStatus({
+        startedAt: input.startedAt,
+        currentDate: new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'Asia/Tokyo',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(input.asOf),
+      })
+    : null;
+  const bestPost = [...(input.weeklyPosts ?? [])]
+    .map((post) => ({
+      ...post,
+      total: Object.values(post.outcomes).reduce((total, count) => total + count, 0),
+    }))
+    .filter(({ total }) => total > 0)
+    .sort(
+      (left, right) => right.total - left.total || left.topic.localeCompare(right.topic, 'ja'),
+    )[0];
+  const customerActions =
+    input.outcomes.reservations + input.outcomes.visits + input.outcomes.orders;
+  const nextWeekFocus = bestPost
+    ? customerActions > 0
+      ? `「${bestPost.topic}」を、写真や最初の一言を変えてもう一度伝える`
+      : `「${bestPost.topic}」で届いた質問や反応を、次の投稿の題材にする`
+    : program
+      ? program.phase.goals[0]
+      : '最初の設定を終えて、今週の集客活動を始める';
   return {
-    program: input.startedAt
-      ? businessGrowthProgramStatus({
-          startedAt: input.startedAt,
-          currentDate: new Intl.DateTimeFormat('sv-SE', {
-            timeZone: 'Asia/Tokyo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          }).format(input.asOf),
-        })
-      : null,
+    program,
     lastPostedAt: input.lastPostedAt,
     outcomes: input.outcomes,
     outcomeTotal,
+    bestTopic: bestPost?.topic ?? null,
+    nextWeekFocus,
   };
 }
 

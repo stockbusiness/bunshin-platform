@@ -3775,6 +3775,64 @@ a {
   }
 }
 
+.business-response-insights {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.business-response-insights header,
+.business-response-insights header p,
+.business-response-insights header h2,
+.business-response-insights__next p {
+  margin: 0;
+}
+
+.business-response-insights__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.business-response-insights__counts > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem;
+  border-radius: 1rem;
+  background: #f2f5fa;
+  text-align: center;
+}
+
+.business-response-insights__counts dt {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.business-response-insights__counts dd {
+  margin: 0;
+  color: var(--service-primary);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.business-response-insights__next {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border: 2px solid color-mix(in srgb, var(--service-primary) 22%, white);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--service-primary) 5%, white);
+  line-height: 1.65;
+}
+
+.business-response-insights__next > strong {
+  font-size: 1.08rem;
+}
+
+.business-response-insights__actions {
+  display: grid;
+}
+
 .service-advanced-settings > summary {
   padding: 20px 24px;
   color: var(--service-primary);

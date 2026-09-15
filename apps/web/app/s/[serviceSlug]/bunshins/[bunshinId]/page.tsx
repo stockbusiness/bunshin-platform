@@ -35,6 +35,7 @@ import { ServiceDailyMissionSection } from './service-daily-mission-section';
 import { SimpleFirstPostSetup } from './simple-first-post-setup';
 import { BusinessProfileGuide } from './business-profile-guide';
 import { BusinessWeeklyOverview } from './business-weekly-overview';
+import { BusinessResponseInsights } from './business-response-insights';
 import { ServiceDeliverySettings } from './service-delivery-settings';
 import { DailyActionSection, type DailyActionView } from './daily-action-section';
 import { dailyVideoProjectId } from '../../../../../src/services/automatic-daily-video';
@@ -450,6 +451,7 @@ export default async function ServiceBunshinDetailPage({
         {isBusinessDailyService ? (
           <BusinessWeeklyOverview today={today} plans={weeklyPlans} pillars={contentPillars} />
         ) : null}
+        {isBusinessDailyService ? <BusinessResponseInsights missions={dailyMissions} /> : null}
         <details className="service-advanced-settings">
           <summary>細かい設定を自分で変える（必要な方だけ）</summary>
           <div className="service-advanced-settings__content">

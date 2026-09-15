@@ -85,12 +85,15 @@ const extraQuestions: Record<DailyActionType, string> = {
 export function DailyActionSection({
   endpoint,
   initialActions,
+  suggestedReuseTopic,
 }: {
   endpoint: string;
   initialActions: DailyActionView[];
+  suggestedReuseTopic?: string | null;
 }) {
   const [actions, setActions] = useState(initialActions);
   const [selected, setSelected] = useState<DailyActionType | null>(null);
+  const [draftText, setDraftText] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [updatingPhotoId, setUpdatingPhotoId] = useState<string | null>(null);
@@ -170,6 +173,7 @@ export function DailyActionSection({
       }
       setActions((current) => [savedAction, ...current.filter(({ id }) => id !== savedAction.id)]);
       formRef.current?.reset();
+      setDraftText('');
       setSelected(null);
       setMessage('残しました。次の投稿を作るときに、この内容を使います。');
     } catch (error) {
@@ -238,6 +242,26 @@ export function DailyActionSection({
         <p>{question}</p>
       </div>
 
+      {suggestedReuseTopic ? (
+        <div className="daily-action__success-pattern">
+          <strong>反応があった投稿を、もう一度使えます</strong>
+          <p>「{suggestedReuseTopic}」の写真か最初の一言を変えて、次の投稿に使いましょう。</p>
+          <button
+            className="button button--primary button--full"
+            type="button"
+            onClick={() => {
+              setDraftText(
+                `「${suggestedReuseTopic}」を、写真か最初の一言を変えてもう一度投稿する`,
+              );
+              setSelected('POST_IMPROVEMENT');
+              setMessage('下の内容を確認して「この内容を残す」を押してください。');
+            }}
+          >
+            この投稿の型を次回も使う
+          </button>
+        </div>
+      ) : null}
+
       <div className="daily-action__choices">
         {choices.map((item) => (
           <button
@@ -246,6 +270,7 @@ export function DailyActionSection({
             className={selected === item.type ? 'is-selected' : ''}
             aria-pressed={selected === item.type}
             onClick={() => {
+              setDraftText('');
               setSelected(item.type);
               setMessage('');
             }}
@@ -278,12 +303,14 @@ export function DailyActionSection({
             <span className="field__label">短い一言</span>
             <textarea
               className="field__control"
+              key={`${choice.type}:${draftText}`}
               name="text"
               rows={4}
               minLength={2}
               maxLength={1000}
               required
               placeholder={choice.placeholder}
+              defaultValue={choice.type === 'POST_IMPROVEMENT' ? draftText : ''}
             />
           </label>
           {choice.type === 'VOICE_MEMO' ? (

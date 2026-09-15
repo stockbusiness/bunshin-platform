@@ -98,8 +98,20 @@ export default async function ServiceHelpPage({
           <h1>{service.configuration.displayName} ヘルプ</h1>
           <p>はじめ方、投稿案の受け取り方、運営方法を確認できます。</p>
           <div className="service-help__header-actions">
+            {service.configuration.slug === 'sennokuni-media' && (
+              <Link
+                className="button button--primary"
+                href={`/s/${service.configuration.slug}/manual` as Route}
+              >
+                かんたんマニュアルを見る
+              </Link>
+            )}
             <Link
-              className="button button--primary"
+              className={
+                service.configuration.slug === 'sennokuni-media'
+                  ? 'button'
+                  : 'button button--primary'
+              }
               href={
                 membership
                   ? `/s/${service.configuration.slug}/home`

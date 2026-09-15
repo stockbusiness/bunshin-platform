@@ -117,6 +117,11 @@ export class LineMessagingApiAdapter implements LineMessagingProviderPort {
                     : '今日やることができました。',
                 ...(summary.businessAction
                   ? [
+                      ...(summary.businessAction.program
+                        ? [
+                            `90日計画：第${summary.businessAction.program.cycleNumber}期・${summary.businessAction.program.day}日目（${summary.businessAction.program.phaseLabel}）`,
+                          ]
+                        : []),
                       `今日の種類：${summary.businessAction.label}`,
                       `やること：${summary.businessAction.title}`,
                     ]

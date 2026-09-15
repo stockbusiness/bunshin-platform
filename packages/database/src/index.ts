@@ -4874,7 +4874,7 @@ export class PrismaLineMissionNotificationSummaryRepository implements LineMissi
             userId: input.actorUserId,
             groupMembership: { status: 'ACTIVE' },
           },
-          select: { id: true },
+          select: { id: true, createdAt: true },
         })
       : null;
     return {
@@ -4888,6 +4888,7 @@ export class PrismaLineMissionNotificationSummaryRepository implements LineMissi
             businessAction: businessGrowthActionForMission({
               missionDate: mission.missionDate.toISOString().slice(0, 10),
               topic: mission.topic,
+              programStartedAt: businessProfile.createdAt,
             }),
           }
         : {}),

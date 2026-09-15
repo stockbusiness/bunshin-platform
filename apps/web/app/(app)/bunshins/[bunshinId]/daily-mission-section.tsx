@@ -50,6 +50,12 @@ export type DailyMissionView = {
     reason: string;
     steps: string[];
     postContentIsPrimary: boolean;
+    program?: {
+      cycleNumber: number;
+      day: number;
+      phaseKey: 'FOUNDATION' | 'START_POSTING' | 'BUILD_RESPONSE' | 'ESTABLISH_PATTERN';
+      phaseLabel: string;
+    };
   };
   businessOutcomes?: {
     inquiries: number;

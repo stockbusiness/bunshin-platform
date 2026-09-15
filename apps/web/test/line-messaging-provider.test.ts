@@ -122,6 +122,12 @@ describe('LINE Messaging API adapter', () => {
           reason: '投稿の日に慌てないためです。',
           steps: ['商品を選ぶ', '明るい場所で撮る', '個人情報がないか確認する'],
           postContentIsPrimary: false,
+          program: {
+            cycleNumber: 1,
+            day: 18,
+            phaseKey: 'START_POSTING',
+            phaseLabel: '投稿を始める',
+          },
         },
       },
       kind: 'DAILY_MISSION',
@@ -130,6 +136,7 @@ describe('LINE Messaging API adapter', () => {
       messages: Array<{ text: string }>;
     };
     expect(body.messages[0]?.text).toContain('今日の種類：写真をためる日');
+    expect(body.messages[0]?.text).toContain('90日計画：第1期・18日目（投稿を始める）');
     expect(body.messages[0]?.text).toContain('やること：秋の新商品に使える写真を1枚撮る');
     expect(body.messages[0]?.text).not.toContain('作るもの：文章の投稿');
   });

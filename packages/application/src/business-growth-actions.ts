@@ -1,3 +1,8 @@
+import {
+  businessGrowthProgramStatus,
+  type BusinessGrowthProgramPhaseKey,
+} from './business-growth-program';
+
 export const BUSINESS_GROWTH_ACTION_KINDS = [
   'POST',
   'PHOTO',
@@ -17,9 +22,15 @@ export interface BusinessGrowthAction {
   reason: string;
   steps: string[];
   postContentIsPrimary: boolean;
+  program?: {
+    cycleNumber: number;
+    day: number;
+    phaseKey: BusinessGrowthProgramPhaseKey;
+    phaseLabel: string;
+  };
 }
 
-const actionKindByDay: Record<number, BusinessGrowthActionKind> = {
+const defaultActionKindByDay: Record<number, BusinessGrowthActionKind> = {
   0: 'REST',
   1: 'PROFILE_IMPROVEMENT',
   2: 'PHOTO',
@@ -27,6 +38,48 @@ const actionKindByDay: Record<number, BusinessGrowthActionKind> = {
   4: 'COMMENT_REPLY',
   5: 'CUSTOMER_QUESTION',
   6: 'RESULT_REVIEW',
+};
+
+const phaseActionKindByDay: Record<
+  BusinessGrowthProgramPhaseKey,
+  Record<number, BusinessGrowthActionKind>
+> = {
+  FOUNDATION: {
+    0: 'REST',
+    1: 'PROFILE_IMPROVEMENT',
+    2: 'CUSTOMER_QUESTION',
+    3: 'PROFILE_IMPROVEMENT',
+    4: 'CUSTOMER_QUESTION',
+    5: 'PROFILE_IMPROVEMENT',
+    6: 'RESULT_REVIEW',
+  },
+  START_POSTING: {
+    0: 'REST',
+    1: 'PHOTO',
+    2: 'CUSTOMER_QUESTION',
+    3: 'POST',
+    4: 'PHOTO',
+    5: 'POST',
+    6: 'RESULT_REVIEW',
+  },
+  BUILD_RESPONSE: {
+    0: 'REST',
+    1: 'COMMENT_REPLY',
+    2: 'CUSTOMER_QUESTION',
+    3: 'POST',
+    4: 'COMMENT_REPLY',
+    5: 'CUSTOMER_QUESTION',
+    6: 'RESULT_REVIEW',
+  },
+  ESTABLISH_PATTERN: {
+    0: 'REST',
+    1: 'RESULT_REVIEW',
+    2: 'CUSTOMER_QUESTION',
+    3: 'POST',
+    4: 'COMMENT_REPLY',
+    5: 'RESULT_REVIEW',
+    6: 'RESULT_REVIEW',
+  },
 };
 
 function dateDay(value: string) {
@@ -37,9 +90,19 @@ function dateDay(value: string) {
 export function businessGrowthActionForMission(input: {
   missionDate: string;
   topic: string;
+  programStartedAt?: Date | string;
 }): BusinessGrowthAction {
   const topic = input.topic.trim() || '今日の発信テーマ';
-  const kind = actionKindByDay[dateDay(input.missionDate)] ?? 'POST';
+  const program = input.programStartedAt
+    ? businessGrowthProgramStatus({
+        startedAt: input.programStartedAt,
+        currentDate: input.missionDate,
+      })
+    : null;
+  const day = dateDay(input.missionDate);
+  const kind = program
+    ? (phaseActionKindByDay[program.phase.key][day] ?? 'POST')
+    : (defaultActionKindByDay[day] ?? 'POST');
   const actions: Record<BusinessGrowthActionKind, BusinessGrowthAction> = {
     POST: {
       kind,
@@ -126,5 +189,17 @@ export function businessGrowthActionForMission(input: {
       postContentIsPrimary: false,
     },
   };
-  return actions[kind];
+  return {
+    ...actions[kind],
+    ...(program
+      ? {
+          program: {
+            cycleNumber: program.cycleNumber,
+            day: program.day,
+            phaseKey: program.phase.key,
+            phaseLabel: program.phase.label,
+          },
+        }
+      : {}),
+  };
 }

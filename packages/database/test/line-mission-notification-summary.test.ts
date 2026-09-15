@@ -99,7 +99,10 @@ describe('LINE Mission notification summary repository', () => {
   });
 
   it('adds the business growth action for an active service business profile', async () => {
-    const profileFindFirst = vi.fn().mockResolvedValue({ id: 'profile-a' });
+    const profileFindFirst = vi.fn().mockResolvedValue({
+      id: 'profile-a',
+      createdAt: new Date('2026-09-01T00:00:00.000Z'),
+    });
     const repository = new PrismaLineMissionNotificationSummaryRepository({
       dailyMission: {
         findFirst: vi.fn().mockResolvedValue({
@@ -127,8 +130,12 @@ describe('LINE Mission notification summary repository', () => {
       }),
     ).resolves.toMatchObject({
       businessAction: {
-        kind: 'PHOTO',
-        title: expect.stringContaining('写真を1枚撮る'),
+        kind: 'CUSTOMER_QUESTION',
+        program: {
+          cycleNumber: 1,
+          day: 15,
+          phaseKey: 'START_POSTING',
+        },
       },
     });
     expect(profileFindFirst).toHaveBeenCalledWith({
@@ -138,7 +145,7 @@ describe('LINE Mission notification summary repository', () => {
         userId: 'user-a',
         groupMembership: { status: 'ACTIVE' },
       },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
   });
 

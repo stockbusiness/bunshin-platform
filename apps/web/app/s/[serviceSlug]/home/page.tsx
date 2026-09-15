@@ -1,4 +1,4 @@
-import { ListServiceBunshins } from '@bunshin/application';
+import { ListServiceBunshins, businessGrowthProgramStatus } from '@bunshin/application';
 import { GetMissionProgress } from '@bunshin/capability-social';
 import type { CSSProperties } from 'react';
 import type { Metadata, Route } from 'next';
@@ -70,7 +70,7 @@ export default async function ServiceMemberHome({
       serviceRole: true,
       user: { select: { displayName: true } },
       serviceOnboardingResponse: { select: { id: true } },
-      serviceMemberBusinessProfile: { select: { id: true } },
+      serviceMemberBusinessProfile: { select: { id: true, createdAt: true } },
       featureAssignments: {
         where: { status: 'ENABLED' },
         select: { featureKey: true, startsAt: true, endsAt: true },
@@ -133,6 +133,13 @@ export default async function ServiceMemberHome({
     actorUserId: actor.userId,
   });
   const localDate = localDateInTimezone(now, 'Asia/Tokyo');
+  const businessProgram =
+    isBusinessDailyService && membership.serviceMemberBusinessProfile
+      ? businessGrowthProgramStatus({
+          startedAt: membership.serviceMemberBusinessProfile.createdAt,
+          currentDate: localDate,
+        })
+      : null;
   const currentWeek = weekRange(localDate);
   const activityRule = await currentActivityContinuityRule();
   const assignmentRepository = new db.PrismaBunshinCapabilityAssignmentRepository();
@@ -195,6 +202,32 @@ export default async function ServiceMemberHome({
           </section>
         )}
 
+        {businessProgram ? (
+          <section className="service-entry__card business-roadmap-summary">
+            <p className="eyebrow">90日計画　第{businessProgram.cycleNumber}期</p>
+            <h2>
+              {businessProgram.day}日目　{businessProgram.phase.label}
+            </h2>
+            <div
+              className="business-roadmap__progress"
+              role="progressbar"
+              aria-label="90日計画の進み具合"
+              aria-valuemin={1}
+              aria-valuemax={90}
+              aria-valuenow={businessProgram.day}
+            >
+              <span style={{ width: `${businessProgram.progressPercent}%` }} />
+            </div>
+            <p>{businessProgram.phase.description}</p>
+            <Link
+              className="button button--secondary button--full"
+              href={`/s/${service.configuration.slug}/roadmap` as Route}
+            >
+              90日計画と現在地を見る
+            </Link>
+          </section>
+        ) : null}
+
         <section className="service-entry__card">
           <h2>今週の進み具合</h2>
           {bunshins.length === 0 ? (
@@ -209,7 +242,11 @@ export default async function ServiceMemberHome({
             </div>
           ) : activities.length === 0 ? (
             <div className="empty-state">
-              <p>投稿の準備が整うと、ここに今週の記録が表示されます。</p>
+              <p>
+                {isBusinessDailyService
+                  ? '今日の集客活動が届くと、ここに今週の記録が表示されます。'
+                  : '投稿の準備が整うと、ここに今週の記録が表示されます。'}
+              </p>
               <Link
                 className="button button--primary button--full"
                 href={`/s/${service.configuration.slug}/bunshins` as Route}
@@ -252,7 +289,7 @@ export default async function ServiceMemberHome({
                     className="button button--primary button--full"
                     href={`/s/${service.configuration.slug}/bunshins/${bunshin.id}` as Route}
                   >
-                    今日の投稿案を見る
+                    {isBusinessDailyService ? '今日やることを見る' : '今日の投稿案を見る'}
                   </Link>
                 </section>
               ))}
@@ -261,7 +298,7 @@ export default async function ServiceMemberHome({
         </section>
 
         <section className="service-entry__card">
-          <h2>{isBusinessDailyService ? '毎日の投稿を進める' : '利用できる機能'}</h2>
+          <h2>{isBusinessDailyService ? '毎日の集客を進める' : '利用できる機能'}</h2>
           {!isBusinessDailyService &&
             !imageAvailable &&
             !videoAvailable &&
@@ -286,6 +323,14 @@ export default async function ServiceMemberHome({
             >
               今週できたことを見る
             </Link>
+            {isBusinessDailyService && (
+              <Link
+                className="button button--primary"
+                href={`/s/${service.configuration.slug}/roadmap` as Route}
+              >
+                90日計画を見る
+              </Link>
+            )}
             {!isBusinessDailyService && (
               <Link
                 className="button button--primary"

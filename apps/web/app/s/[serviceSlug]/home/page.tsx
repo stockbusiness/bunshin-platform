@@ -326,6 +326,14 @@ export default async function ServiceMemberHome({
             {isBusinessDailyService && (
               <Link
                 className="button button--primary"
+                href={`/s/${service.configuration.slug}/diagnosis` as Route}
+              >
+                SNS集客の準備を確認する
+              </Link>
+            )}
+            {isBusinessDailyService && (
+              <Link
+                className="button button--primary"
                 href={`/s/${service.configuration.slug}/roadmap` as Route}
               >
                 90日計画を見る

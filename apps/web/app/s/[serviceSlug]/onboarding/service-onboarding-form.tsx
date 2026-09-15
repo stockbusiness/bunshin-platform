@@ -109,7 +109,7 @@ export function ServiceOnboardingForm({
     const bunshinId = result.data?.bunshinId;
     router.replace(
       businessProfileEnabled && bunshinId
-        ? `/s/${encodeURIComponent(serviceSlug)}/bunshins/${encodeURIComponent(bunshinId)}?setup=1`
+        ? `/s/${encodeURIComponent(serviceSlug)}/diagnosis`
         : `/s/${encodeURIComponent(serviceSlug)}/bunshins/new`,
     );
     router.refresh();

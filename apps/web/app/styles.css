@@ -3126,6 +3126,74 @@ a {
   gap: 0.8rem;
 }
 
+.business-diagnosis__result,
+.business-diagnosis__next {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.business-diagnosis__score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  color: var(--service-primary, #154e8a);
+}
+
+.business-diagnosis__score strong {
+  font-size: clamp(3rem, 18vw, 5rem);
+  line-height: 1;
+}
+
+.business-diagnosis__score span {
+  font-weight: 700;
+}
+
+.business-diagnosis__platform {
+  margin: 0;
+  font-weight: 700;
+}
+
+.business-diagnosis__items {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.business-diagnosis__item {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.business-diagnosis__item > span {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--service-primary, #154e8a);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.business-diagnosis__item--needs_action > span {
+  color: var(--service-primary, #154e8a);
+  background: color-mix(in srgb, var(--service-primary, #154e8a) 12%, white);
+}
+
+.business-diagnosis__item strong {
+  font-size: 1.05rem;
+}
+
+.business-diagnosis__item p {
+  margin: 0.35rem 0 0;
+}
+
 .mission-growth-action p:first-child {
   margin-top: 0;
 }

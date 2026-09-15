@@ -29,6 +29,13 @@ import { resolveOpenAiRuntimeConfiguration } from '../ai/runtime-provider-config
 import { recordAiUsageSafely } from '../observability/ai-usage';
 import { withOrganizationAiGenerationQuota } from '../organization-ai-generation-quota';
 import {
+  BUSINESS_OUTCOME_KEYS,
+  emptyBusinessOutcomes,
+  readBusinessOutcomes,
+  sumBusinessOutcomes,
+  type BusinessOutcomes,
+} from './business-outcomes';
+import {
   OpenAIWeeklyPlanner,
   WEEKLY_PLANNER_PROMPT_VERSION,
 } from '../providers/openai-weekly-planner';
@@ -54,6 +61,37 @@ interface UsageEvent {
   latencyMs: number;
   errorCode?: string;
   idempotencyKey: string;
+}
+
+interface RecentOutcomeRecord {
+  topic: string;
+  manualMetrics: unknown;
+}
+
+export function buildBusinessOutcomePlanningContext(records: RecentOutcomeRecord[]) {
+  const topics = new Map<string, BusinessOutcomes>();
+  for (const record of records) {
+    const outcomes = readBusinessOutcomes(record.manualMetrics);
+    if (BUSINESS_OUTCOME_KEYS.every((key) => outcomes[key] === 0)) continue;
+    const current = topics.get(record.topic) ?? emptyBusinessOutcomes();
+    for (const key of BUSINESS_OUTCOME_KEYS) current[key] += outcomes[key];
+    topics.set(record.topic, current);
+  }
+  const successfulTopics = [...topics.entries()]
+    .map(([topic, businessOutcomes]) => ({
+      topic,
+      businessOutcomes,
+      outcomeTotal: BUSINESS_OUTCOME_KEYS.reduce((total, key) => total + businessOutcomes[key], 0),
+    }))
+    .sort(
+      (left, right) =>
+        right.outcomeTotal - left.outcomeTotal || left.topic.localeCompare(right.topic, 'ja'),
+    )
+    .slice(0, 3);
+  return {
+    businessOutcomes: sumBusinessOutcomes(records.map(({ manualMetrics }) => manualMetrics)),
+    successfulTopics,
+  };
 }
 
 export interface WeeklyPlanGenerationDependencies {
@@ -280,7 +318,12 @@ export async function createWeeklyPlanGenerationService() {
           },
           postRecord: { is: { postedAt: { gte: since } } },
         },
-        select: { format: true, feedback: { select: { rating: true } } },
+        select: {
+          format: true,
+          topic: true,
+          feedback: { select: { rating: true } },
+          postRecord: { select: { manualMetrics: true } },
+        },
       });
       const formats = [...new Set(missions.map(({ format }) => format))].sort().map((format) => {
         const values = missions.filter((mission) => mission.format === format);
@@ -300,6 +343,12 @@ export async function createWeeklyPlanGenerationService() {
           bad: missions.filter(({ feedback }) => feedback?.rating === 'BAD').length,
         },
         formats,
+        ...buildBusinessOutcomePlanningContext(
+          missions.map(({ topic, postRecord }) => ({
+            topic,
+            manualMetrics: postRecord?.manualMetrics,
+          })),
+        ),
       };
     },
     recordUsage: recordAiUsageSafely,

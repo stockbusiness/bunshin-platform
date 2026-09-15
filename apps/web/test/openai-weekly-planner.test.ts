@@ -21,6 +21,20 @@ const input = {
   },
   contentPillars: [{ id: 'pillar-1', title: '実践', description: null, weight: 100 }],
   grantedKnowledge: [{ type: 'SKILL', title: '経験', content: '10年の経験' }],
+  recentPerformance: {
+    periodDays: 28,
+    postedCount: 2,
+    feedback: { good: 1, neutral: 1, bad: 0 },
+    formats: [],
+    businessOutcomes: { inquiries: 2, reservations: 1, visits: 0, orders: 0, other: 0 },
+    successfulTopics: [
+      {
+        topic: '初回相談の流れ',
+        outcomeTotal: 3,
+        businessOutcomes: { inquiries: 2, reservations: 1, visits: 0, orders: 0, other: 0 },
+      },
+    ],
+  },
 };
 
 describe('OpenAIWeeklyPlanner', () => {
@@ -64,7 +78,7 @@ describe('OpenAIWeeklyPlanner', () => {
     );
     expect(result).toMatchObject({
       model: 'gpt-5.2',
-      promptVersion: 'weekly-planner-v4-business-mix',
+      promptVersion: 'weekly-planner-v5-business-outcomes',
       inputTokens: 100,
       outputTokens: 50,
     });
@@ -84,6 +98,8 @@ describe('OpenAIWeeklyPlanner', () => {
       text: { format: { type: 'json_schema', strict: true } },
     });
     expect(request.input[1]?.content).toContain('10年の経験');
+    expect(request.input[1]?.content).toContain('初回相談の流れ');
+    expect(request.input[0]?.content).toContain('成果数字は内部の企画判断だけに使い');
     expect(Object.keys(request.text.format.schema.properties.items.items.properties)).toContain(
       'businessContentCategory',
     );

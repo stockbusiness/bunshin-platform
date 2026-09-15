@@ -1,6 +1,9 @@
 import type { ApplicationError } from '@bunshin/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WeeklyPlanGenerationService } from '../src/services/weekly-plan-generation';
+import {
+  WeeklyPlanGenerationService,
+  buildBusinessOutcomePlanningContext,
+} from '../src/services/weekly-plan-generation';
 
 const now = new Date('2026-08-22T00:00:00.000Z');
 const scope = {
@@ -237,5 +240,52 @@ describe('WeeklyPlanGenerationService', () => {
       }),
     );
     expect(JSON.stringify(recordUsage.mock.calls)).not.toContain('provider secret response');
+  });
+});
+
+describe('buildBusinessOutcomePlanningContext', () => {
+  it('aggregates outcomes and ranks successful topics for the next weekly plan', () => {
+    const result = buildBusinessOutcomePlanningContext([
+      {
+        topic: '初回相談の流れ',
+        manualMetrics: {
+          businessOutcomes: { inquiries: 2, reservations: 1, visits: 0, orders: 0, other: 0 },
+        },
+      },
+      {
+        topic: '初回相談の流れ',
+        manualMetrics: {
+          businessOutcomes: { inquiries: 1, reservations: 0, visits: 0, orders: 1, other: 0 },
+        },
+      },
+      {
+        topic: '営業時間のお知らせ',
+        manualMetrics: {
+          businessOutcomes: { inquiries: 0, reservations: 0, visits: 1, orders: 0, other: 0 },
+        },
+      },
+      { topic: '成果なし', manualMetrics: { businessOutcomes: { inquiries: 0 } } },
+      { topic: '不正な値', manualMetrics: { businessOutcomes: { inquiries: -1, orders: 1000 } } },
+    ]);
+
+    expect(result.businessOutcomes).toEqual({
+      inquiries: 3,
+      reservations: 1,
+      visits: 1,
+      orders: 1,
+      other: 0,
+    });
+    expect(result.successfulTopics).toEqual([
+      {
+        topic: '初回相談の流れ',
+        outcomeTotal: 5,
+        businessOutcomes: { inquiries: 3, reservations: 1, visits: 0, orders: 1, other: 0 },
+      },
+      {
+        topic: '営業時間のお知らせ',
+        outcomeTotal: 1,
+        businessOutcomes: { inquiries: 0, reservations: 0, visits: 1, orders: 0, other: 0 },
+      },
+    ]);
   });
 });

@@ -2351,6 +2351,20 @@ a {
   color: #17233d;
 }
 
+.daily-action__success-pattern {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid color-mix(in srgb, var(--service-primary) 22%, white);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--service-primary) 5%, white);
+  line-height: 1.65;
+}
+
+.daily-action__success-pattern p {
+  margin: 0;
+}
+
 .daily-action__question p {
   margin-top: 0.4rem;
   font-size: 1.05rem;

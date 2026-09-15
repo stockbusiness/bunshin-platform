@@ -3050,6 +3050,28 @@ a {
   background: color-mix(in srgb, var(--service-primary, #3155a6) 5%, white);
 }
 
+.mission-growth-action {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 1rem;
+  color: #17223b;
+  background: #f3f6ff;
+}
+
+.mission-growth-action p:first-child {
+  margin-top: 0;
+}
+
+.mission-growth-action ol {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.mission-growth-action li {
+  margin: 0.6rem 0;
+  line-height: 1.7;
+}
+
 .mission-execution-result h4,
 .mission-execution-result p {
   margin-top: 0;

@@ -112,11 +112,21 @@ export class LineMessagingApiAdapter implements LineMessagingProviderPort {
               text: [
                 input.kind === 'REMINDER'
                   ? 'おかえりなさい。今日は内容を見るだけでも大丈夫です。'
-                  : '今日やることができました。',
-                `SNS：${platform}`,
-                `作るもの：${format}`,
+                  : summary.businessAction
+                    ? '今日の集客でやることが届きました。'
+                    : '今日やることができました。',
+                ...(summary.businessAction
+                  ? [
+                      `今日の種類：${summary.businessAction.label}`,
+                      `やること：${summary.businessAction.title}`,
+                    ]
+                  : [`SNS：${platform}`, `作るもの：${format}`]),
                 `目安：${summary.estimatedMinutes}分`,
-                `テーマ：${summary.topic}`,
+                ...(summary.businessAction?.postContentIsPrimary
+                  ? [`テーマ：${summary.topic}`]
+                  : summary.businessAction
+                    ? ['投稿案も参考として確認画面に用意しています。']
+                    : [`テーマ：${summary.topic}`]),
                 ...(summary.campaign
                   ? [
                       `公式企画：${summary.campaign.name}`,

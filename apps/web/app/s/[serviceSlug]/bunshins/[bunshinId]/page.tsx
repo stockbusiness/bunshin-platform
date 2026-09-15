@@ -2,6 +2,7 @@ import {
   GetBunshin,
   ListBunshinCapabilityAssignments,
   ListPointRewardCatalog,
+  businessGrowthActionForMission,
 } from '@bunshin/application';
 import {
   ListContentPillars,
@@ -223,6 +224,14 @@ export default async function ServiceBunshinDetailPage({
         DailyMissionView['executionResult'],
         undefined
       >,
+      ...(isBusinessDailyService
+        ? {
+            businessAction: businessGrowthActionForMission({
+              missionDate: mission.missionDate,
+              topic: mission.topic,
+            }),
+          }
+        : {}),
       ...(isBusinessDailyService
         ? { businessOutcomes: readBusinessOutcomes(missionStates[index]!.post?.manualMetrics) }
         : {}),
@@ -468,7 +477,7 @@ export default async function ServiceBunshinDetailPage({
             </section>
           </div>
         </details>
-        {!isBusinessDailyService && bunshin.ownerUserId === actor.userId ? (
+        {bunshin.ownerUserId === actor.userId ? (
           <section className="service-entry__card" id="daily-action">
             <DailyActionSection
               endpoint={`/api/services/${encodeURIComponent(service.configuration.slug)}/bunshins/${encodeURIComponent(bunshin.id)}/daily-actions`}

@@ -21,6 +21,7 @@ import {
   selectExternalTrackingLink,
   isLineNotificationSuppressed,
   applyPointRewardSettings,
+  businessGrowthActionForMission,
 } from '@bunshin/application';
 import type {
   AccountTransaction,
@@ -4852,6 +4853,7 @@ export class PrismaLineMissionNotificationSummaryRepository implements LineMissi
         ],
       },
       select: {
+        missionDate: true,
         format: true,
         estimatedMinutes: true,
         topic: true,
@@ -4860,15 +4862,35 @@ export class PrismaLineMissionNotificationSummaryRepository implements LineMissi
         classification: true,
         campaign: { select: { name: true } },
         contentLinkUsage: { select: { id: true } },
+        bunshin: { select: { groupId: true } },
       },
     });
     if (!mission?.socialProfile) return null;
+    const businessProfile = mission.bunshin.groupId
+      ? await this.client.serviceMemberBusinessProfile.findFirst({
+          where: {
+            workspaceId: input.workspaceId,
+            groupId: mission.bunshin.groupId,
+            userId: input.actorUserId,
+            groupMembership: { status: 'ACTIVE' },
+          },
+          select: { id: true },
+        })
+      : null;
     return {
       platform: mission.socialProfile.platform,
       format: mission.format,
       estimatedMinutes: mission.estimatedMinutes,
       topic: mission.topic,
       researched: mission.trendContext !== null,
+      ...(businessProfile
+        ? {
+            businessAction: businessGrowthActionForMission({
+              missionDate: mission.missionDate.toISOString().slice(0, 10),
+              topic: mission.topic,
+            }),
+          }
+        : {}),
       ...(mission.contentLinkUsage ? { externalLinkIncluded: true } : {}),
       ...(mission.campaign && mission.classification !== 'ORGANIC'
         ? { campaign: { name: mission.campaign.name, classification: mission.classification } }

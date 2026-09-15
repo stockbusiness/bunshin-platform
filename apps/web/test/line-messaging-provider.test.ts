@@ -103,6 +103,37 @@ describe('LINE Messaging API adapter', () => {
     expect(body.messages[0]?.text).toContain('SNS：X');
   });
 
+  it('sends the daily growth action instead of describing every day as a post', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+    await new LineMessagingApiAdapter(request).pushMissionNotification({
+      accessToken: 'access-token',
+      recipientId: 'provider-user-a',
+      deepLinkUrl: 'https://app.example.com/today?state=opaque',
+      summary: {
+        platform: 'INSTAGRAM',
+        format: 'TEXT',
+        estimatedMinutes: 5,
+        topic: '秋の新商品',
+        researched: false,
+        businessAction: {
+          kind: 'PHOTO',
+          label: '写真をためる日',
+          title: '秋の新商品に使える写真を1枚撮る',
+          reason: '投稿の日に慌てないためです。',
+          steps: ['商品を選ぶ', '明るい場所で撮る', '個人情報がないか確認する'],
+          postContentIsPrimary: false,
+        },
+      },
+      kind: 'DAILY_MISSION',
+    });
+    const body = JSON.parse(request.mock.calls[0]?.[1]?.body as string) as {
+      messages: Array<{ text: string }>;
+    };
+    expect(body.messages[0]?.text).toContain('今日の種類：写真をためる日');
+    expect(body.messages[0]?.text).toContain('やること：秋の新商品に使える写真を1枚撮る');
+    expect(body.messages[0]?.text).not.toContain('作るもの：文章の投稿');
+  });
+
   it('sends a review image before the Mission summary when one is ready', async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
     await new LineMessagingApiAdapter(request).pushMissionNotification({

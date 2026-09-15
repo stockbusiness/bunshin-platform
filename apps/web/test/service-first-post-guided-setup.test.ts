@@ -10,11 +10,11 @@ const detailPage = source('app/s/[serviceSlug]/bunshins/[bunshinId]/page.tsx');
 const setup = source('app/s/[serviceSlug]/bunshins/[bunshinId]/simple-first-post-setup.tsx');
 
 describe('service first-post guided setup', () => {
-  it('creates one standard business partner and skips proposal selection', () => {
+  it('creates one standard business partner and shows the diagnosis before setup', () => {
     expect(onboardingApi).toContain('defaultBusinessPartner(value.businessProfile)');
     expect(onboardingApi).toContain('existing[0] ??');
     expect(onboardingForm).toContain('result.data?.bunshinId');
-    expect(onboardingForm).toContain('?setup=1`');
+    expect(onboardingForm).toContain('/diagnosis`');
     expect(onboardingForm).toContain(': `/s/${encodeURIComponent(serviceSlug)}/bunshins/new`');
     expect(onboardingForm).not.toContain('/home`');
     expect(proposals).toContain('useEffect');

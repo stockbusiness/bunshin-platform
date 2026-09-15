@@ -2536,3 +2536,4 @@ export * from './member-product-content';
 export * from './member-product-activity';
 export * from './business-growth-actions';
 export * from './business-growth-program';
+export * from './business-sns-diagnosis';

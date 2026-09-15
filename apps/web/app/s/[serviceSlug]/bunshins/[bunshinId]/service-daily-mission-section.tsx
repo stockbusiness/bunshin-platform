@@ -467,7 +467,7 @@ export function ServiceDailyMissionSection({
                   {mission.businessAction.program ? (
                     <p className="mission-growth-action__program">
                       第{mission.businessAction.program.cycleNumber}期・
-                      {mission.businessAction.program.day}日目　
+                      {mission.businessAction.program.day}日目 /
                       {mission.businessAction.program.phaseLabel}
                     </p>
                   ) : null}

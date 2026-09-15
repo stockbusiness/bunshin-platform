@@ -204,9 +204,9 @@ export default async function ServiceMemberHome({
 
         {businessProgram ? (
           <section className="service-entry__card business-roadmap-summary">
-            <p className="eyebrow">90日計画　第{businessProgram.cycleNumber}期</p>
+            <p className="eyebrow">90日計画 / 第{businessProgram.cycleNumber}期</p>
             <h2>
-              {businessProgram.day}日目　{businessProgram.phase.label}
+              {businessProgram.day}日目 / {businessProgram.phase.label}
             </h2>
             <div
               className="business-roadmap__progress"

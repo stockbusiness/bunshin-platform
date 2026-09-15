@@ -12,6 +12,10 @@ import {
   resolveWeeklyReportWindow,
 } from '../../../../src/services/weekly-progress-report';
 import { PublicShell } from '../../../ui/public-shell';
+import {
+  SOCIAL_INSIGHT_METRIC_KEYS,
+  socialInsightLabels,
+} from '../../../../src/services/social-insights';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,6 +176,32 @@ export default async function ServiceWeeklyReportPage({
             </div>
           </section>
         )}
+
+        {isBusinessDailyService && report.socialInsight ? (
+          <section className="service-entry__card" aria-labelledby="weekly-sns-numbers">
+            <p className="eyebrow">SNSの変化</p>
+            <h2 id="weekly-sns-numbers">最近記録した数字</h2>
+            <p>{report.socialInsight.latest.observedOn.replaceAll('-', '/')} 時点</p>
+            <div className="weekly-report__metrics">
+              {SOCIAL_INSIGHT_METRIC_KEYS.map((key) => {
+                const value = report.socialInsight?.latest[key] ?? null;
+                if (value === null) return null;
+                const change = report.socialInsight?.changes[key] ?? null;
+                return (
+                  <article key={key}>
+                    <strong>{value.toLocaleString('ja-JP')}</strong>
+                    <span>
+                      {socialInsightLabels[key]}
+                      {change === null
+                        ? ''
+                        : `（前回比 ${change >= 0 ? '+' : ''}${change.toLocaleString('ja-JP')}）`}
+                    </span>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         {(report.pointsEarned > 0 ||
           report.pointsUsed > 0 ||

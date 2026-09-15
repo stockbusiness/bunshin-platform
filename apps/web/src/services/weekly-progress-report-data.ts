@@ -12,6 +12,7 @@ import {
   readBusinessOutcomes,
   sumBusinessOutcomes,
 } from './business-outcomes';
+import { socialInsightChanges, type SocialInsightMetrics } from './social-insights';
 
 type Window = {
   weekStart: string;
@@ -34,6 +35,10 @@ export type ServiceWeeklyProgressReport = ReturnType<typeof buildWeeklyProgressS
   bunshins: { id: string; name: string }[];
   pointRecoveryNotice: string | null;
   businessProgress: ReturnType<typeof buildParticipantBusinessProgress>;
+  socialInsight: {
+    latest: SocialInsightMetrics & { platform: string; observedOn: string };
+    changes: SocialInsightMetrics;
+  } | null;
 };
 
 const uniqueMissionCount = (items: { dailyMissionId: string }[]) =>
@@ -107,6 +112,7 @@ export async function loadServiceWeeklyProgressReports(input: {
     recoveryAudits,
     recoveryLinks,
     latestPosts,
+    insightSnapshots,
   ] = await Promise.all([
     input.client.dailyMission.findMany({
       where: { workspaceId: input.workspaceId, bunshinId: { in: bunshinIds }, missionDate },
@@ -243,6 +249,33 @@ export async function loadServiceWeeklyProgressReports(input: {
       orderBy: { postedAt: 'desc' },
       distinct: ['actorUserId', 'bunshinId'],
     }),
+    input.client.socialInsightSnapshot.findMany({
+      where: {
+        workspaceId: input.workspaceId,
+        groupId: input.groupId,
+        userId: { in: userIds },
+        bunshinId: { in: bunshinIds },
+        observedOn: {
+          gte: new Date(input.window.startAt.getTime() - 180 * 24 * 60 * 60 * 1000),
+          lt: input.window.endAt,
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        bunshinId: true,
+        socialProfileId: true,
+        platform: true,
+        observedOn: true,
+        followers: true,
+        reach: true,
+        impressions: true,
+        profileViews: true,
+        interactions: true,
+      },
+      orderBy: [{ observedOn: 'desc' }, { updatedAt: 'desc' }],
+      take: 10_000,
+    }),
   ]);
   const missionOwner = new Map(bunshins.map(({ id, ownerUserId }) => [id, ownerUserId] as const));
   const missionTopic = new Map(missions.map(({ id, topic }) => [id, topic] as const));
@@ -256,6 +289,23 @@ export async function loadServiceWeeklyProgressReports(input: {
     const ownPosts = posts.filter(
       ({ actorUserId, bunshinId }) => actorUserId === participant.userId && ownsBunshin(bunshinId),
     );
+    const ownInsights = insightSnapshots.filter(
+      ({ userId, bunshinId }) => userId === participant.userId && ownsBunshin(bunshinId),
+    );
+    const latestInsight = ownInsights[0] ?? null;
+    const previousInsight = latestInsight
+      ? (ownInsights.find(
+          ({ id, socialProfileId }) =>
+            id !== latestInsight.id && socialProfileId === latestInsight.socialProfileId,
+        ) ?? null)
+      : null;
+    const insightMetrics = (value: NonNullable<typeof latestInsight>): SocialInsightMetrics => ({
+      followers: value.followers,
+      reach: value.reach,
+      impressions: value.impressions,
+      profileViews: value.profileViews,
+      interactions: value.interactions,
+    });
     const pointExpiry = summarizeExpiringPointGrants(
       expiringGrants.filter(({ userId }) => userId === participant.userId),
     );
@@ -324,6 +374,19 @@ export async function loadServiceWeeklyProgressReports(input: {
       displayName: participant.displayName,
       bunshins: participant.bunshins,
       pointRecoveryNotice,
+      socialInsight: latestInsight
+        ? {
+            latest: {
+              ...insightMetrics(latestInsight),
+              platform: latestInsight.platform,
+              observedOn: latestInsight.observedOn.toISOString().slice(0, 10),
+            },
+            changes: socialInsightChanges(
+              insightMetrics(latestInsight),
+              previousInsight ? insightMetrics(previousInsight) : null,
+            ),
+          }
+        : null,
       businessProgress: buildParticipantBusinessProgress({
         startedAt: participant.businessProfileStartedAt,
         asOf,

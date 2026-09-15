@@ -1655,6 +1655,7 @@ model User {
   serviceLegalConsents              ServiceLegalConsent[]
   serviceOnboardingResponses        ServiceOnboardingResponse[]
   serviceMemberBusinessProfiles     ServiceMemberBusinessProfile[]
+  socialInsightSnapshots            SocialInsightSnapshot[]
   campaignPostingApprovalsRequested CampaignPostingApprovalRequest[]    @relation("CampaignPostingApprovalRequester")
   campaignPostingApprovalsReviewed  CampaignPostingApprovalRequest[]    @relation("CampaignPostingApprovalReviewer")
   campaignPostingApprovalPolicies   CampaignPostingApprovalPolicy[]     @relation("CampaignPostingApprovalPolicyEditor")
@@ -1850,6 +1851,7 @@ model Workspace {
   groupMemberships                GroupMembership[]
   serviceOnboardingResponses      ServiceOnboardingResponse[]
   serviceMemberBusinessProfiles   ServiceMemberBusinessProfile[]
+  socialInsightSnapshots          SocialInsightSnapshot[]
   groupInvitations                GroupInvitation[]
   productPacks                    ProductPack[]
   productPackAssignments          ProductPackAssignment[]
@@ -2175,6 +2177,7 @@ model Group {
   serviceLegalConsents            ServiceLegalConsent[]
   serviceOnboardingResponses      ServiceOnboardingResponse[]
   serviceMemberBusinessProfiles   ServiceMemberBusinessProfile[]
+  socialInsightSnapshots          SocialInsightSnapshot[]
   serviceAiReservations           ServiceAiGenerationReservation[]
   serviceMediaReservations        ServiceMediaGenerationReservation[]
   campaignPostingApprovalPolicy   CampaignPostingApprovalPolicy?
@@ -2478,6 +2481,7 @@ model GroupMembership {
   serviceLegalConsents         ServiceLegalConsent[]
   serviceOnboardingResponse    ServiceOnboardingResponse?
   serviceMemberBusinessProfile ServiceMemberBusinessProfile?
+  socialInsightSnapshots       SocialInsightSnapshot[]
   serviceReferralCode          ServiceReferralCode?
   referredServiceReferrals     ServiceReferral[]                @relation("ServiceReferralReferredMembership")
   serviceCreditAccount         ServiceCreditAccount?
@@ -5092,6 +5096,7 @@ model Bunshin {
   badgeAwards                     BadgeAward[]                     @relation("BadgeAwardSourceBunshin")
   videoProjects                   VideoProject[]
   memberProductContentRuns        MemberProductContentRun[]
+  socialInsightSnapshots          SocialInsightSnapshot[]
 
   @@unique([workspaceId, slug])
   @@unique([workspaceId, id])
@@ -5280,12 +5285,48 @@ model SocialProfile {
   accountStrategies      SocialAccountStrategy[]
   trendResearchRuns      TrendResearchRun[]
   trendIdeaCandidates    TrendIdeaCandidate[]
+  insightSnapshots       SocialInsightSnapshot[]
 
   @@unique([workspaceId, bunshinId, platform])
   @@unique([workspaceId, bunshinId, id])
   @@unique([workspaceId, bunshinId, id, platform])
   @@index([workspaceId, bunshinId, status, updatedAt])
   @@map("social_profiles")
+}
+
+/// SNS管理画面のスクリーンショットまたは手入力から、利用者が確認して保存した数値。
+/// 画像自体は保持せず、Service・User・Bunshin・SocialProfileの境界を越えて共有しない。
+model SocialInsightSnapshot {
+  id                String          @id @default(uuid()) @db.Uuid
+  workspaceId       String          @map("workspace_id") @db.Uuid
+  groupId           String          @map("group_id") @db.Uuid
+  groupMembershipId String          @map("group_membership_id") @db.Uuid
+  userId            String          @map("user_id") @db.Uuid
+  bunshinId         String          @map("bunshin_id") @db.Uuid
+  socialProfileId   String          @map("social_profile_id") @db.Uuid
+  platform          SocialPlatform
+  observedOn        DateTime        @map("observed_on") @db.Date
+  periodStart       DateTime?       @map("period_start") @db.Date
+  periodEnd         DateTime?       @map("period_end") @db.Date
+  followers         Int?
+  reach             Int?
+  impressions       Int?
+  profileViews      Int?            @map("profile_views")
+  interactions      Int?
+  source            String          @db.VarChar(24)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  group             Group           @relation(fields: [workspaceId, groupId], references: [workspaceId, id], onDelete: Cascade)
+  groupMembership   GroupMembership @relation(fields: [workspaceId, groupId, groupMembershipId, userId], references: [workspaceId, groupId, id, userId], onDelete: Cascade, map: "social_insight_snapshots_membership_fkey")
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bunshin            Bunshin         @relation(fields: [workspaceId, bunshinId], references: [workspaceId, id], onDelete: Cascade)
+  socialProfile     SocialProfile   @relation(fields: [workspaceId, bunshinId, socialProfileId, platform], references: [workspaceId, bunshinId, id, platform], onDelete: Cascade, map: "social_insight_snapshots_social_profile_fkey")
+
+  @@unique([workspaceId, bunshinId, socialProfileId, observedOn], map: "social_insight_snapshot_profile_day_key")
+  @@index([workspaceId, groupId, userId, observedOn], map: "social_insight_snapshot_member_day_idx")
+  @@index([workspaceId, bunshinId, observedOn], map: "social_insight_snapshot_bunshin_day_idx")
+  @@map("social_insight_snapshots")
 }
 
 model SocialAccountStrategy {

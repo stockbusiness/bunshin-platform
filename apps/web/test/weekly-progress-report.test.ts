@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildParticipantBusinessProgress,
   buildWeeklyProgressSummary,
   resolveWeeklyReportWindow,
   summarizeExpiringPointGrants,
@@ -49,5 +50,19 @@ describe('weekly progress report', () => {
         { amount: 12, expiresAt: sooner, consumptions: [{ amount: 2 }] },
       ]),
     ).toEqual({ expiringPoints: 25, nextPointExpiryAt: sooner });
+  });
+
+  it('summarizes business progress without customer details', () => {
+    const progress = buildParticipantBusinessProgress({
+      startedAt: new Date('2026-07-17T00:00:00.000Z'),
+      asOf: new Date('2026-09-15T03:00:00.000Z'),
+      lastPostedAt: new Date('2026-09-14T02:00:00.000Z'),
+      outcomes: { inquiries: 2, reservations: 1, visits: 0, orders: 1, other: 0 },
+    });
+
+    expect(progress.program?.day).toBe(61);
+    expect(progress.program?.phase.key).toBe('ESTABLISH_PATTERN');
+    expect(progress.outcomeTotal).toBe(4);
+    expect(progress.lastPostedAt?.toISOString()).toBe('2026-09-14T02:00:00.000Z');
   });
 });

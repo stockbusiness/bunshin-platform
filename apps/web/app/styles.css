@@ -7069,6 +7069,39 @@ body:has(.app-shell) > .site-footer {
   font-weight: 700;
 }
 
+.weekly-report__business-progress {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid #dbe2ea;
+}
+
+.weekly-report__business-progress > div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.35fr) 1fr;
+  gap: 0.75rem;
+}
+
+.weekly-report__business-progress dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.weekly-report__business-progress dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .weekly-report__business-progress > div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
 .weekly-report__delivery-form {
   display: grid;
   gap: 1rem;

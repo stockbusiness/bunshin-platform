@@ -3706,6 +3706,75 @@ a {
   line-height: 1.65;
 }
 
+.business-weekly-overview {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.business-weekly-overview header,
+.business-weekly-overview header p,
+.business-weekly-overview header h2,
+.business-weekly-overview__empty p,
+.business-weekly-overview__items p {
+  margin: 0;
+}
+
+.business-weekly-overview__empty {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #f2f5fa;
+  line-height: 1.65;
+}
+
+.business-weekly-overview__items {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.business-weekly-overview__items > li {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.35fr) 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #dbe2ea;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.business-weekly-overview__items > li.is-today {
+  border: 2px solid var(--service-primary);
+  background: color-mix(in srgb, var(--service-primary) 6%, white);
+}
+
+.business-weekly-overview__date {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+}
+
+.business-weekly-overview__date span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.business-weekly-overview__items p {
+  padding-top: 0.3rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .business-weekly-overview__items > li {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+}
+
 .service-advanced-settings > summary {
   padding: 20px 24px;
   color: var(--service-primary);

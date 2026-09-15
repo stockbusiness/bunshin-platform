@@ -3682,6 +3682,30 @@ a {
   font-weight: 700;
 }
 
+.business-profile-guide__destination-editor {
+  border-top: 1px solid #dbe2ea;
+  padding-top: 1rem;
+}
+
+.business-profile-guide__destination-editor > summary {
+  min-height: 48px;
+  color: var(--service-primary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.business-profile-guide__destination-form {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.75rem;
+}
+
+.business-profile-guide__destination-form > p,
+.business-profile-guide__destination-form > small {
+  margin: 0;
+  line-height: 1.65;
+}
+
 .service-advanced-settings > summary {
   padding: 20px 24px;
   color: var(--service-primary);

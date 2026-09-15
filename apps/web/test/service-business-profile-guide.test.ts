@@ -21,6 +21,18 @@ describe('business SNS profile guide', () => {
     expect(page).toContain('<BusinessProfileGuide');
     expect(page).toContain('profileDraft: approvedBusinessStrategy.profileDraft');
     expect(page).toContain('ctaStrategy: approvedBusinessStrategy.ctaStrategy');
+    expect(page).toContain('socialProfileId: approvedBusinessStrategy.socialProfileId');
+  });
+
+  it('lets members choose and save a real customer destination', () => {
+    expect(guide).toContain('お客様の案内先を設定・変更する');
+    expect(guide).toContain('LINEへ案内する');
+    expect(guide).toContain('予約・案内ページへ案内する');
+    expect(guide).toContain('問い合わせページへ案内する');
+    expect(guide).toContain("url.protocol !== 'https:'");
+    expect(guide).toContain('fetch(`${base}/generate`');
+    expect(guide).toContain('/approve`');
+    expect(guide).toContain('router.refresh()');
   });
 
   it('gives members plain mobile instructions and copy buttons', () => {

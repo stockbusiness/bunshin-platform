@@ -431,8 +431,14 @@ export default async function ServiceBunshinDetailPage({
         />
         {approvedBusinessStrategy ? (
           <BusinessProfileGuide
+            serviceSlug={service.configuration.slug}
+            bunshinId={bunshin.id}
+            topic={bunshin.objectiveSummary}
+            audience={bunshin.audienceSummary}
             strategy={{
+              socialProfileId: approvedBusinessStrategy.socialProfileId,
               platform: approvedBusinessStrategy.platform,
+              availableMinutes: approvedBusinessStrategy.availableMinutes,
               profileDraft: approvedBusinessStrategy.profileDraft,
               ctaStrategy: approvedBusinessStrategy.ctaStrategy,
               destinationType: approvedBusinessStrategy.destinationType,

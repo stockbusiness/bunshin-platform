@@ -119,4 +119,16 @@ describe('service daily mission boundary', () => {
     expect(experience).toContain("record(id, 'business-outcome'");
     expect(detailPage).toContain('new AuthorizeDailyMissionCopy(missionRepository)');
   });
+
+  it('records a simple execution result and carries it into the next proposal', () => {
+    expect(source).toContain("z.literal('EXECUTION_COMPLETED')");
+    expect(source).toContain("z.literal('EXECUTION_PARTIAL')");
+    expect(source).toContain("z.literal('EXECUTION_NOT_COMPLETED')");
+    expect(source).toContain("z.literal('EXECUTION_HELP_NEEDED')");
+    expect(detailPage).toContain('new ListMissionActivities(engagementRepository)');
+    expect(detailPage).toContain('executionResult:');
+    expect(experience).toContain('今日やることは、どこまでできましたか？');
+    expect(experience).toContain('やり方が分からなかった');
+    expect(experience).toContain("record(id, 'activities'");
+  });
 });

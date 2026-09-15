@@ -1,1 +1,1 @@
-export const LATEST_DATABASE_MIGRATION = '20260914090000_seed_watashi_works_official_service';
+export const LATEST_DATABASE_MIGRATION = '20260915120000_add_mission_execution_results';

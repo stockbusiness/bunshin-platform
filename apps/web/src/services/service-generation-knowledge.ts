@@ -16,6 +16,51 @@ export interface ServiceGenerationKnowledgeScope {
   workspaceId: string;
   groupId: string;
   actorUserId: string;
+  bunshinId?: string;
+}
+
+export const MISSION_EXECUTION_RESULT_TYPES = [
+  'EXECUTION_COMPLETED',
+  'EXECUTION_PARTIAL',
+  'EXECUTION_NOT_COMPLETED',
+  'EXECUTION_HELP_NEEDED',
+] as const;
+
+type MissionExecutionResultType = (typeof MISSION_EXECUTION_RESULT_TYPES)[number];
+
+export function executionResultKnowledgeForPrompt(
+  results: Array<{
+    type: MissionExecutionResultType;
+    missionDate: string;
+    topic: string;
+  }>,
+) {
+  if (results.length === 0) return null;
+  const labels: Record<MissionExecutionResultType, string> = {
+    EXECUTION_COMPLETED: 'できた',
+    EXECUTION_PARTIAL: '一部できた',
+    EXECUTION_NOT_COMPLETED: 'できなかった',
+    EXECUTION_HELP_NEEDED: 'やり方が分からなかった',
+  };
+  const latest = results[0]!;
+  const nextGuidance =
+    latest.type === 'EXECUTION_HELP_NEEDED'
+      ? '次回は専門用語を使わず、スマートフォンで迷わずできる一つの操作まで具体的に説明する。'
+      : latest.type === 'EXECUTION_NOT_COMPLETED'
+        ? '次回は5分以内で終わる一つの行動へ小さくし、準備が必要な案を避ける。'
+        : latest.type === 'EXECUTION_PARTIAL'
+          ? '次回は前回できた部分を繰り返さず、残りを一つの短い行動にする。'
+          : '次回も一つの具体的な行動に絞り、少しだけ次の段階へ進める。';
+  return {
+    type: 'SERVICE_RECENT_EXECUTION_RESULTS',
+    title: '最近の実行結果',
+    content: [
+      ...results.map(
+        (result) => `${result.missionDate}「${result.topic}」: ${labels[result.type]}`,
+      ),
+      `次回の調整: ${nextGuidance}`,
+    ].join('\n'),
+  };
 }
 
 export interface ServiceBusinessProfileForGeneration {
@@ -163,48 +208,75 @@ export async function resolveServiceContentAssistanceLevel(
 
 export async function loadServiceGenerationKnowledge(scope: ServiceGenerationKnowledgeScope) {
   const db = await import('@bunshin/database');
-  const [chunks, businessProfile, contentAssistanceLevel, registrationPolicy] = await Promise.all([
-    new GroupKnowledgeService(
-      new db.PrismaGroupKnowledgeRepository(),
-    ).listApprovedChunksForGeneration({
-      ...scope,
-      productPackVersionId: null,
-    }),
-    db.prisma.serviceMemberBusinessProfile.findFirst({
-      where: {
-        workspaceId: scope.workspaceId,
-        groupId: scope.groupId,
-        userId: scope.actorUserId,
-        groupMembership: { status: 'ACTIVE' },
-      },
-      select: {
-        otherIndustryText: true,
-        businessName: true,
-        region: true,
-        productService: true,
-        primaryPurpose: true,
-        targetAudience: true,
-        websiteUrl: true,
-        businessFeatures: true,
-        priceInformation: true,
-        preferredTone: true,
-        requiredContent: true,
-        forbiddenContent: true,
-        primaryIndustry: { select: { key: true, name: true } },
-      },
-    }),
-    resolveServiceContentAssistanceLevel(scope),
-    db.prisma.serviceRegistrationPolicy.findFirst({
-      where: { workspaceId: scope.workspaceId, groupId: scope.groupId },
-      select: { onboardingConfig: true, surveyConfig: true },
-    }),
-  ]);
+  const [chunks, businessProfile, contentAssistanceLevel, registrationPolicy, executionResults] =
+    await Promise.all([
+      new GroupKnowledgeService(
+        new db.PrismaGroupKnowledgeRepository(),
+      ).listApprovedChunksForGeneration({
+        ...scope,
+        productPackVersionId: null,
+      }),
+      db.prisma.serviceMemberBusinessProfile.findFirst({
+        where: {
+          workspaceId: scope.workspaceId,
+          groupId: scope.groupId,
+          userId: scope.actorUserId,
+          groupMembership: { status: 'ACTIVE' },
+        },
+        select: {
+          otherIndustryText: true,
+          businessName: true,
+          region: true,
+          productService: true,
+          primaryPurpose: true,
+          targetAudience: true,
+          websiteUrl: true,
+          businessFeatures: true,
+          priceInformation: true,
+          preferredTone: true,
+          requiredContent: true,
+          forbiddenContent: true,
+          primaryIndustry: { select: { key: true, name: true } },
+        },
+      }),
+      resolveServiceContentAssistanceLevel(scope),
+      db.prisma.serviceRegistrationPolicy.findFirst({
+        where: { workspaceId: scope.workspaceId, groupId: scope.groupId },
+        select: { onboardingConfig: true, surveyConfig: true },
+      }),
+      scope.bunshinId
+        ? db.prisma.missionActivity.findMany({
+            where: {
+              workspaceId: scope.workspaceId,
+              bunshinId: scope.bunshinId,
+              actorUserId: scope.actorUserId,
+              type: { in: [...MISSION_EXECUTION_RESULT_TYPES, 'POSTED'] },
+              dailyMission: { bunshin: { groupId: scope.groupId } },
+            },
+            select: {
+              type: true,
+              dailyMission: { select: { missionDate: true, topic: true } },
+            },
+            orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+            take: 5,
+          })
+        : Promise.resolve([]),
+    ]);
   const dailyIdeaDelivery = readServiceOnboardingSettings(
     registrationPolicy?.onboardingConfig,
     registrationPolicy?.surveyConfig,
   ).dailyIdeaDelivery;
   const businessContentMixEnabled = Boolean(businessProfile && dailyIdeaDelivery.enabled);
   const knowledge = serviceKnowledgeForPrompt(chunks);
+  const executionKnowledge = executionResultKnowledgeForPrompt(
+    executionResults.map((result) => ({
+      type: (result.type === 'POSTED'
+        ? 'EXECUTION_COMPLETED'
+        : result.type) as MissionExecutionResultType,
+      missionDate: result.dailyMission.missionDate.toISOString().slice(0, 10),
+      topic: result.dailyMission.topic,
+    })),
+  );
   const normalizedBusinessProfile = businessProfile?.primaryIndustry
     ? {
         industry:
@@ -252,6 +324,7 @@ export async function loadServiceGenerationKnowledge(scope: ServiceGenerationKno
           : null,
       ),
       ...(businessContentMixEnabled ? [businessContentMixKnowledge()] : []),
+      ...(executionKnowledge ? [executionKnowledge] : []),
       ...knowledge.officialKnowledge,
     ],
   };

@@ -66,6 +66,13 @@ export function ServiceDailyMissionSection({
 
   const key = () => createClientRequestId();
 
+  const executionResultOptions = [
+    ['EXECUTION_COMPLETED', 'できた'],
+    ['EXECUTION_PARTIAL', '一部できた'],
+    ['EXECUTION_NOT_COMPLETED', 'できなかった'],
+    ['EXECUTION_HELP_NEEDED', 'やり方が分からなかった'],
+  ] as const;
+
   async function generateToday() {
     if (!generation || pendingAction) return;
     const requestId = key();
@@ -124,6 +131,16 @@ export function ServiceDailyMissionSection({
     if (ok) {
       setRejecting(null);
       setOtherDetail('');
+      router.refresh();
+    }
+  }
+
+  async function recordExecutionResult(
+    id: string,
+    type: (typeof executionResultOptions)[number][0],
+  ) {
+    if (await record(id, 'activities', { type, idempotencyKey: key() })) {
+      setMessage('今日の結果を記録しました。次の提案を調整するために使います。');
       router.refresh();
     }
   }
@@ -702,6 +719,27 @@ export function ServiceDailyMissionSection({
                   {active && mission.decision === 'ACCEPTED' ? (
                     <div className="mission-accepted">
                       <p className="mission-step-complete">✓ 採用しました</p>
+                      {businessFree ? (
+                        <section className="mission-execution-result">
+                          <h4>今日やることは、どこまでできましたか？</h4>
+                          <p>近いものを1つ押してください。次回の提案をあなたに合わせます。</p>
+                          <div>
+                            {executionResultOptions.map(([value, label]) => (
+                              <button
+                                key={value}
+                                type="button"
+                                aria-pressed={mission.executionResult === value}
+                                disabled={
+                                  pendingAction !== null || mission.executionResult === value
+                                }
+                                onClick={() => void recordExecutionResult(mission.id, value)}
+                              >
+                                {mission.executionResult === value ? `✓ ${label}` : label}
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                      ) : null}
                       {copyOptions(missionWithSelectedVariant(mission)).map((option, index) => (
                         <button
                           key={`${option.type}:${index}`}

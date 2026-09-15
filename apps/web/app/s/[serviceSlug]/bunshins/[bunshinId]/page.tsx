@@ -505,6 +505,7 @@ export default async function ServiceBunshinDetailPage({
             program={businessProgram}
             missions={dailyMissions}
             roadmapHref={`/s/${service.configuration.slug}/roadmap`}
+            reportHref={`/s/${service.configuration.slug}/90-day-report`}
             {...(approvedBusinessStrategy?.destinationDetail
               ? { destination: approvedBusinessStrategy.destinationDetail }
               : {})}

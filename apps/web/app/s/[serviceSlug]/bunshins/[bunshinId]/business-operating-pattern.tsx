@@ -41,11 +41,13 @@ export function BusinessOperatingPattern({
   missions,
   destination,
   roadmapHref,
+  reportHref,
 }: {
   program: BusinessGrowthProgramStatus;
   missions: OperatingPatternMission[];
   destination?: string | null;
   roadmapHref: string;
+  reportHref?: string;
 }) {
   if (program.cycleNumber === 1 && program.phase.key !== 'ESTABLISH_PATTERN') return null;
   const pattern = buildBusinessOperatingPattern(missions);
@@ -93,6 +95,11 @@ export function BusinessOperatingPattern({
       <a className="button button--secondary button--full" href={roadmapHref}>
         90日計画の現在地を見る
       </a>
+      {reportHref ? (
+        <a className="button button--secondary button--full" href={reportHref}>
+          90日間の成果を見る
+        </a>
+      ) : null}
     </section>
   );
 }

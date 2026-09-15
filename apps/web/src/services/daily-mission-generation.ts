@@ -200,6 +200,7 @@ export class DailyMissionGenerationService {
               workspaceId: input.workspaceId,
               groupId: input.groupId,
               actorUserId: input.actorUserId,
+              bunshinId: input.bunshinId,
             })
           : null;
       const granted = input.serviceSafeMode

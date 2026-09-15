@@ -30,6 +30,12 @@ export type DailyMissionView = {
   platform: 'INSTAGRAM' | 'TIKTOK' | 'X' | 'THREADS' | 'YOUTUBE_SHORTS' | 'OTHER' | null;
   postedAt: string | null;
   feedback: 'GOOD' | 'NEUTRAL' | 'BAD' | null;
+  executionResult?:
+    | 'EXECUTION_COMPLETED'
+    | 'EXECUTION_PARTIAL'
+    | 'EXECUTION_NOT_COMPLETED'
+    | 'EXECUTION_HELP_NEEDED'
+    | null;
   businessOutcomes?: {
     inquiries: number;
     reservations: number;

@@ -9,6 +9,7 @@ import {
   ListMissionContentVariants,
   AuthorizeDailyMissionCopy,
   GetMissionDecision,
+  ListMissionActivities,
   ListSocialAccountStrategies,
   ListSocialProfiles,
   ListWeeklyPlans,
@@ -147,6 +148,10 @@ export default async function ServiceBunshinDetailPage({
         ),
         post: await outcomeRepository.getPost({ ...scope, dailyMissionId: mission.id }),
         feedback: await outcomeRepository.getFeedback({ ...scope, dailyMissionId: mission.id }),
+        activities: await new ListMissionActivities(engagementRepository).execute({
+          ...scope,
+          dailyMissionId: mission.id,
+        }),
         copyAuthorization: await new AuthorizeDailyMissionCopy(missionRepository).execute({
           ...scope,
           dailyMissionId: mission.id,
@@ -205,6 +210,19 @@ export default async function ServiceBunshinDetailPage({
       platform: socialProfiles.find(({ id }) => id === mission.socialProfileId)?.platform ?? null,
       postedAt: missionStates[index]!.post?.postedAt.toISOString() ?? null,
       feedback: missionStates[index]!.feedback?.rating ?? null,
+      executionResult: ([...missionStates[index]!.activities]
+        .reverse()
+        .find(({ type }) =>
+          [
+            'EXECUTION_COMPLETED',
+            'EXECUTION_PARTIAL',
+            'EXECUTION_NOT_COMPLETED',
+            'EXECUTION_HELP_NEEDED',
+          ].includes(type),
+        )?.type ?? (missionStates[index]!.post ? 'EXECUTION_COMPLETED' : null)) as Exclude<
+        DailyMissionView['executionResult'],
+        undefined
+      >,
       ...(isBusinessDailyService
         ? { businessOutcomes: readBusinessOutcomes(missionStates[index]!.post?.manualMetrics) }
         : {}),

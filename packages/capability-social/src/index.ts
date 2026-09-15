@@ -2612,6 +2612,10 @@ export const MISSION_ACTIVITY_TYPES = [
   'VIEWED',
   'CONFIRMED',
   'RESTED',
+  'EXECUTION_COMPLETED',
+  'EXECUTION_PARTIAL',
+  'EXECUTION_NOT_COMPLETED',
+  'EXECUTION_HELP_NEEDED',
   'ACCEPTED',
   'REJECTED',
   'COPIED_TEXT',
@@ -2707,6 +2711,10 @@ export interface MissionEngagementRepository {
       | 'VIEWED'
       | 'CONFIRMED'
       | 'RESTED'
+      | 'EXECUTION_COMPLETED'
+      | 'EXECUTION_PARTIAL'
+      | 'EXECUTION_NOT_COMPLETED'
+      | 'EXECUTION_HELP_NEEDED'
       | 'COPIED_TEXT'
       | 'COPIED_SLIDE'
       | 'COPIED_IMAGE_INSTRUCTION'
@@ -2818,6 +2826,10 @@ export class RecordMissionActivity extends DailyMissionMutation {
       | 'VIEWED'
       | 'CONFIRMED'
       | 'RESTED'
+      | 'EXECUTION_COMPLETED'
+      | 'EXECUTION_PARTIAL'
+      | 'EXECUTION_NOT_COMPLETED'
+      | 'EXECUTION_HELP_NEEDED'
       | 'COPIED_TEXT'
       | 'COPIED_SLIDE'
       | 'COPIED_IMAGE_INSTRUCTION'

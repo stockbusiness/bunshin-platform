@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   businessProfileKnowledgeForPrompt,
+  executionResultKnowledgeForPrompt,
   industrySafetyKnowledgeForPrompt,
 } from '../src/services/service-generation-knowledge';
 import { readFileSync } from 'node:fs';
@@ -68,5 +69,27 @@ describe('service business profile generation context', () => {
     expect(generationSource).toContain(
       'serviceKnowledge?.contentAssistanceLevel ?? profile.defaultAssistanceLevel',
     );
+  });
+
+  it('turns the latest execution result into a concrete next-action adjustment', () => {
+    const knowledge = executionResultKnowledgeForPrompt([
+      {
+        type: 'EXECUTION_HELP_NEEDED',
+        missionDate: '2026-09-15',
+        topic: 'お客様の質問へ返信する',
+      },
+      {
+        type: 'EXECUTION_PARTIAL',
+        missionDate: '2026-09-14',
+        topic: '店内写真を1枚撮る',
+      },
+    ]);
+
+    expect(knowledge).toMatchObject({
+      type: 'SERVICE_RECENT_EXECUTION_RESULTS',
+      title: '最近の実行結果',
+    });
+    expect(knowledge?.content).toContain('やり方が分からなかった');
+    expect(knowledge?.content).toContain('スマートフォンで迷わずできる一つの操作');
   });
 });

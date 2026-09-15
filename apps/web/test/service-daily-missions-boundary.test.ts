@@ -76,7 +76,7 @@ describe('service daily mission boundary', () => {
   });
 
   it('guides free users through copying the prompt and caption themselves', () => {
-    expect(experience).toContain("imageCreationBaseHref ? '投稿画像を作りましょう'");
+    expect(experience).toContain("? '投稿画像を作りましょう'");
     expect(experience).toContain('画像用の文章をコピー');
     expect(experience).toContain('画像を作れるAIに貼り付ける');
     expect(experience).toContain('5枚の画像をスマホへ保存');
@@ -127,7 +127,7 @@ describe('service daily mission boundary', () => {
     expect(source).toContain("z.literal('EXECUTION_HELP_NEEDED')");
     expect(detailPage).toContain('new ListMissionActivities(engagementRepository)');
     expect(detailPage).toContain('executionResult:');
-    expect(experience).toContain('今日やることは、どこまでできましたか？');
+    expect(experience).toContain('どこまでできましたか？');
     expect(experience).toContain('やり方が分からなかった');
     expect(experience).toContain("record(id, 'activities'");
   });

@@ -1,5 +1,6 @@
 import { ApplicationError } from '@bunshin/shared';
 import type { LineConfigurationEnvironment } from './index';
+import { BUSINESS_GROWTH_ACTION_KINDS, type BusinessGrowthAction } from './business-growth-actions';
 
 export type LineMessageKind = 'DAILY_MISSION' | 'REMINDER';
 export type LineMessageDeliveryStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'CANCELLED';
@@ -183,6 +184,7 @@ export interface LineMissionNotificationSummary {
   researched: boolean;
   campaign?: { name: string; classification: 'PRODUCT_RELATED' | 'ADVERTISEMENT' } | null;
   externalLinkIncluded?: boolean;
+  businessAction?: BusinessGrowthAction;
 }
 
 export interface LineMissionNotificationSummaryRepository {
@@ -220,6 +222,15 @@ export function normalizeLineMissionNotificationSummary(
     throw new ApplicationError('VALIDATION_ERROR', 'invalid LINE Mission research marker');
   if (input.externalLinkIncluded !== undefined && typeof input.externalLinkIncluded !== 'boolean')
     throw new ApplicationError('VALIDATION_ERROR', 'invalid LINE Mission external link marker');
+  if (
+    input.businessAction &&
+    (!BUSINESS_GROWTH_ACTION_KINDS.includes(input.businessAction.kind) ||
+      !input.businessAction.label.trim() ||
+      !input.businessAction.title.trim() ||
+      !input.businessAction.reason.trim() ||
+      input.businessAction.steps.length !== 3)
+  )
+    throw new ApplicationError('VALIDATION_ERROR', 'invalid LINE Mission business action');
   const campaign = input.campaign
     ? {
         name: input.campaign.name.replace(/\s+/g, ' ').trim().slice(0, 60),
@@ -235,6 +246,17 @@ export function normalizeLineMissionNotificationSummary(
     ...input,
     topic: topic.slice(0, 60),
     ...(input.campaign === undefined ? {} : { campaign }),
+    ...(input.businessAction
+      ? {
+          businessAction: {
+            ...input.businessAction,
+            label: input.businessAction.label.trim().slice(0, 30),
+            title: input.businessAction.title.trim().slice(0, 100),
+            reason: input.businessAction.reason.trim().slice(0, 200),
+            steps: input.businessAction.steps.map((step) => step.trim().slice(0, 120)),
+          },
+        }
+      : {}),
   };
 }
 

@@ -329,11 +329,19 @@ export function ServiceDailyMissionSection({
     <section className="mission-experience">
       <header className="mission-experience__header">
         <p className="eyebrow">今日やること</p>
-        <h2>{imageCreationBaseHref ? '投稿画像を作りましょう' : '今日の投稿を準備しましょう'}</h2>
+        <h2>
+          {businessFree
+            ? '今日の集客を1つ進めましょう'
+            : imageCreationBaseHref
+              ? '投稿画像を作りましょう'
+              : '今日の投稿を準備しましょう'}
+        </h2>
         <p>
-          {imageCreationBaseHref
-            ? 'むずかしい設定は必要ありません。下の青いボタンから始められます。'
-            : '用意された文章を順番にコピーして使います。内容を考え直す必要はありません。'}
+          {businessFree
+            ? '投稿、写真、返信など、その日にできる一つだけを分かりやすく案内します。'
+            : imageCreationBaseHref
+              ? 'むずかしい設定は必要ありません。下の青いボタンから始められます。'
+              : '用意された文章を順番にコピーして使います。内容を考え直す必要はありません。'}
         </p>
       </header>
       {message ? (
@@ -437,14 +445,36 @@ export function ServiceDailyMissionSection({
                   </a>
                 </p>
               ) : null}
-              {isImageMission ? (
+              {mission.businessAction ? (
+                <p className="mission-card__date">{mission.missionDate}の行動</p>
+              ) : isImageMission ? (
                 <p className="mission-card__date">{mission.missionDate}の投稿</p>
               ) : null}
-              {isImageMission ? <p className="eyebrow">この5枚のテーマ</p> : null}
+              {mission.businessAction ? (
+                <p className="eyebrow">{mission.businessAction.label}</p>
+              ) : isImageMission ? (
+                <p className="eyebrow">この5枚のテーマ</p>
+              ) : null}
               <h3>
-                {isImageMission ? mission.topic : `${mission.missionDate} — ${mission.topic}`}
+                {mission.businessAction
+                  ? mission.businessAction.title
+                  : isImageMission
+                    ? mission.topic
+                    : `${mission.missionDate} — ${mission.topic}`}
               </h3>
-              {isImageMission && imageCreationHref ? (
+              {mission.businessAction ? (
+                <section className="mission-growth-action">
+                  <p>{mission.businessAction.reason}</p>
+                  <p>
+                    <strong>やることは3つです</strong>
+                  </p>
+                  <ol>
+                    {mission.businessAction.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </section>
+              ) : isImageMission && imageCreationHref ? (
                 <div className="mission-simple-steps" aria-label="画像を作って保存する手順">
                   <p>
                     <strong>やることは3つだけです</strong>
@@ -457,6 +487,25 @@ export function ServiceDailyMissionSection({
                 </div>
               ) : !isImageMission ? (
                 <p>{mission.reason}</p>
+              ) : null}
+              {active && businessFree ? (
+                <section className="mission-execution-result">
+                  <h4>どこまでできましたか？</h4>
+                  <p>近いものを1つ押してください。次回の内容を調整します。</p>
+                  <div>
+                    {executionResultOptions.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={mission.executionResult === value}
+                        disabled={pendingAction !== null || mission.executionResult === value}
+                        onClick={() => void recordExecutionResult(mission.id, value)}
+                      >
+                        {mission.executionResult === value ? `✓ ${label}` : label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ) : null}
               {imageCreationHref ? (
                 <a className="button mission-create-image" href={imageCreationHref}>
@@ -548,9 +597,11 @@ export function ServiceDailyMissionSection({
                   ? isImageMission
                     ? '詳しい内容を閉じる'
                     : '閉じる'
-                  : isImageMission
-                    ? '内容を確認・変更する'
-                    : '内容を見る'}
+                  : mission.businessAction && !mission.businessAction.postContentIsPrimary
+                    ? '参考の投稿案を見る'
+                    : isImageMission
+                      ? '内容を確認・変更する'
+                      : '内容を見る'}
               </button>
               {expanded === mission.id ? (
                 <div className="mission-detail">
@@ -719,27 +770,6 @@ export function ServiceDailyMissionSection({
                   {active && mission.decision === 'ACCEPTED' ? (
                     <div className="mission-accepted">
                       <p className="mission-step-complete">✓ 採用しました</p>
-                      {businessFree ? (
-                        <section className="mission-execution-result">
-                          <h4>今日やることは、どこまでできましたか？</h4>
-                          <p>近いものを1つ押してください。次回の提案をあなたに合わせます。</p>
-                          <div>
-                            {executionResultOptions.map(([value, label]) => (
-                              <button
-                                key={value}
-                                type="button"
-                                aria-pressed={mission.executionResult === value}
-                                disabled={
-                                  pendingAction !== null || mission.executionResult === value
-                                }
-                                onClick={() => void recordExecutionResult(mission.id, value)}
-                              >
-                                {mission.executionResult === value ? `✓ ${label}` : label}
-                              </button>
-                            ))}
-                          </div>
-                        </section>
-                      ) : null}
                       {copyOptions(missionWithSelectedVariant(mission)).map((option, index) => (
                         <button
                           key={`${option.type}:${index}`}

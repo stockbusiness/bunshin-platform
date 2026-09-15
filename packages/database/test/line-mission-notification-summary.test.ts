@@ -4,12 +4,14 @@ import { PrismaLineMissionNotificationSummaryRepository } from '../src';
 describe('LINE Mission notification summary repository', () => {
   it('selects only safe fields under the complete workspace, user and Bunshin scope', async () => {
     const findFirst = vi.fn().mockResolvedValue({
+      missionDate: new Date('2026-09-15T00:00:00.000Z'),
       format: 'TEXT',
       estimatedMinutes: 3,
       topic: '今日の短いテーマ',
       trendContext: { id: 'context-a' },
       socialProfile: { platform: 'X' },
       contentLinkUsage: { id: 'usage-a' },
+      bunshin: { groupId: null },
     });
     const repository = new PrismaLineMissionNotificationSummaryRepository({
       dailyMission: { findFirst },
@@ -81,6 +83,7 @@ describe('LINE Mission notification summary repository', () => {
         ],
       },
       select: {
+        missionDate: true,
         format: true,
         estimatedMinutes: true,
         topic: true,
@@ -89,9 +92,54 @@ describe('LINE Mission notification summary repository', () => {
         classification: true,
         campaign: { select: { name: true } },
         contentLinkUsage: { select: { id: true } },
+        bunshin: { select: { groupId: true } },
       },
     });
     expect(findFirst.mock.calls[0]?.[0].select).not.toHaveProperty('content');
+  });
+
+  it('adds the business growth action for an active service business profile', async () => {
+    const profileFindFirst = vi.fn().mockResolvedValue({ id: 'profile-a' });
+    const repository = new PrismaLineMissionNotificationSummaryRepository({
+      dailyMission: {
+        findFirst: vi.fn().mockResolvedValue({
+          missionDate: new Date('2026-09-15T00:00:00.000Z'),
+          format: 'TEXT',
+          estimatedMinutes: 5,
+          topic: '秋の新商品',
+          trendContext: null,
+          socialProfile: { platform: 'INSTAGRAM' },
+          classification: 'ORGANIC',
+          campaign: null,
+          contentLinkUsage: null,
+          bunshin: { groupId: 'group-a' },
+        }),
+      },
+      serviceMemberBusinessProfile: { findFirst: profileFindFirst },
+    } as never);
+
+    await expect(
+      repository.resolve({
+        workspaceId: 'workspace-a',
+        bunshinId: 'bunshin-a',
+        actorUserId: 'user-a',
+        dailyMissionId: 'mission-a',
+      }),
+    ).resolves.toMatchObject({
+      businessAction: {
+        kind: 'PHOTO',
+        title: expect.stringContaining('写真を1枚撮る'),
+      },
+    });
+    expect(profileFindFirst).toHaveBeenCalledWith({
+      where: {
+        workspaceId: 'workspace-a',
+        groupId: 'group-a',
+        userId: 'user-a',
+        groupMembership: { status: 'ACTIVE' },
+      },
+      select: { id: true },
+    });
   });
 
   it('returns no summary when the scoped Mission or active profile is unavailable', async () => {

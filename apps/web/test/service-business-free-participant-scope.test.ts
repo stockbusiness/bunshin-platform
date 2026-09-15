@@ -28,6 +28,8 @@ describe('business free participant scope', () => {
     expect(detail).toContain('!isBusinessDailyService && mission.linkUsage');
     expect(detail).toContain('variants: isBusinessDailyService');
     expect(detail).toContain('const imageMembership = isBusinessDailyService');
+    expect(detail).toContain('bunshin.ownerUserId === actor.userId ? (');
+    expect(detail).not.toContain('!isBusinessDailyService && bunshin.ownerUserId === actor.userId');
     expect(missionSection).toContain('active && variantPointCost !== null');
   });
 

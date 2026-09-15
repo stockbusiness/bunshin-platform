@@ -36,6 +36,21 @@ export type DailyMissionView = {
     | 'EXECUTION_NOT_COMPLETED'
     | 'EXECUTION_HELP_NEEDED'
     | null;
+  businessAction?: {
+    kind:
+      | 'POST'
+      | 'PHOTO'
+      | 'COMMENT_REPLY'
+      | 'CUSTOMER_QUESTION'
+      | 'PROFILE_IMPROVEMENT'
+      | 'RESULT_REVIEW'
+      | 'REST';
+    label: string;
+    title: string;
+    reason: string;
+    steps: string[];
+    postContentIsPrimary: boolean;
+  };
   businessOutcomes?: {
     inquiries: number;
     reservations: number;

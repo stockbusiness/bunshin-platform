@@ -33,6 +33,7 @@ import type { DailyMissionView } from '../../../../(app)/bunshins/[bunshinId]/da
 import { ServiceBunshinEditor } from './service-bunshin-editor';
 import { ServiceDailyMissionSection } from './service-daily-mission-section';
 import { SimpleFirstPostSetup } from './simple-first-post-setup';
+import { BusinessProfileGuide } from './business-profile-guide';
 import { ServiceDeliverySettings } from './service-delivery-settings';
 import { DailyActionSection, type DailyActionView } from './daily-action-section';
 import { dailyVideoProjectId } from '../../../../../src/services/automatic-daily-video';
@@ -340,6 +341,11 @@ export default async function ServiceBunshinDetailPage({
     imageMembership?.featureAssignments.some(isCurrent) &&
     imageMembership.group.featurePolicies.some(isCurrent),
   );
+  const approvedBusinessStrategy = isBusinessDailyService
+    ? accountStrategies
+        .filter(({ status }) => status === 'APPROVED')
+        .sort((left, right) => right.version - left.version)[0]
+    : undefined;
 
   const dedicatedLine = await db.prisma.groupLineChannelConfiguration.findFirst({
     where: {
@@ -423,6 +429,17 @@ export default async function ServiceBunshinDetailPage({
           deliverySchedule={deliverySchedule}
           deliveryPolicy={deliveryPolicy}
         />
+        {approvedBusinessStrategy ? (
+          <BusinessProfileGuide
+            strategy={{
+              platform: approvedBusinessStrategy.platform,
+              profileDraft: approvedBusinessStrategy.profileDraft,
+              ctaStrategy: approvedBusinessStrategy.ctaStrategy,
+              destinationType: approvedBusinessStrategy.destinationType,
+              destinationDetail: approvedBusinessStrategy.destinationDetail,
+            }}
+          />
+        ) : null}
         <details className="service-advanced-settings">
           <summary>細かい設定を自分で変える（必要な方だけ）</summary>
           <div className="service-advanced-settings__content">

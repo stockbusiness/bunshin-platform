@@ -3622,6 +3622,66 @@ a {
   background: #fff;
 }
 
+.business-profile-guide {
+  display: grid;
+  gap: 1.25rem;
+  scroll-margin-top: 1rem;
+}
+
+.business-profile-guide header,
+.business-profile-guide header p,
+.business-profile-guide header h2,
+.business-profile-guide__copy-block h3,
+.business-profile-guide__copy-block p {
+  margin: 0;
+}
+
+.business-profile-guide__steps {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 1.1rem 1.1rem 1.1rem 3rem;
+  border-radius: 1rem;
+  background: #f2f5fa;
+  color: #17233d;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.business-profile-guide__copy-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.business-profile-guide__copy-block textarea {
+  min-height: 8rem;
+  font-size: 1rem;
+  line-height: 1.7;
+  background: #fff;
+}
+
+.business-profile-guide__destination {
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  background: #fff7ed;
+  color: #633415;
+  overflow-wrap: anywhere;
+}
+
+.business-profile-guide__hint,
+.business-profile-guide__message {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.business-profile-guide__message:not(:empty) {
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.75rem;
+  background: #eefbf4;
+  color: #166534;
+  font-weight: 700;
+}
+
 .service-advanced-settings > summary {
   padding: 20px 24px;
   color: var(--service-primary);

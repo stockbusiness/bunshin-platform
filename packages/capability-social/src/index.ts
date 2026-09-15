@@ -975,6 +975,24 @@ export interface WeeklyPlannerInput {
       goodFeedbackCount: number;
       badFeedbackCount: number;
     }>;
+    businessOutcomes?: {
+      inquiries: number;
+      reservations: number;
+      visits: number;
+      orders: number;
+      other: number;
+    };
+    successfulTopics?: Array<{
+      topic: string;
+      outcomeTotal: number;
+      businessOutcomes: {
+        inquiries: number;
+        reservations: number;
+        visits: number;
+        orders: number;
+        other: number;
+      };
+    }>;
   };
   businessContentSchedule?: Array<{
     scheduledDate: string;

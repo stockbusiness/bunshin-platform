@@ -2146,3 +2146,10 @@
 - Groupだけに所属する本人の通知許可を認め、停止設定とService/Bunshinの境界を維持する。
 - 完成済み動画は再生成せず、23時間以内の抑止取消通知だけを一意ジョブで再開する。
 - Source: `docs/SERVICE_LINE_LINK_RECOVERY.md`
+
+## 2026-11-12: 企業・グループ型広告は既存Service基盤で提供し、先にコピー時の再確認とService参加経路を補う
+
+- 新しいグループ階層、管理基盤、AIエージェント、テーブルを追加せず、既存のService（Group）、商品情報、Campaign、投稿承認、専用URL、Service専用LINE、活動集計を再利用する。
+- 監査でService分身がCampaignへ参加できないこと、中止・版差替え・承認後の別案選択後もコピーできることを非本番DBで確認したため、一般販売はNo-Goとし、P0を小さなPRで先に解消する。
+- 企業管理者の広告確認と本人の公開判断は別権限のまま維持する。投稿完了は本人申告として表示し、外部実績が取れない指標は表示しない。
+- Source: `docs/ENTERPRISE_GROUP_ADVERTISING_AUDIT.md`

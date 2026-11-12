@@ -1891,7 +1891,8 @@ export interface DailyMissionRepository {
       | 'LINK_CHANGED'
       | 'LINK_UNAVAILABLE'
       | 'APPROVAL_PENDING'
-      | 'APPROVAL_CHANGES_REQUESTED';
+      | 'APPROVAL_CHANGES_REQUESTED'
+      | 'CAMPAIGN_UNAVAILABLE';
     reviewNote?: string | null;
   } | null>;
 }

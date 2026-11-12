@@ -148,6 +148,13 @@
 - 承認依頼がある投稿案で別案を選択したとき、同じトランザクションで承認依頼を `PENDING` に戻し、`contentSnapshot` を別案本文で更新し、監査 `RESUBMITTED` を残す
 - 受入条件: 第2節の「許可される」3件がすべて拒否になる。承認系の統合テスト（作成、確認待ち、他Service、見直し、再依頼、中止後、別案）が通る。lint / typecheck / test / build / integration が通る
 
+- 実装状況（2026-11-12、本ブランチ）:
+  - `PrismaDailyMissionRepository.authorizeCopy` に Campaign 条件の再確認を追加。新しい理由 `CAMPAIGN_UNAVAILABLE` を個人・Service両方の投稿案画面で案内する
+  - `PrismaMissionContentVariantRepository.select` で、初めて選ぶ別案のときだけ承認依頼を `PENDING` に戻す。同じ別案を選び直しても、企業の承認はやり直さない
+  - 商品・キャンペーン投稿で別案を作る前の確認文に「確認がやり直しになる」旨を追加
+  - 統合テスト `re-checks campaign advertising conditions and organization review at copy time` を追加。確認待ち、見直し依頼、承認、他Service、別案での再確認、参加取消、版差替え、Group退出、中止、他企業への非影響を検証する
+  - 再依頼ボタン（Web Route）は既存実装のままで、テストは未追加（PR-3で追加する）
+
 ### PR-2（P0-1, P0-2）Service参加者の Campaign 参加
 
 - `PrismaCampaignRepository.participant()` を、個人Workspaceの分身に加え「`bunshin.groupId = campaign.groupId` の本人所有 Service 分身」でも許可する。個人向け経路は変更しない
@@ -177,7 +184,7 @@
 | 条件                                                | 現状                                                 |
 | --------------------------------------------------- | ---------------------------------------------------- |
 | Service上で1キャンペーンを通しで実行できる          | **No**（P0-1, P0-2）                                 |
-| 中止・失効・内容変更後に広告がコピーされない        | **No**（P0-3, P0-4）                                 |
+| 中止・失効・内容変更後に広告がコピーされない        | 本ブランチで対応（PR-1、レビュー待ち）               |
 | 企業承認と本人承認が別権限で維持されている          | Yes                                                  |
 | 他企業の情報・会員・Campaign・URL・実績が混在しない | Yes（既存テスト＋本監査の検証。A/B専用テストはPR-5） |
 | 必須表記・禁止表現の検査                            | Yes                                                  |

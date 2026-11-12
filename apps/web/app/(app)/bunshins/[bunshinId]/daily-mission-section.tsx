@@ -55,6 +55,9 @@ export type DailyMissionView = {
   }>;
 };
 
+export const CAMPAIGN_VARIANT_REVIEW_NOTICE =
+  '商品・キャンペーンの投稿で運営者の確認が必要な場合は、別の案を選ぶと確認がやり直しになり、確認が終わるまでコピーできません。';
+
 export type ContentAssistanceLevel = 'IDEA_ONLY' | 'GUIDED' | 'READY_TO_USE';
 
 export const missionAssistanceOptions = [
@@ -526,13 +529,15 @@ export function DailyMissionSection({
     if (!result.data?.allowed) {
       setResubmitMissionId(result.data?.reason === 'APPROVAL_CHANGES_REQUESTED' ? id : null);
       setError(
-        result.data?.reason === 'LINK_CHANGED'
-          ? 'あなた専用の紹介URLが新しくなりました。この投稿案を作り直してください。'
-          : result.data?.reason === 'APPROVAL_PENDING'
-            ? 'この投稿案は、運営者の確認待ちです。確認が終わるまでコピーできません。'
-            : result.data?.reason === 'APPROVAL_CHANGES_REQUESTED'
-              ? `この投稿案は見直しが必要です。${result.data.reviewNote ? `理由：${result.data.reviewNote}` : '管理者の案内を確認してください。'}`
-              : 'この紹介URLは今は使えません。管理者へお問い合わせください。',
+        result.data?.reason === 'CAMPAIGN_UNAVAILABLE'
+          ? 'このキャンペーンは終了したか、参加の条件が変わったため、この投稿案はコピーできません。'
+          : result.data?.reason === 'LINK_CHANGED'
+            ? 'あなた専用の紹介URLが新しくなりました。この投稿案を作り直してください。'
+            : result.data?.reason === 'APPROVAL_PENDING'
+              ? 'この投稿案は、運営者の確認待ちです。確認が終わるまでコピーできません。'
+              : result.data?.reason === 'APPROVAL_CHANGES_REQUESTED'
+                ? `この投稿案は見直しが必要です。${result.data.reviewNote ? `理由：${result.data.reviewNote}` : '管理者の案内を確認してください。'}`
+                : 'この紹介URLは今は使えません。管理者へお問い合わせください。',
       );
       setPendingAction(null);
       return;
@@ -590,7 +595,7 @@ export function DailyMissionSection({
     if (ok) router.refresh();
   }
 
-  async function generateVariant(missionId: string, instruction?: string) {
+  async function generateVariant(missionId: string, instruction?: string, campaignLinked = false) {
     if (pendingAction !== null) return;
     if (variantPointCost === null) {
       setError('ポイント交換を利用できません。時間をおいて、もう一度お試しください。');
@@ -598,7 +603,7 @@ export function DailyMissionSection({
     }
     if (
       !window.confirm(
-        `${variantPointCost} WPを使って${instruction?.trim() ? '内容を直した案' : '別の案'}を作ります。よろしいですか？`,
+        `${variantPointCost} WPを使って${instruction?.trim() ? '内容を直した案' : '別の案'}を作ります。${campaignLinked ? `\n${CAMPAIGN_VARIANT_REVIEW_NOTICE}` : ''}よろしいですか？`,
       )
     )
       return;
@@ -917,7 +922,13 @@ export function DailyMissionSection({
                             <button
                               type="button"
                               disabled={busy || variantPointCost === null}
-                              onClick={() => void generateVariant(mission.id)}
+                              onClick={() =>
+                                void generateVariant(
+                                  mission.id,
+                                  undefined,
+                                  mission.campaignId !== null,
+                                )
+                              }
                             >
                               {variantPointCost === null
                                 ? 'ポイント交換を利用できません'
@@ -944,7 +955,11 @@ export function DailyMissionSection({
                                 !(variantInstructions[mission.id] ?? '').trim()
                               }
                               onClick={() =>
-                                void generateVariant(mission.id, variantInstructions[mission.id])
+                                void generateVariant(
+                                  mission.id,
+                                  variantInstructions[mission.id],
+                                  mission.campaignId !== null,
+                                )
                               }
                             >
                               {variantPointCost === null

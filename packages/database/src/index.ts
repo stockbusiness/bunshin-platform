@@ -4636,6 +4636,38 @@ export class PrismaDailyMissionRepository implements DailyMissionRepository {
     if (!(await this.authorized(this.client, input, false))) return null;
     const mission = await this.row(this.client, input);
     if (!mission) return null;
+    if (mission.campaignId) {
+      // A campaign post may only leave the platform while the campaign, the participant's
+      // consent, and the published product facts it was generated from are all still valid.
+      const campaign = await this.client.campaign.findFirst({
+        where: {
+          id: mission.campaignId,
+          status: 'OPEN',
+          startsAt: { lte: input.at },
+          endsAt: { gt: input.at },
+          group: {
+            status: 'ACTIVE',
+            memberships: {
+              some: { userId: input.actorUserId, status: 'ACTIVE', consentedAt: { not: null } },
+            },
+          },
+          participations: {
+            some: {
+              participantWorkspaceId: input.workspaceId,
+              userId: input.actorUserId,
+              bunshinId: input.bunshinId,
+              status: 'ACCEPTED',
+            },
+          },
+          productPackVersion: {
+            status: 'PUBLISHED',
+            assignments: { some: { bunshinId: input.bunshinId, status: 'ACTIVE' } },
+          },
+        },
+        select: { id: true },
+      });
+      if (!campaign) return { allowed: false, reason: 'CAMPAIGN_UNAVAILABLE' as const };
+    }
     const approval = await this.client.campaignPostingApprovalRequest.findFirst({
       where: {
         workspaceId: input.workspaceId,
@@ -5198,6 +5230,52 @@ export class PrismaMissionContentVariantRepository implements MissionContentVari
         },
       });
       if (!variant) return null;
+      const previouslySelected = await tx.missionContentVariantSelection.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          bunshinId: input.bunshinId,
+          dailyMissionId: input.dailyMissionId,
+          variantId: variant.id,
+        },
+        select: { id: true },
+      });
+      if (!previouslySelected) {
+        // The organization reviewed the original text. Selecting a different text sends the
+        // new text back for review so only reviewed content can be copied.
+        const approval = await tx.campaignPostingApprovalRequest.findFirst({
+          where: {
+            workspaceId: input.workspaceId,
+            bunshinId: input.bunshinId,
+            dailyMissionId: input.dailyMissionId,
+          },
+          select: { id: true, workspaceId: true, groupId: true, status: true },
+        });
+        if (approval) {
+          await tx.campaignPostingApprovalRequest.update({
+            where: { id: approval.id },
+            data: {
+              status: 'PENDING',
+              contentSnapshot: variant.contentJson as Prisma.InputJsonValue,
+              reviewNote: null,
+              reviewedByUserId: null,
+              reviewedAt: null,
+              requestedAt: input.selectedAt,
+            },
+          });
+          await tx.campaignPostingApprovalAudit.create({
+            data: {
+              workspaceId: approval.workspaceId,
+              groupId: approval.groupId,
+              requestId: approval.id,
+              action: 'RESUBMITTED',
+              beforeData: { status: approval.status },
+              afterData: { status: 'PENDING', variantId: variant.id },
+              note: '別案が選択されたため、確認をやり直します。',
+              performedByUserId: input.actorUserId,
+            },
+          });
+        }
+      }
       await tx.missionContentVariantSelection.upsert({
         where: {
           workspaceId_bunshinId_actorUserId_idempotencyKey: {

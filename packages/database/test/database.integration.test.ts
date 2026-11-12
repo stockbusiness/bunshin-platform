@@ -87,6 +87,7 @@ import {
   PrismaAdvertisingSafetyRepository,
   PrismaCampaignRepository,
   PrismaGroupFeatureEntitlementRepository,
+  PrismaMissionContentVariantRepository,
 } from '../src';
 
 const testUrl = process.env['DATABASE_URL'] ?? '';
@@ -4225,6 +4226,332 @@ integration('database ownership boundaries', () => {
       Array<{ relrowsecurity: boolean }>
     >`SELECT relrowsecurity FROM pg_class WHERE relname = 'social_image_samples'`;
     expect(tables[0]?.relrowsecurity).toBe(true);
+  });
+  it('re-checks campaign advertising conditions and organization review at copy time', async () => {
+    const accounts = new CreateUserWithPersonalWorkspace(new PrismaAccountUnitOfWork(client));
+    const campaigns = new CampaignService(new PrismaCampaignRepository(client));
+    const missions = new PrismaDailyMissionRepository(client);
+    const variants = new PrismaMissionContentVariantRepository(client);
+    const today = new Date().toISOString().slice(0, 10);
+
+    async function service(label: string) {
+      const admin = await accounts.execute({ displayName: `${label} Admin` });
+      const member = await accounts.execute({ displayName: `${label} Member` });
+      const workspace = await client.workspace.create({
+        data: {
+          type: 'ORGANIZATION',
+          name: `${label} Ad Org ${randomUUID()}`,
+          memberships: {
+            create: [
+              { userId: admin.user.id, role: 'OWNER' },
+              { userId: member.user.id, role: 'MEMBER' },
+            ],
+          },
+        },
+      });
+      const group = await client.group.create({
+        data: { workspaceId: workspace.id, name: `${label} Ad Service` },
+      });
+      await client.groupMembership.createMany({
+        data: [
+          { userId: admin.user.id, serviceRole: 'SERVICE_ADMIN' as const },
+          { userId: member.user.id, serviceRole: 'PARTICIPANT' as const },
+        ].map((item) => ({
+          ...item,
+          workspaceId: workspace.id,
+          groupId: group.id,
+          status: 'ACTIVE' as const,
+          consentedAt: new Date(),
+        })),
+      });
+      const bunshin = await client.bunshin.create({
+        data: {
+          workspaceId: workspace.id,
+          ownerUserId: member.user.id,
+          groupId: group.id,
+          name: `${label} Ad Bunshin`,
+          slug: `ad-${randomUUID()}`,
+          type: 'COPY',
+          objectiveSummary: 'Objective',
+          audienceSummary: 'Audience',
+          personalitySummary: 'Personality',
+        },
+      });
+      await client.bunshinCapabilityAssignment.create({
+        data: {
+          workspaceId: workspace.id,
+          bunshinId: bunshin.id,
+          capabilityType: 'SOCIAL',
+          assignedByUserId: member.user.id,
+        },
+      });
+      const profile = await client.socialProfile.create({
+        data: {
+          workspaceId: workspace.id,
+          bunshinId: bunshin.id,
+          platform: 'INSTAGRAM',
+          purpose: '商品紹介',
+          postingFrequency: 'WEEKLY',
+          preferredFormats: ['TEXT'],
+        },
+      });
+      const pack = await client.productPack.create({
+        data: {
+          workspaceId: workspace.id,
+          groupId: group.id,
+          name: `${label} Ad Pack`,
+          status: 'ACTIVE',
+        },
+      });
+      const version = await client.productPackVersion.create({
+        data: {
+          productPackId: pack.id,
+          version: 1,
+          status: 'PUBLISHED',
+          summary: '公式商品',
+          providerName: `${label} 公式`,
+          targetCustomer: '初心者',
+          facts: { price: '1000円' },
+          faq: [],
+          suitableFor: [],
+          unsuitableFor: [],
+          publishedAt: new Date(),
+          createdByUserId: admin.user.id,
+          allowLinklessPosts: true,
+        },
+      });
+      await client.productPackAssignment.create({
+        data: {
+          workspaceId: workspace.id,
+          productPackId: pack.id,
+          productPackVersionId: version.id,
+          bunshinId: bunshin.id,
+          consentedAt: new Date(),
+          assignedByUserId: member.user.id,
+        },
+      });
+      const draft = (await campaigns.createDraft({
+        workspaceId: workspace.id,
+        groupId: group.id,
+        actorUserId: admin.user.id,
+        productPackVersionId: version.id,
+        name: `${label} 広告キャンペーン`,
+        theme: '正しい使い方',
+        targetSummary: '初心者',
+        participationLimit: 10,
+        startsAt: new Date(Date.now() - 86_400_000),
+        endsAt: new Date(Date.now() + 7 * 86_400_000),
+        assetIds: [],
+      })) as { id: string };
+      await campaigns.transition({
+        workspaceId: workspace.id,
+        groupId: group.id,
+        actorUserId: admin.user.id,
+        campaignId: draft.id,
+        from: 'DRAFT',
+        to: 'OPEN',
+      });
+      // Service participants join through PR-2; the participation row is prepared directly here.
+      const participation = await client.campaignParticipation.create({
+        data: {
+          campaignId: draft.id,
+          participantWorkspaceId: workspace.id,
+          userId: member.user.id,
+          bunshinId: bunshin.id,
+          status: 'ACCEPTED',
+          consentedAt: new Date(),
+        },
+      });
+      await client.campaignPostingApprovalPolicy.create({
+        data: {
+          workspaceId: workspace.id,
+          groupId: group.id,
+          required: true,
+          updatedByUserId: admin.user.id,
+        },
+      });
+      const scope = {
+        workspaceId: workspace.id,
+        groupId: group.id,
+        actorUserId: member.user.id,
+        bunshinId: bunshin.id,
+      };
+      const mission = await missions.create({
+        ...scope,
+        socialProfileId: profile.id,
+        campaignId: draft.id,
+        classification: 'ADVERTISEMENT',
+        missionDate: today,
+        format: 'TEXT',
+        estimatedMinutes: 5,
+        topic: '商品紹介',
+        angle: '使い方',
+        reason: '参加中の企画',
+        content: {
+          body: '#PR 公式商品の紹介',
+          threadParts: [],
+          cta: '詳細へ',
+          caption: null,
+          hashtags: [],
+        },
+      });
+      if (!mission) throw new Error('campaign mission was not created');
+      const copy = (actorUserId = member.user.id) =>
+        missions.authorizeCopy({
+          ...scope,
+          actorUserId,
+          dailyMissionId: mission.id,
+          at: new Date(),
+        });
+      const approve = async () => {
+        const request = await client.campaignPostingApprovalRequest.findUniqueOrThrow({
+          where: { dailyMissionId: mission.id },
+        });
+        await client.campaignPostingApprovalRequest.update({
+          where: { id: request.id },
+          data: { status: 'APPROVED', reviewedByUserId: admin.user.id, reviewedAt: new Date() },
+        });
+      };
+      return {
+        admin,
+        member,
+        workspace,
+        group,
+        bunshin,
+        version,
+        participation,
+        campaignId: draft.id,
+        scope,
+        mission,
+        copy,
+        approve,
+      };
+    }
+
+    const a = await service('A');
+    const b = await service('B');
+
+    await expect(a.copy()).resolves.toMatchObject({ allowed: false, reason: 'APPROVAL_PENDING' });
+    await expect(
+      campaigns.listManaged({
+        workspaceId: a.workspace.id,
+        groupId: a.group.id,
+        actorUserId: b.admin.user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(a.copy(b.member.user.id)).resolves.toBeNull();
+
+    await client.campaignPostingApprovalRequest.update({
+      where: { dailyMissionId: a.mission.id },
+      data: { status: 'CHANGES_REQUESTED', reviewNote: '必須表記を確認してください。' },
+    });
+    await expect(a.copy()).resolves.toEqual({
+      allowed: false,
+      reason: 'APPROVAL_CHANGES_REQUESTED',
+      reviewNote: '必須表記を確認してください。',
+    });
+    await a.approve();
+    await b.approve();
+    await expect(a.copy()).resolves.toMatchObject({ allowed: true, reason: 'READY' });
+
+    // Selecting an unreviewed variant sends the new text back to the organization.
+    const variant = await client.missionContentVariant.create({
+      data: {
+        workspaceId: a.workspace.id,
+        bunshinId: a.bunshin.id,
+        dailyMissionId: a.mission.id,
+        actorUserId: a.member.user.id,
+        sequence: 1,
+        format: 'TEXT',
+        contentJson: {
+          body: '#PR 別の言い方の紹介',
+          threadParts: [],
+          cta: '詳細へ',
+          caption: null,
+          hashtags: [],
+        },
+        qualityScore: 80,
+        model: 'test-model',
+        promptVersion: 'test',
+        latencyMs: 1,
+      },
+    });
+    await expect(
+      variants.select({
+        ...a.scope,
+        dailyMissionId: a.mission.id,
+        variantId: variant.id,
+        idempotencyKey: randomUUID(),
+        selectedAt: new Date(),
+      }),
+    ).resolves.toMatchObject({ id: variant.id });
+    const resubmitted = await client.campaignPostingApprovalRequest.findUniqueOrThrow({
+      where: { dailyMissionId: a.mission.id },
+      include: { audits: { orderBy: { occurredAt: 'desc' }, take: 1 } },
+    });
+    expect(resubmitted).toMatchObject({
+      status: 'PENDING',
+      reviewedByUserId: null,
+      contentSnapshot: expect.objectContaining({ body: '#PR 別の言い方の紹介' }),
+    });
+    expect(resubmitted.audits[0]).toMatchObject({
+      action: 'RESUBMITTED',
+      performedByUserId: a.member.user.id,
+    });
+    await expect(a.copy()).resolves.toMatchObject({ allowed: false, reason: 'APPROVAL_PENDING' });
+    await a.approve();
+    // Re-selecting the same variant does not discard the organization's new review.
+    await variants.select({
+      ...a.scope,
+      dailyMissionId: a.mission.id,
+      variantId: variant.id,
+      idempotencyKey: randomUUID(),
+      selectedAt: new Date(),
+    });
+    await expect(a.copy()).resolves.toMatchObject({ allowed: true, reason: 'READY' });
+
+    // Participation, product facts, and campaign status are re-checked at copy time.
+    await client.campaignParticipation.update({
+      where: { id: a.participation.id },
+      data: { status: 'WITHDRAWN', withdrawnAt: new Date() },
+    });
+    await expect(a.copy()).resolves.toEqual({ allowed: false, reason: 'CAMPAIGN_UNAVAILABLE' });
+    await client.campaignParticipation.update({
+      where: { id: a.participation.id },
+      data: { status: 'ACCEPTED', withdrawnAt: null },
+    });
+    await client.productPackVersion.update({
+      where: { id: a.version.id },
+      data: { status: 'SUPERSEDED' },
+    });
+    await expect(a.copy()).resolves.toEqual({ allowed: false, reason: 'CAMPAIGN_UNAVAILABLE' });
+    await client.productPackVersion.update({
+      where: { id: a.version.id },
+      data: { status: 'PUBLISHED' },
+    });
+    await client.groupMembership.update({
+      where: { groupId_userId: { groupId: a.group.id, userId: a.member.user.id } },
+      data: { status: 'REVOKED', revokedAt: new Date() },
+    });
+    await expect(a.copy()).resolves.toEqual({ allowed: false, reason: 'CAMPAIGN_UNAVAILABLE' });
+    await client.groupMembership.update({
+      where: { groupId_userId: { groupId: a.group.id, userId: a.member.user.id } },
+      data: { status: 'ACTIVE', revokedAt: null },
+    });
+    await expect(a.copy()).resolves.toMatchObject({ allowed: true, reason: 'READY' });
+    await campaigns.transition({
+      workspaceId: a.workspace.id,
+      groupId: a.group.id,
+      actorUserId: a.admin.user.id,
+      campaignId: a.campaignId,
+      from: 'OPEN',
+      to: 'CANCELLED',
+    });
+    await expect(a.copy()).resolves.toEqual({ allowed: false, reason: 'CAMPAIGN_UNAVAILABLE' });
+
+    // Company B is unaffected by company A's cancellation.
+    await expect(b.copy()).resolves.toMatchObject({ allowed: true, reason: 'READY' });
+    await client.dailyMission.deleteMany({ where: { id: { in: [a.mission.id, b.mission.id] } } });
   });
 });
 
